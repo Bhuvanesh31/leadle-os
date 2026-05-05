@@ -4,6 +4,9 @@
 .env.*.local
 *.envrc
 
+# Claude Code local settings (user-specific permissions)
+.claude/settings.local.json
+
 # Secrets (defense in depth)
 *.secret
 *.pem
