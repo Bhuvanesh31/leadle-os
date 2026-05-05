@@ -1,0 +1,87 @@
+# Environments
+.env
+.env.local
+.env.*.local
+*.envrc
+
+# Secrets (defense in depth)
+*.secret
+*.pem
+*.key
+credentials.json
+service_account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Generated
+reports/*
+!reports/.gitkeep
+*.log
+logs/
+
+# Data shape work-in-progress (commit final docs only)
+docs/data-shape/*.draft.md
+docs/data-shape/*.scratch/
+
+# Dashboard rendered output (lives in Supabase Storage; local render is ephemeral)
+dashboard/output/
+
+# uv / Poetry / Hatch caches
+.uv/
+.poetry/
+.hatch/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Misc tooling caches
+.firecrawl/
+.cache/
+.local/

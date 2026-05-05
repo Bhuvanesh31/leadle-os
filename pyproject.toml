@@ -1,0 +1,88 @@
+[project]
+name = "leadle-os"
+version = "0.1.0"
+description = "Internal RevOps operating system for Leadle"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary — Leadle internal" }
+authors = [
+    { name = "Bhuvanesh", email = "revops@leadle.in" },
+]
+
+# Dependencies are added per phase, not upfront. The full set below is the
+# expected end-state for Phase 1 (P0–P8). Comment-out anything not yet needed.
+dependencies = [
+    # ─── Core ─────────────────────────────────────────────────────────
+    "python-dotenv>=1.0",
+    "pydantic>=2.6",
+    "httpx>=0.27",
+    "tenacity>=8.2",          # retries + backoff for connector calls
+    "structlog>=24.1",         # structured JSON logging
+
+    # ─── Supabase ─────────────────────────────────────────────────────
+    "supabase>=2.4",
+    "psycopg[binary]>=3.1",    # direct SQL when needed
+
+    # ─── Anthropic + MCP ─────────────────────────────────────────────
+    "anthropic>=0.40",
+    "mcp>=1.0",                # custom leadle-os MCP server
+
+    # ─── Identity resolution ─────────────────────────────────────────
+    "thefuzz>=0.22",           # ports the existing Pipedrive→HubSpot dedup
+    "tldextract>=5.1",         # email-domain root extraction
+
+    # ─── Slack ───────────────────────────────────────────────────────
+    "slack-sdk>=3.27",
+
+    # ─── Templating + dashboard ──────────────────────────────────────
+    "jinja2>=3.1",
+
+    # ─── YAML config ─────────────────────────────────────────────────
+    "ruamel.yaml>=0.18",
+
+    # ─── Scheduling helpers (used by /schedule routines, not for hosting) ─
+    "croniter>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "agents",
+    "analytics",
+    "connectors",
+    "dashboard",
+    "identity",
+    "leadle_os_mcp",
+    "smoke",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "smoke"]
+asyncio_mode = "auto"
