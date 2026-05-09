@@ -1,0 +1,14 @@
+rotting_deal_days: 14
+stalled_lead_days: 5
+followup_gap_days: 5
+outreach_min_sends: 10
+anomaly_pct_threshold: 30
+
+hygiene:
+  require_owner: true
+  require_source: true
+  require_lifecycle: true
+
+fathom_gap:
+  attendee_match_strategy: email_domain_first
+  fuzzy_match_threshold: 85
