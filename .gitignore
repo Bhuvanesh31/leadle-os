@@ -88,5 +88,4 @@ Thumbs.db
 
 # Misc tooling caches
 .firecrawl/
-.cache/
 .local/
