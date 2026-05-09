@@ -3,6 +3,7 @@ from dashboard.compute.windows import WindowSpec, resolve_window
 
 
 def test_window_spec_is_frozen():
+    from dataclasses import FrozenInstanceError
     spec = WindowSpec(
         name="last-7d",
         label="Last 7 days",
@@ -12,6 +13,8 @@ def test_window_spec_is_frozen():
         prior_end=date(2026, 5, 1),
     )
     assert spec.name == "last-7d"
+    with pytest.raises(FrozenInstanceError):
+        spec.name = "modified"  # type: ignore[misc]
 
 
 def test_resolve_window_unknown_arg_raises():

@@ -73,7 +73,7 @@ def _quarter_bounds(fy: int, q: str, quarters_cfg: dict[str, list[int]]) -> tupl
     quarters_starting_year = fy if fy_start >= 4 else fy + 1
     s_year = quarters_starting_year
     s_month = months[0]
-    e_year = quarters_starting_year if months[-1] >= months[0] else quarters_starting_year
+    e_year = quarters_starting_year
     e_month = months[-1]
     s = date(s_year, s_month, 1)
     e_last_day = calendar.monthrange(e_year, e_month)[1]
