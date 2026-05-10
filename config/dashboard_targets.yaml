@@ -2,7 +2,7 @@
 annual:
   goal_amount: 319000
   goal_currency: USD
-  target_date: 2026-10-31
+  target_date: "2026-10-31"
 
 monthly:
   target_amount: 61800
