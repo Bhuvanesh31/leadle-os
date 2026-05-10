@@ -1,0 +1,50 @@
+{% set p = analytics.page4 %}
+<header class="header">
+  <h1 class="title display">Outreach</h1>
+</header>
+
+{% for source_label, source_key in [('Lemlist', 'lemlist'), ('Aimfox — LinkedIn', 'aimfox'), ('Instantly — Email', 'instantly')] %}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">{{ source_label }}</div>
+    <h2 class="section-title">Campaigns</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Campaign</th><th>Sends</th><th>Replies</th><th>Reply Rate</th><th>Meetings</th></tr></thead>
+      <tbody>
+        {% for c in p[source_key] | default([]) %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.sends }}</td>
+          <td>{{ c.replies }}</td>
+          <td>{{ "%.1f"|format(c.reply_rate_pct) }}%</td>
+          <td>{{ c.meetings }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No campaigns above min-sends threshold.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Follow-up Gap</div>
+    <h2 class="section-title">Leads awaiting next contact</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Email</th><th>Last Activity</th><th>Days Since</th></tr></thead>
+      <tbody>
+        {% for g in p.followup_gap | default([]) %}
+        <tr><td>{{ g.email }}</td><td>{{ g.last_activity }}</td><td>{{ g.days_since_activity }}</td></tr>
+        {% else %}
+        <tr><td colspan="3">No follow-up gaps.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

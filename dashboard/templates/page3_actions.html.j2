@@ -1,0 +1,49 @@
+{% set p = analytics.page3 %}
+<header class="header">
+  <h1 class="title display">Sales Actions</h1>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Sales Pipeline SOP</div>
+    <h2 class="section-title">How leads become opportunities</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    {% include "_sop_inbound.html.j2" %}
+    {% include "_sop_outbound.html.j2" %}
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Fathom Gap</div>
+    <h2 class="section-title">{{ window.label }} — Missing CRM Records</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">{{ p.gap_count | default(0) }} companies with calls in window but no deal in HubSpot.</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Company</th><th>Contact</th><th>Last Call</th><th>Type</th><th>CRM State</th><th>Action Needed</th></tr></thead>
+      <tbody>
+        {% for g in p.fathom_gap | default([]) %}
+        <tr>
+          <td>{{ g.company }}</td>
+          <td>{{ g.contact_email }}</td>
+          <td>{{ g.last_call_date }}</td>
+          <td>{{ g.call_type }}</td>
+          <td>{{ g.crm_state }}</td>
+          <td>
+            {% if narratives.fathom_gap and not narratives.fathom_gap.degraded
+                and narratives.fathom_gap.actions[loop.index0] is defined %}
+              {{ narratives.fathom_gap.actions[loop.index0].action }}
+            {% else %}
+              {{ g.suggested_action_default | default('—') }}
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No Fathom gap in window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

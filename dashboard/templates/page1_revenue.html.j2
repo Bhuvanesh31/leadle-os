@@ -1,0 +1,249 @@
+{% set p = analytics.page1 %}
+<header class="header">
+  <div>
+    <div class="brand-row">
+      <div class="logo">L</div>
+      <div class="brand-meta">Leadle · RevOps Command</div>
+    </div>
+    <h1 class="title display">Revenue Engine Dashboard</h1>
+  </div>
+</header>
+
+{# 01 — Goal Snapshot #}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">01 — Goal Snapshot</div>
+      <h2 class="section-title">Are we on track to hit the {{ p.goal_snapshot.goal_currency }}{{ "{:,}".format(p.goal_snapshot.goal_amount) }} goal?</h2>
+    </div>
+  </div>
+  <div class="kpi-grid cols-5">
+    <div class="kpi">
+      <div class="kpi-label">Revenue Goal</div>
+      <div class="kpi-value mono">${{ "{:,}".format(p.goal_snapshot.goal_amount) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">YTD Revenue Closed</div>
+      <div class="kpi-value mono">${{ "{:,}".format(p.goal_snapshot.ytd_revenue | default(0)) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">% Goal Achieved</div>
+      <div class="kpi-value mono">{{ "%.1f"|format(p.goal_snapshot.pct_of_goal | default(0)) }}%</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Revenue Remaining</div>
+      <div class="kpi-value mono">${{ "{:,}".format(p.goal_snapshot.revenue_remaining | default(0)) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Run-Rate Status</div>
+      <div class="kpi-value">
+        <span class="status-pill {{ p.goal_snapshot.run_rate_status | default('critical') }}">{{ p.goal_snapshot.run_rate_status | default('critical') | title }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# 02 — Monthly Control Panel #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">02 — Monthly Control Panel</div>
+    <h2 class="section-title">This month's pacing</h2>
+  </div>
+  <div class="kpi-grid cols-4">
+    <div class="kpi"><div class="kpi-label">MTD Revenue</div><div class="kpi-value mono">${{ "{:,}".format(p.monthly_control.mtd_revenue | default(0)) }}</div></div>
+    <div class="kpi"><div class="kpi-label">Monthly Target</div><div class="kpi-value mono">${{ "{:,}".format(p.monthly_control.monthly_target | default(0)) }}</div></div>
+    <div class="kpi"><div class="kpi-label">% Achieved</div><div class="kpi-value mono">{{ "%.1f"|format(p.monthly_control.pct_target_achieved | default(0)) }}%</div></div>
+    <div class="kpi"><div class="kpi-label">Pipeline Coverage</div><div class="kpi-value mono">{{ "%.2f"|format(p.monthly_control.pipeline_coverage_ratio | default(0)) }}x <span class="status-pill {{ p.monthly_control.pipeline_coverage_status | default('critical') }}">{{ p.monthly_control.pipeline_coverage_status | default('critical') | title }}</span></div></div>
+  </div>
+  <div class="kpi-grid cols-3" style="margin-top:12px;">
+    <div class="kpi"><div class="kpi-label">Open Pipeline</div><div class="kpi-value mono">${{ "{:,}".format(p.monthly_control.open_pipeline | default(0)) }}</div></div>
+    <div class="kpi"><div class="kpi-label">Monthly Gap</div><div class="kpi-value mono">${{ "{:,}".format(p.monthly_control.monthly_gap | default(0)) }}</div></div>
+    <div class="kpi"><div class="kpi-label">Closed Won This Month</div><div class="kpi-value mono">{{ p.monthly_control.closed_won_count | default(0) }}</div></div>
+  </div>
+</section>
+
+{# 03 — Execution Panel #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">03 — Execution Panel</div>
+    <h2 class="section-title">Activity in the window: {{ p.execution.window_label | default('—') }}</h2>
+  </div>
+  <div class="kpi-grid cols-4">
+    <div class="kpi"><div class="kpi-label">New Leads</div><div class="kpi-value mono">{{ p.execution.new_leads | default(0) }}</div></div>
+    <div class="kpi"><div class="kpi-label">Qualified</div><div class="kpi-value mono">{{ p.execution.qualified_leads | default(0) }} ({{ "%.1f"|format(p.execution.qualification_rate | default(0)) }}%)</div></div>
+    <div class="kpi"><div class="kpi-label">Meetings Booked</div><div class="kpi-value mono">{{ p.execution.meetings_booked | default(0) }}</div></div>
+    <div class="kpi"><div class="kpi-label">Opportunities</div><div class="kpi-value mono">{{ p.execution.opportunities | default(0) }}</div></div>
+  </div>
+  <div class="kpi-grid cols-2" style="margin-top:12px;">
+    <div class="kpi"><div class="kpi-label">Proposals Sent</div><div class="kpi-value mono">{{ p.execution.proposals_sent | default(0) }}</div></div>
+    <div class="kpi"><div class="kpi-label">Pipeline Added</div><div class="kpi-value mono">${{ "{:,}".format(p.execution.pipeline_added | default(0)) }}</div></div>
+  </div>
+</section>
+
+{# 04 — Channel Performance #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">04 — Channel Performance</div>
+    <h2 class="section-title">Where deals come from</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Channel</th><th>Deals</th><th>Pipeline</th><th>Closed Won</th></tr></thead>
+      <tbody>
+        {% for c in p.channel_performance.channels | default([]) %}
+        <tr>
+          <td>{{ c.channel }}</td>
+          <td>{{ c.deal_count | default(0) }}</td>
+          <td>${{ "{:,}".format(c.pipeline | default(0)) }}</td>
+          <td>${{ "{:,}".format(c.closed_won_revenue | default(0)) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No channel data.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# 05 — Channel Economics #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">05 — Channel Economics</div>
+    <h2 class="section-title">Per-channel ACV and won counts</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Channel</th><th>Won</th><th>Closed Won $</th><th>ACV</th></tr></thead>
+      <tbody>
+        {% for c in p.channel_economics.channels | default([]) %}
+        <tr>
+          <td>{{ c.channel }}</td>
+          <td>{{ c.won_count | default(0) }}</td>
+          <td>${{ "{:,}".format(c.closed_won_revenue | default(0)) }}</td>
+          <td>{{ "${:,.0f}".format(c.acv) if c.acv is not none else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No channel economics yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# 06 — Funnel #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">06 — Funnel</div>
+    <h2 class="section-title">Where the funnel leaks</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Count</th><th>Conv %</th></tr></thead>
+      <tbody>
+        {% for c in p.funnel.conversions | default([]) %}
+        <tr>
+          <td>{{ c.from_stage }}</td>
+          <td>{{ c.to_stage }}</td>
+          <td>{{ c.from_count }} → {{ c.to_count }}</td>
+          <td>{{ "%.1f"|format(c.conversion_pct) if c.conversion_pct is not none else '—' }}%</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No funnel conversions.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if narratives.funnel_leak and not narratives.funnel_leak.degraded %}
+  <div class="narrative">
+    <h3>{{ narratives.funnel_leak.headline }}</h3>
+    <p>{{ narratives.funnel_leak.explanation }}</p>
+  </div>
+  {% else %}
+  <div class="narrative degraded">
+    <span class="badge">narrative unavailable</span>
+  </div>
+  {% endif %}
+</section>
+
+{# 07 — Accountability #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">07 — Accountability</div>
+    <h2 class="section-title">Owner pipeline and won totals</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Owner</th><th>Deals</th><th>Pipeline</th><th>Closed Won</th></tr></thead>
+      <tbody>
+        {% for o in p.accountability.owners | default([]) %}
+        <tr>
+          <td>{{ o.owner_name | default('Unassigned') }}</td>
+          <td>{{ o.deal_count | default(0) }}</td>
+          <td>${{ "{:,}".format(o.pipeline | default(0)) }}</td>
+          <td>${{ "{:,}".format(o.closed_won | default(0)) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No owner data.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# 08 — Hygiene #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">08 — Hygiene</div>
+    <h2 class="section-title">Data quality alerts</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">{{ p.hygiene.total_issues | default(0) }} total issues
+    ({{ p.hygiene.missing_source_count | default(0) }} missing source,
+     {{ p.hygiene.missing_owner_count | default(0) }} missing owner,
+     {{ p.hygiene.missing_lifecycle_count | default(0) }} missing lifecycle)</div>
+  {% if narratives.hygiene and not narratives.hygiene.degraded %}
+    {% for cat in narratives.hygiene.categories | default([]) %}
+      <div class="hygiene-cat {{ cat.severity | default('warn') }}">
+        <h4>{{ cat.title }} ({{ cat.count }})</h4>
+        <p>{{ cat.summary }}</p>
+        <p><em>Fix:</em> {{ cat.fix }}</p>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="narrative degraded">
+      <span class="badge">narrative unavailable</span>
+    </div>
+  {% endif %}
+</section>
+
+{# 09 — Forward Motion #}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">09 — Forward Motion</div>
+    <h2 class="section-title">This Window's Revenue Actions</h2>
+  </div>
+  {% if narratives.forward_motion and not narratives.forward_motion.degraded %}
+    <div class="actions-grid">
+      {% for action in narratives.forward_motion.commitments | default([]) %}
+      <div class="action-card">
+        <div class="action-num">{{ "%02d"|format(loop.index) }}</div>
+        <div class="action-owner">{{ action.owner }}</div>
+        <div class="action-text">{{ action.text }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="actions-grid degraded">
+      <span class="badge">narrative unavailable — top items past threshold:</span>
+      <div style="margin-top: 16px;">
+        {% set rotting = p.forward_motion_input.rotting_deals | default([]) %}
+        {% if rotting %}
+          {% for d in rotting[:5] %}
+          <div class="action-card" style="margin-bottom: 12px;">{{ d.name }} · {{ d.days_stale }}d stale · ${{ "{:,}".format(d.amount or 0) }}</div>
+          {% endfor %}
+        {% else %}
+        <div style="font-size: 13px; color: var(--ink-3);">No rotting deals to display.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</section>

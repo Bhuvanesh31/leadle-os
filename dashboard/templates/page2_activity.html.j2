@@ -1,0 +1,69 @@
+{% set p = analytics.page2 %}
+<header class="header">
+  <h1 class="title display">Activity &amp; Rot Monitor</h1>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Activity & Rot</div>
+    <h2 class="section-title">Deals and leads at risk</h2>
+  </div>
+  <div class="kpi-grid cols-4">
+    <div class="kpi">
+      <div class="kpi-label">Rotting Deals</div>
+      <div class="kpi-value mono">{{ p.kpi.rotting_count | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Pipeline at Risk</div>
+      <div class="kpi-value mono">${{ "{:,}".format(p.pipeline_at_risk | default(0)) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Stalled Leads</div>
+      <div class="kpi-value mono">{{ p.kpi.stalled_count | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Most Critical Deal</div>
+      <div class="kpi-value" style="font-size: 14px;">{{ (p.kpi.most_critical_deal.name if p.kpi.most_critical_deal else '—') }}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Rotting Deals</div>
+    <h2 class="section-title">Open, no recent activity</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Stage</th><th>Last Activity</th><th>Days Stale</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for d in p.rotting_deals | default([]) %}
+        <tr><td>{{ d.name }}</td><td>{{ d.stage }}</td><td>{{ d.last_activity }}</td>
+            <td>{{ d.days_stale }}</td><td>${{ "{:,}".format(d.amount or 0) }}</td></tr>
+        {% else %}
+        <tr><td colspan="5">No rotting deals.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Stalled Leads</div>
+    <h2 class="section-title">Replied, no meeting booked</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Email</th><th>Lifecycle</th><th>Last Activity</th><th>Days</th></tr></thead>
+      <tbody>
+        {% for s in p.stalled_leads | default([]) %}
+        <tr><td>{{ s.email }}</td><td>{{ s.lifecycle }}</td>
+            <td>{{ s.last_activity }}</td><td>{{ s.days_stalled }}</td></tr>
+        {% else %}
+        <tr><td colspan="4">No stalled leads.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
