@@ -22,7 +22,9 @@ def _parse_iso_date(s: str | None) -> date | None:
         return None
 
 
-def compute(raw: dict, rules: dict, targets: dict, window: WindowSpec) -> dict[str, Any]:
+def compute(raw: dict, rules: dict, targets: dict, window: WindowSpec,
+            today: date | None = None) -> dict[str, Any]:
+    today = today or date.today()
     hubspot = raw["sources"]["hubspot"]
     if not hubspot.get("available"):
         return {"unavailable": True, "reason": hubspot.get("error", "HubSpot unavailable")}
@@ -32,22 +34,21 @@ def compute(raw: dict, rules: dict, targets: dict, window: WindowSpec) -> dict[s
     owners = hubspot["data"].get("owners", [])
 
     return {
-        "goal_snapshot": _goal_snapshot(deals, targets),
-        "monthly_control": _monthly_control(deals, targets),
+        "goal_snapshot": _goal_snapshot(deals, targets, today),
+        "monthly_control": _monthly_control(deals, targets, today),
         "execution": _execution_panel(deals, contacts, raw, window),
-        "channel_performance": _channel_performance(deals, window),
-        "channel_economics": _channel_economics(deals, window),
+        "channel_performance": _channel_performance(deals),
+        "channel_economics": _channel_economics(deals),
         "funnel": _funnel(deals, window),
         "accountability": _accountability(deals, owners, window),
         "hygiene": _hygiene(deals, contacts, rules["hygiene"]),
-        "forward_motion_input": _forward_motion_input(deals, contacts, rules, window),
+        "forward_motion_input": _forward_motion_input(deals, contacts, rules, window, today),
     }
 
 
-def _goal_snapshot(deals: list[dict], targets: dict) -> dict:
+def _goal_snapshot(deals: list[dict], targets: dict, today: date) -> dict:
     goal = targets["annual"]["goal_amount"]
     target_date = date.fromisoformat(targets["annual"]["target_date"])
-    today = date.today()
     fy_start = date(today.year if today.month >= 4 else today.year - 1, 4, 1)
     ytd_revenue = sum(
         d.get("amount", 0) for d in deals
@@ -70,8 +71,7 @@ def _goal_snapshot(deals: list[dict], targets: dict) -> dict:
     }
 
 
-def _monthly_control(deals: list[dict], targets: dict) -> dict:
-    today = date.today()
+def _monthly_control(deals: list[dict], targets: dict, today: date) -> dict:
     month_start = date(today.year, today.month, 1)
     monthly_target = targets["monthly"]["target_amount"]
     mtd_revenue = sum(
@@ -147,7 +147,7 @@ def _execution_panel(deals: list[dict], contacts: list[dict], raw: dict,
     }
 
 
-def _channel_performance(deals: list[dict], window: WindowSpec) -> dict:
+def _channel_performance(deals: list[dict]) -> dict:
     by_channel = defaultdict(lambda: {"deal_count": 0, "pipeline": 0, "closed_won_revenue": 0})
     for d in deals:
         ch = d.get("hs_analytics_source", "UNKNOWN")
@@ -159,8 +159,8 @@ def _channel_performance(deals: list[dict], window: WindowSpec) -> dict:
     return {"channels": [{"channel": k, **v} for k, v in by_channel.items()]}
 
 
-def _channel_economics(deals: list[dict], window: WindowSpec) -> dict:
-    perf = _channel_performance(deals, window)
+def _channel_economics(deals: list[dict]) -> dict:
+    perf = _channel_performance(deals)
     out = []
     for ch in perf["channels"]:
         won_count = sum(
@@ -245,9 +245,8 @@ def _hygiene(deals: list[dict], contacts: list[dict], rules: dict) -> dict:
 
 
 def _forward_motion_input(deals: list[dict], contacts: list[dict],
-                          rules: dict, window: WindowSpec) -> dict:
+                          rules: dict, window: WindowSpec, today: date) -> dict:
     """Aggregate rule outputs that the Forward Motion agent consumes."""
-    today = date.today()
     rotting_deals = [
         {"id": d.get("id"), "name": d.get("dealname"), "amount": d.get("amount"),
          "stage": d.get("dealstage"), "last_activity": d.get("last_activity_date"),
