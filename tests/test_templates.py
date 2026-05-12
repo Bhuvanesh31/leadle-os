@@ -85,6 +85,17 @@ def context():
                 "rotting_deals": [],
                 "pipeline_at_risk": 0,
                 "stalled_leads": [],
+                "lead_funnel": {
+                    "total_leads": 0,
+                    "totals": {
+                        "call_completed": 0, "meeting_booked_no_call": 0,
+                        "responded_no_meeting": 0, "replied_awaiting_us": 0,
+                        "no_reply": 0,
+                    },
+                    "call_completed": [], "meeting_booked_no_call": [],
+                    "responded_no_meeting": [], "replied_awaiting_us": [],
+                    "no_reply": [], "lead_rotting": [], "rotting_count": 0,
+                },
                 "kpi": {
                     "rotting_count": 0,
                     "stalled_count": 0,
