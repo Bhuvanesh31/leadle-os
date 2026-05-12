@@ -59,22 +59,40 @@ _LEADLE_INTERNAL_NAMES = {
     "akil mohan", "suraj seetharaman", "bhuvaneswari",
 }
 
+# Lead pipeline stages that are "closed" — leads in these stages have left the
+# Lead pipeline and don't belong in the activity funnel. Sourced from HubSpot
+# pipeline metadata isClosed=true.
+_CLOSED_LEAD_STAGES = {
+    "qualified-stage-id",      # "Advance to Deal" — promoted to Deal pipeline
+    "unqualified-stage-id",    # "Lead Archived"   — disqualified/dead
+}
+
+# Open-pipeline stage where a meeting has been proposed but the lead hasn't
+# been promoted to Deal yet. Treated as the "meeting booked" state for the
+# open-lead funnel.
+_MEETING_PROPOSED_STAGE = "3200435923"  # "Meeting Proposed"
+
 
 def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict[str, Any]:
-    """Classify each Lead into one of 5 funnel buckets using the user's cascade:
+    """Classify OPEN Leads into 5 funnel buckets using the user's cascade.
 
-    1. call_completed         — Fathom meeting recorded for this lead
-    2. meeting_booked_no_call — Lead has any associated_deal (promoted) but no
-                                Fathom meeting
-    3. responded_no_meeting   — They replied AND we responded back, but no
-                                associated_deal yet
-    4. replied_awaiting_us    — They replied but we haven't responded
-                                (Lemlist isYourTurn=true, Aimfox unread>0)
-    5. no_reply               — No outreach reply found in any platform
+    Pre-filter: Leads in closed stages (Advance to Deal / Lead Archived) are
+    out of scope — those have left the Lead pipeline and are tracked elsewhere
+    (Advance to Deal records show up in Deal-pipeline reporting; Archived are
+    dead). The funnel only describes leads still being actively worked.
+
+    Buckets (top-down precedence):
+      1. call_completed         — Fathom meeting recorded for this lead
+      2. meeting_booked_no_call — Lead at "Meeting Proposed" stage but no
+                                  Fathom meeting yet
+      3. responded_no_meeting   — They replied AND we responded back, no
+                                  meeting booked yet
+      4. replied_awaiting_us    — They replied but we haven't responded
+      5. no_reply               — No outreach reply found in any platform
 
     Plus lead_rotting: subset of no_reply where createdate is >5d ago.
-    Each lead falls into EXACTLY ONE bucket (top-down precedence).
     """
+    leads = [l for l in leads if l.get("pipeline_stage_id") not in _CLOSED_LEAD_STAGES]
     # Build reply index keyed by lowercased email AND lowercased name (for
     # Aimfox name-only matching).
     replies_by_email: dict[str, dict] = {}
@@ -135,8 +153,10 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
             buckets["call_completed"].append(row)
             continue
 
-        # State 2: meeting booked (deal exists)?
-        if lead.get("associated_deal_ids"):
+        # State 2: meeting booked (lead is at "Meeting Proposed" stage)?
+        # We don't use associated_deal_ids here because an open lead with
+        # a deal would have been pre-filtered out (Advance to Deal stage).
+        if lead.get("pipeline_stage_id") == _MEETING_PROPOSED_STAGE:
             buckets["meeting_booked_no_call"].append(row)
             continue
 
