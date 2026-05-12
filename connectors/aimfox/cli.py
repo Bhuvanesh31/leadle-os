@@ -1,8 +1,8 @@
 """CLI entrypoint for /render-dashboard to shell out to.
 
-Reads AIMFOX_API_KEY from env, accepts --start/--end ISO dates, prints the
-fetch() result as JSON to stdout. Exit code is always 0 because the dashboard
-treats a degraded source as a normal case, not an error.
+Reads AIMFOX_API_KEY from env (or .env in repo root), accepts --start/--end
+ISO dates, prints the fetch() result as JSON to stdout. Exit code is always 0
+because the dashboard treats a degraded source as a normal case, not an error.
 """
 from __future__ import annotations
 
@@ -12,10 +12,13 @@ import os
 import sys
 from datetime import date
 
+from dotenv import load_dotenv
+
 from connectors.aimfox.fetch import fetch
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()
     parser = argparse.ArgumentParser(prog="connectors.aimfox.cli")
     parser.add_argument("--start", required=True, help="Window start (ISO date, e.g. 2026-05-01)")
     parser.add_argument("--end", required=True, help="Window end (ISO date, e.g. 2026-05-31)")
