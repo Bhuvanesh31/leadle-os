@@ -42,6 +42,8 @@ LEAD_PROPERTIES = [
     # & Events").
     "hs_associated_company_name",
     "hs_associated_company_domain",
+    # Attribution — used by the source-hygiene check on page3.
+    "hs_contact_analytics_source",
 ]
 
 
@@ -176,6 +178,7 @@ def _shape_lead(lead: dict) -> dict[str, Any]:
         "contact_name": contact_name,
         "company_name": p.get("hs_associated_company_name"),
         "company_domain": p.get("hs_associated_company_domain"),
+        "source": p.get("hs_contact_analytics_source"),
     }
 
 

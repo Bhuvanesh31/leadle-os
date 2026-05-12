@@ -125,6 +125,35 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
     # Backward-compat fields for the existing template/agents
     combined = [_to_legacy_row(r) for r in gap_l2d + gap_no_crm]
 
+    # Source-attribution hygiene: Leads and Deals with no analytics-source
+    # tracking. Both null and "UNKNOWN" count as missing — we can't attribute
+    # revenue/channel performance without one.
+    leads_no_source = [
+        {
+            "id": l.get("id"),
+            "lead_name": l.get("lead_name"),
+            "contact_name": l.get("contact_name"),
+            "contact_email": l.get("contact_email"),
+            "company_name": l.get("company_name"),
+            "owner_id": l.get("hubspot_owner_id"),
+            "createdate": l.get("createdate"),
+        }
+        for l in leads
+        if not _has_source(l.get("source"))
+    ]
+    deals_no_source = [
+        {
+            "id": d.get("id"),
+            "dealname": d.get("dealname"),
+            "dealstage": d.get("dealstage"),
+            "amount": d.get("amount"),
+            "owner_id": d.get("hubspot_owner_id"),
+            "createdate": d.get("createdate"),
+        }
+        for d in deals
+        if not _has_source(d.get("hs_analytics_source"))
+    ]
+
     return {
         "fathom_gap_lead_to_deal": gap_l2d,
         "fathom_gap_no_crm": gap_no_crm,
@@ -132,7 +161,18 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
         "gap_count_no_crm": len(gap_no_crm),
         "fathom_gap": combined,
         "gap_count": len(combined),
+        "leads_without_source": leads_no_source,
+        "leads_without_source_count": len(leads_no_source),
+        "deals_without_source": deals_no_source,
+        "deals_without_source_count": len(deals_no_source),
     }
+
+
+def _has_source(value: str | None) -> bool:
+    """True if the analytics source has a real value. null/empty/UNKNOWN all fail."""
+    if not value:
+        return False
+    return value.strip().upper() not in {"", "UNKNOWN", "NONE"}
 
 
 def _build_deal_index(deals: list[dict]) -> dict:

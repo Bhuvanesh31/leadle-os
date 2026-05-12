@@ -73,3 +73,59 @@
     </table>
   </div>
 </section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap C — Leads without source attribution</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.leads_without_source_count | default(0) }} Leads have no analytics source set</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    Source attribution is required to credit channels for pipeline. Records without source can't be analyzed by channel performance.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lead</th><th>Contact</th><th>Company</th><th>Created</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for l in p.leads_without_source | default([]) %}
+        <tr>
+          <td>{{ l.lead_name | default('—') }}</td>
+          <td>{{ l.contact_name | default('—') }}{% if l.contact_email %} · {{ l.contact_email }}{% endif %}</td>
+          <td>{{ l.company_name | default('—') }}</td>
+          <td>{{ l.createdate | default('—') }}</td>
+          <td>Set "Original source" in HubSpot Lead record</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">All Leads have source set.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap D — Deals without source attribution</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.deals_without_source_count | default(0) }} Deals have no analytics source set</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    Each Deal needs an "Original source" so channel-attributed revenue is computable. Both null and UNKNOWN count as missing.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Stage</th><th>Amount</th><th>Created</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for d in p.deals_without_source | default([]) %}
+        <tr>
+          <td>{{ d.dealname | default('—') }}</td>
+          <td>{{ d.dealstage | default('—') }}</td>
+          <td>{% if d.amount %}${{ "{:,.0f}".format(d.amount) }}{% else %}—{% endif %}</td>
+          <td>{{ d.createdate | default('—') }}</td>
+          <td>Set "Original source" in HubSpot Deal record</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">All Deals have source set.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
