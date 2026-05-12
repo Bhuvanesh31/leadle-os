@@ -257,18 +257,32 @@ def _classify(
             if found_lead:
                 break
 
-    # Pass 3: If we found a Lead, derive its email-domain-root and re-check
-    # Deals. Fathom data is mostly name-only, so the Lead's email is often
-    # the ONLY way to discover the company name to match against Deal.dealname.
-    # This is what catches Madhur Kabra → Lead madhur@colab91.com → Deal "Colab91".
+    # Pass 3: If we found a Lead, try two routes to discover an associated Deal:
+    #
+    #   3a. The Lead's email-domain-root — catches the common case where the
+    #       Deal is named after the brand root (Colab91, Evitar.ai, Getayna).
+    #   3b. The Lead's hs_associated_company_name — catches cases where the
+    #       company name diverges from the email domain (LevoWorld brand →
+    #       Deal 'Levo Exhibitions & Events'; HubSpot's company association
+    #       carries the full legal/registered name which often matches Deals).
+    #
+    # Both routes go through the same _matches normalization (substring after
+    # stripping whitespace/punctuation, plus all-words-present for multi-word).
     if found_lead:
+        deal_search_terms = []
         contact_email = (found_lead.get("contact_email") or "").lower()
         if contact_email:
             root = _email_domain_root(contact_email)
             if root and len(root) >= 3:
-                for dname, d in deal_index["by_name_lower"]:
-                    if _matches(root, dname):
-                        return ("deal", d)
+                deal_search_terms.append(root)
+        company_name = (found_lead.get("company_name") or "").strip()
+        if company_name:
+            deal_search_terms.append(company_name.lower())
+
+        for term in deal_search_terms:
+            for dname, d in deal_index["by_name_lower"]:
+                if _matches(term, dname):
+                    return ("deal", d)
         return ("lead", found_lead)
 
     return ("none", None)

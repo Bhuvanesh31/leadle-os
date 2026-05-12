@@ -36,6 +36,12 @@ LEAD_PROPERTIES = [
     "hs_associated_contact_email",
     "hs_associated_contact_firstname",
     "hs_associated_contact_lastname",
+    # Company association — used by page3 gap matching to bridge Fathom-
+    # call attendees to deals when the email-domain-root doesn't reflect
+    # the deal-naming brand (e.g. LevoWorld lead → Deal "Levo Exhibitions
+    # & Events").
+    "hs_associated_company_name",
+    "hs_associated_company_domain",
 ]
 
 
@@ -130,6 +136,8 @@ def _shape_lead(lead: dict) -> dict[str, Any]:
         "last_activity_date": _iso_date(p.get("hs_contact_last_activity_date") or p.get("hs_lastmodifieddate")),
         "contact_email": p.get("hs_associated_contact_email"),
         "contact_name": contact_name,
+        "company_name": p.get("hs_associated_company_name"),
+        "company_domain": p.get("hs_associated_company_domain"),
     }
 
 
