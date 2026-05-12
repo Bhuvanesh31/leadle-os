@@ -61,8 +61,8 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
 - `mcp__lemlist__get_inbox_conversations` (listId=myConversations, limit=50) — this is the replied-lead feed. Each entry has contactEmail, lastRepliedAt, lastRepliedChannel, lastRepliedMessagePreview. Save into `raw["sources"]["lemlist"]["data"]["leads"]` with `{email, name, replied_at, channel, is_positive}` (set is_positive=false when message preview contains "remove", "no thanks", "not interested", etc.).
 
 **Instantly:**
-- `mcp__instantly__list_campaigns` (paginate via starting_after).
-- `mcp__instantly__get_campaign_analytics` (start_date=window.start, end_date=window.end, exclude_total_leads_count=true).
+- `mcp__instantly__list_campaigns` (paginate via starting_after). **Filter to campaigns whose name contains "leadle" (case-insensitive)** — drops client campaigns (Intellikon, PiSystems, Anovate, Ei_*, etc.).
+- `mcp__instantly__get_campaign_analytics` twice: once with `start_date=window.start, end_date=window.end` for windowed stats, once with NO date filter for all-time. Save windowed as `stats`, all-time as `overall_stats` per campaign. Compute Leadle-only `overall_totals` at the source level.
 - `mcp__instantly__list_emails` (email_type="received", preview_only=true, limit=100, sort_order="desc"; paginate). Dedupe by `lead` email field, keep most recent timestamp per lead. Flag is_auto_reply when subject matches `/^(Automatic reply|Out of office|Auto-reply)/i`. Save into `raw["sources"]["instantly"]["data"]["leads"]` with `{email, replied_at, channel: "email", is_auto_reply, is_positive: !is_auto_reply}`.
 
 **Fathom:** fetch meetings in window via `mcp__fathom__list_meetings`, then apply this filter before saving to cache (drop everything that doesn't match):
@@ -81,6 +81,8 @@ source .venv/bin/activate && python -m connectors.aimfox.cli \
 Requires `AIMFOX_API_KEY` in env (workspace setting → API access). The `--name-contains Leadle` flag drops other-client campaigns we don't care about (case-insensitive substring match). Stdout is the JSON to drop verbatim into `raw["sources"]["aimfox"]`. If `AIMFOX_API_KEY` is missing or the API errors, the CLI prints `{"available": false, "reason": "..."}` — that's the expected degraded path, not a failure.
 
 Aimfox replied-lead fetch (for sections 6/7): GET `https://api.aimfox.com/api/v2/conversations?limit=100`, filter to those where `last_activity_at` is in window (epoch-ms). Save into `raw["sources"]["aimfox"]["data"]["leads"]` with `{name, linkedin_public_id, replied_at, channel: "linkedin", is_positive: true}`. Aimfox is LinkedIn-only — no email available, so cross-joins use name matching.
+
+**Aimfox all-time per-campaign metrics** (for the overall reply count tile — windowed analytics undercounts because /conversations only tracks active threads): for each Leadle campaign returned by the CLI, GET `https://api.aimfox.com/api/v2/campaigns/{id}/metrics` (no date filter — returns lifetime). Aggregate `sent_connections + sent_messages + sent_inmails + message_requests` as `overall_stats.sends`, `replies + inmail_replies` as `overall_stats.replies`. Surface a workspace-level `overall_totals` for the dashboard reply tile.
 
 Save all results to `.cache/dashboard_raw_<end_date>_<window_name>.json` matching the schema in spec §5 Phase 1.
 
