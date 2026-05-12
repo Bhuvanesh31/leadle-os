@@ -54,23 +54,31 @@ def _rotting_deals(deals: list[dict], rules: dict, today: date) -> list[dict]:
     return sorted(out, key=lambda x: x["days_stale"], reverse=True)
 
 
-_LEADLE_INTERNAL_NAMES = {
+# All of these are sourced from config/dashboard_rules.yaml at compute time —
+# the module-level defaults below only kick in when rules doesn't carry the
+# key (which happens in tests that pass a minimal rules dict).
+_LEADLE_INTERNAL_NAMES_DEFAULT = {
     "sai ganesh subramanian", "sai ganesh", "revops leadle",
     "akil mohan", "suraj seetharaman", "bhuvaneswari",
 }
+_CLOSED_LEAD_STAGES_DEFAULT = {"qualified-stage-id", "unqualified-stage-id"}
+_MEETING_PROPOSED_STAGE_DEFAULT = "3200435923"
 
-# Lead pipeline stages that are "closed" — leads in these stages have left the
-# Lead pipeline and don't belong in the activity funnel. Sourced from HubSpot
-# pipeline metadata isClosed=true.
-_CLOSED_LEAD_STAGES = {
-    "qualified-stage-id",      # "Advance to Deal" — promoted to Deal pipeline
-    "unqualified-stage-id",    # "Lead Archived"   — disqualified/dead
-}
 
-# Open-pipeline stage where a meeting has been proposed but the lead hasn't
-# been promoted to Deal yet. Treated as the "meeting booked" state for the
-# open-lead funnel.
-_MEETING_PROPOSED_STAGE = "3200435923"  # "Meeting Proposed"
+def _config_internal_names(rules: dict) -> set[str]:
+    names = rules.get("leadle_internal_names") or []
+    return {n.lower() for n in names} if names else _LEADLE_INTERNAL_NAMES_DEFAULT
+
+
+def _config_closed_stages(rules: dict) -> set[str]:
+    lp = rules.get("lead_pipeline") or {}
+    stages = lp.get("closed_stage_ids") or []
+    return set(stages) if stages else _CLOSED_LEAD_STAGES_DEFAULT
+
+
+def _config_meeting_proposed_stage(rules: dict) -> str:
+    lp = rules.get("lead_pipeline") or {}
+    return lp.get("meeting_proposed_stage_id") or _MEETING_PROPOSED_STAGE_DEFAULT
 
 
 def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict[str, Any]:
@@ -92,9 +100,12 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
 
     Plus lead_rotting: subset of no_reply where createdate is >5d ago.
     """
+    closed_stages = _config_closed_stages(rules)
+    internal_names = _config_internal_names(rules)
+    meeting_proposed_stage = _config_meeting_proposed_stage(rules)
     leads = [
         l for l in leads
-        if l.get("pipeline_stage_id") not in _CLOSED_LEAD_STAGES
+        if l.get("pipeline_stage_id") not in closed_stages
         and _has_contact_identity(l)
     ]
     # Build reply index keyed by lowercased email AND lowercased name (for
@@ -119,7 +130,7 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
             name = (r.get("name") or r.get("contactName") or "").lower().strip()
             if email:
                 replies_by_email[email] = entry
-            if name and name not in _LEADLE_INTERNAL_NAMES:
+            if name and name not in internal_names:
                 replies_by_name[name] = entry
 
     # Build Fathom call index — emails of attendees who aren't Leadle internal.
@@ -133,7 +144,7 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
                 if email and not email.endswith("@leadle.in"):
                     fathom_emails.add(email)
                 name = (a.get("name") or "").lower().strip()
-                if name and name not in _LEADLE_INTERNAL_NAMES:
+                if name and name not in internal_names:
                     fathom_names.add(name)
 
     # Classify each lead
@@ -160,7 +171,7 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
         # State 2: meeting booked (lead is at "Meeting Proposed" stage)?
         # We don't use associated_deal_ids here because an open lead with
         # a deal would have been pre-filtered out (Advance to Deal stage).
-        if lead.get("pipeline_stage_id") == _MEETING_PROPOSED_STAGE:
+        if lead.get("pipeline_stage_id") == meeting_proposed_stage:
             buckets["meeting_booked_no_call"].append(row)
             continue
 

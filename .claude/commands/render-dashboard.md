@@ -41,12 +41,17 @@ You are rendering the Leadle dashboard. Follow this protocol exactly.
 
 Call each MCP for the data slices documented in spec §6. For each source, log "Fetching <source>..." before the call. On failure, mark `available: false, error: <msg>` and continue.
 
+All compute thresholds + stage IDs + name allowlists are sourced from `config/dashboard_rules.yaml`. Read that file before adjusting filters.
+
 **HubSpot:**
 - `mcp__claude_ai_HubSpot__search_crm_objects` for **deals** — use TWO filterGroups (OR'd by HubSpot):
   - Group 1 (active pipeline regardless of age): `pipeline EQ "1906293444"` AND `dealstage IN [open stages: 3022488285..3022488291]`
   - Group 2 (closed in window): `pipeline EQ "1906293444"` AND `dealstage IN ["3022478048", "3022478049"]` AND `closedate GTE <window.start>` AND `closedate LTE <window.end>`
-  - Then **drop closed-lost deals whose createdate is before `<window.start>`** (these are admin/historical cleanup; user-confirmed pattern).
+  - Then **drop closed-lost deals whose createdate is before `<window.start>`** (these are admin/historical cleanup).
   - Paginate via `offset` until response has fewer than `limit` results. Default limit 200.
+  - **Properties to request** (must include `deal_source` for Page 3 Gap D hygiene check):
+    `["dealname", "amount", "dealstage", "closedate", "createdate", "hs_lastmodifieddate", "hs_last_activity_date", "hubspot_owner_id", "hs_analytics_source", "deal_source"]`
+- **Deal lookup index** (separate fetch; used ONLY by Page 3 gap-matching as a permissive "does any Deal exist for this Fathom call's company?" check): same MCP, `pipeline EQ "1906293444"` AND `createdate GTE "2024-01-01"`, properties=`["dealname", "dealstage", "createdate"]`, limit=200, paginate fully (~5 pages × 200 = ~1000 deals). Save as `raw["sources"]["hubspot"]["data"]["deals_lookup"]`. This is what catches BiCXO/Skoegle/Retailwhizz that the window-scoped fetch doesn't see.
 - **Leads** (REST connector — the vendor MCP doesn't expose HubSpot's Leads object; verified via `get_user_details`):
 
   ```bash
@@ -63,7 +68,7 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
 **Lemlist:**
 - `mcp__lemlist__get_campaigns` (list all campaigns, all status).
 - `mcp__lemlist__get_campaigns_stats` (pass all campaignIds; startDate=window.start, endDate=window.end, timezone="Asia/Kolkata").
-- `mcp__lemlist__get_inbox_conversations` (listId=myConversations, limit=50) — this is the replied-lead feed. Each entry has contactEmail, lastRepliedAt, lastRepliedChannel, lastRepliedMessagePreview. Save into `raw["sources"]["lemlist"]["data"]["leads"]` with `{email, name, replied_at, channel, is_positive}` (set is_positive=false when message preview contains "remove", "no thanks", "not interested", etc.).
+- `mcp__lemlist__get_inbox_conversations` (listId=myConversations, limit=50) — this is the replied-lead feed. Each entry has contactEmail, lastRepliedAt, lastRepliedChannel, lastRepliedMessagePreview, **isYourTurn** (boolean: true=lead waiting on us, false=we already responded). Save into `raw["sources"]["lemlist"]["data"]["leads"]` with `{email, name, replied_at, channel, is_positive, is_your_turn}`. Set is_positive=false when message preview contains "remove", "no thanks", "not interested", etc. **`is_your_turn` is required** — Page 2's lead funnel uses it to detect "replied, awaiting our response".
 
 **Instantly:**
 - `mcp__instantly__list_campaigns` (paginate via starting_after). **Filter to campaigns whose name contains "leadle" (case-insensitive)** — drops client campaigns (Intellikon, PiSystems, Anovate, Ei_*, etc.).
@@ -85,7 +90,7 @@ source .venv/bin/activate && python -m connectors.aimfox.cli \
 
 Requires `AIMFOX_API_KEY` in env (workspace setting → API access). The `--name-contains Leadle` flag drops other-client campaigns we don't care about (case-insensitive substring match). Stdout is the JSON to drop verbatim into `raw["sources"]["aimfox"]`. If `AIMFOX_API_KEY` is missing or the API errors, the CLI prints `{"available": false, "reason": "..."}` — that's the expected degraded path, not a failure.
 
-Aimfox replied-lead fetch (for sections 6/7): GET `https://api.aimfox.com/api/v2/conversations?limit=100`, filter to those where `last_activity_at` is in window (epoch-ms). Save into `raw["sources"]["aimfox"]["data"]["leads"]` with `{name, linkedin_public_id, replied_at, channel: "linkedin", is_positive: true}`. Aimfox is LinkedIn-only — no email available, so cross-joins use name matching.
+Aimfox replied-lead fetch (for funnel + Page 3 gaps): GET `https://api.aimfox.com/api/v2/conversations?limit=100`, filter to those where `last_activity_at` is in window (epoch-ms). Save into `raw["sources"]["aimfox"]["data"]["leads"]` with `{name, linkedin_public_id, replied_at, channel: "linkedin", is_positive: true, unread_count}`. **`unread_count` is required** — Page 2 funnel uses it to detect "replied, awaiting our response" (unread_count > 0 means we haven't read/responded). Aimfox is LinkedIn-only — no email available, so cross-joins use name matching.
 
 **Aimfox 2026 per-campaign metrics** (for the overall reply count tile): run the CLI with `--start 2026-01-01 --end 2026-12-31 --name-contains Leadle`. This windows the analytics endpoint to Leadle's revamped-efforts era. Save as `overall_stats` per campaign and `overall_totals` at source level. (Aimfox lifetime = 2026 in current data since campaigns were all created in 2026 — but the date filter keeps it correct as time passes.)
 

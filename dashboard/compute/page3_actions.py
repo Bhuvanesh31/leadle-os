@@ -27,9 +27,9 @@ from typing import Any
 from dashboard.compute.page1_revenue import _parse_iso_date
 from dashboard.compute.windows import WindowSpec
 
-# Leadle team names that appear in Fathom attendees — exclude from candidate
-# extraction so we don't try to "match Sai against CRM".
-_LEADLE_INTERNAL_NAMES = {
+# Defaults used when rules dict doesn't carry the keys (test fixtures pass
+# minimal rules). Production rules come from config/dashboard_rules.yaml.
+_LEADLE_INTERNAL_NAMES_DEFAULT = {
     "sai ganesh subramanian",
     "sai ganesh",
     "revops leadle",
@@ -37,6 +37,15 @@ _LEADLE_INTERNAL_NAMES = {
     "suraj seetharaman",
     "bhuvaneswari",
 }
+
+
+def _config_internal_names(rules: dict) -> set[str]:
+    names = rules.get("leadle_internal_names") or []
+    return {n.lower() for n in names} if names else _LEADLE_INTERNAL_NAMES_DEFAULT
+
+
+# Backward-compat module attribute (used in some places below before refactor)
+_LEADLE_INTERNAL_NAMES = _LEADLE_INTERNAL_NAMES_DEFAULT
 
 _LEADLE_DOMAIN = "@leadle.in"
 
@@ -126,12 +135,13 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
     combined = [_to_legacy_row(r) for r in gap_l2d + gap_no_crm]
 
     # Source-attribution hygiene: Leads and Deals with no analytics-source
-    # tracking. Both null and "UNKNOWN" count as missing — we can't attribute
-    # revenue/channel performance without one.
-    # Lead-source hygiene checks the Leadle-custom `lead_source_v2` field
-    # specifically (not the legacy hs_contact_analytics_source). A Lead can
-    # have HubSpot's auto-tracked source set but be missing the v2 manual
-    # attribution — Leadle's reporting uses v2.
+    # Source-attribution hygiene. Field names live in config rather than
+    # being hardcoded — Leadle uses custom v2 properties (lead_source_v2,
+    # deal_source) rather than HubSpot's legacy analytics-source fields.
+    attr_cfg = rules.get("attribution_fields") or {}
+    lead_source_field = attr_cfg.get("lead_source_property", "lead_source_v2")
+    deal_source_field = attr_cfg.get("deal_source_property", "deal_source")
+
     leads_no_source = [
         {
             "id": l.get("id"),
@@ -143,7 +153,7 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
             "createdate": l.get("createdate"),
         }
         for l in leads
-        if not _has_source(l.get("lead_source_v2"))
+        if not _has_source(l.get(lead_source_field))
     ]
     # Open-deal source hygiene only — closed-lost/won deals are history;
     # backfilling their attribution doesn't change future channel decisions.
@@ -158,7 +168,7 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
         }
         for d in deals
         if d.get("dealstage") not in ("closedwon", "closedlost")
-        and not _has_source(d.get("deal_source"))
+        and not _has_source(d.get(deal_source_field))
     ]
 
     return {
