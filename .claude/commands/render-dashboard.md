@@ -55,7 +55,15 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
 - `mcp__claude_ai_HubSpot__get_properties` for deals (one call, used for stage-ID → label mapping).
 - Stage-ID mapping must include **Sales Pipeline stages only** (3022478048..3022488291). Stages from other pipelines map to `"other"` and are dropped from compute.
 
-**Lemlist, Instantly:** introspect the MCP's tool list first via the MCP. Fetch campaigns + per-campaign stats with the window dates. Document tool names you used in a comment at the top of the cache file.
+**Lemlist:**
+- `mcp__lemlist__get_campaigns` (list all campaigns, all status).
+- `mcp__lemlist__get_campaigns_stats` (pass all campaignIds; startDate=window.start, endDate=window.end, timezone="Asia/Kolkata").
+- `mcp__lemlist__get_inbox_conversations` (listId=myConversations, limit=50) — this is the replied-lead feed. Each entry has contactEmail, lastRepliedAt, lastRepliedChannel, lastRepliedMessagePreview. Save into `raw["sources"]["lemlist"]["data"]["leads"]` with `{email, name, replied_at, channel, is_positive}` (set is_positive=false when message preview contains "remove", "no thanks", "not interested", etc.).
+
+**Instantly:**
+- `mcp__instantly__list_campaigns` (paginate via starting_after).
+- `mcp__instantly__get_campaign_analytics` (start_date=window.start, end_date=window.end, exclude_total_leads_count=true).
+- `mcp__instantly__list_emails` (email_type="received", preview_only=true, limit=100, sort_order="desc"; paginate). Dedupe by `lead` email field, keep most recent timestamp per lead. Flag is_auto_reply when subject matches `/^(Automatic reply|Out of office|Auto-reply)/i`. Save into `raw["sources"]["instantly"]["data"]["leads"]` with `{email, replied_at, channel: "email", is_auto_reply, is_positive: !is_auto_reply}`.
 
 **Fathom:** fetch meetings in window via `mcp__fathom__list_meetings`, then apply this filter before saving to cache (drop everything that doesn't match):
 - **Keep** if title (case-insensitive) contains `"discovery meeting"` OR `"proposal discussion"`.
@@ -71,6 +79,8 @@ source .venv/bin/activate && python -m connectors.aimfox.cli \
 ```
 
 Requires `AIMFOX_API_KEY` in env (workspace setting → API access). The `--name-contains Leadle` flag drops other-client campaigns we don't care about (case-insensitive substring match). Stdout is the JSON to drop verbatim into `raw["sources"]["aimfox"]`. If `AIMFOX_API_KEY` is missing or the API errors, the CLI prints `{"available": false, "reason": "..."}` — that's the expected degraded path, not a failure.
+
+Aimfox replied-lead fetch (for sections 6/7): GET `https://api.aimfox.com/api/v2/conversations?limit=100`, filter to those where `last_activity_at` is in window (epoch-ms). Save into `raw["sources"]["aimfox"]["data"]["leads"]` with `{name, linkedin_public_id, replied_at, channel: "linkedin", is_positive: true}`. Aimfox is LinkedIn-only — no email available, so cross-joins use name matching.
 
 Save all results to `.cache/dashboard_raw_<end_date>_<window_name>.json` matching the schema in spec §5 Phase 1.
 
