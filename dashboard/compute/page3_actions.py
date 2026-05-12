@@ -73,9 +73,13 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
     meetings = fathom["data"].get("meetings", [])
     deals = hubspot["data"].get("deals", [])
     leads = hubspot["data"].get("leads", [])
+    # deals_lookup: permissive index of ALL Sales Pipeline deals (regardless of date)
+    # — used ONLY for the "is there a deal at all?" hygiene check. Falls back to
+    # the in-window deals if a full lookup wasn't fetched.
+    deals_lookup = hubspot["data"].get("deals_lookup") or deals
 
     # Pre-build searchable indices
-    deal_index = _build_deal_index(deals)
+    deal_index = _build_deal_index(deals_lookup)
     lead_index = _build_lead_index(leads)
 
     gap_l2d: list[dict] = []
@@ -170,6 +174,14 @@ def _extract_candidates(meeting: dict) -> list[dict]:
         if email and not email.endswith(_LEADLE_DOMAIN) and email not in seen_values:
             out.append({"kind": "email", "value": email})
             seen_values.add(email)
+            # Also extract the domain root as a separate candidate. Leadle's
+            # deal-naming follows company-name convention (Colab91, Evitar.ai,
+            # Getayna) — and the domain root is usually a clean signal of
+            # company: madhur@colab91.com → "colab91" → matches Deal "Colab91".
+            domain_root = _email_domain_root(email)
+            if domain_root and domain_root not in seen_values:
+                out.append({"kind": "domain_root", "value": domain_root})
+                seen_values.add(domain_root)
         name = (a.get("name") or "").strip().lower()
         if name and name not in _LEADLE_INTERNAL_NAMES and name not in seen_values:
             out.append({"kind": "name", "value": name})
@@ -202,19 +214,16 @@ def _classify(
     lead_index: dict,
 ) -> tuple[str, dict | None]:
     """Return (match_type, matched_record) where match_type is one of
-    'deal' | 'lead' | 'contact' | 'none'. Prefers stronger matches first."""
+    'deal' | 'lead' | 'contact' | 'none'.
 
-    # Pass 1: email exact match (highest confidence)
-    for c in candidates:
-        if c["kind"] != "email":
-            continue
-        l = lead_index["by_email"].get(c["value"])
-        if l:
-            # We can't check deal-by-email (no association data), so a lead
-            # match here is the strongest signal we have.
-            return ("lead", l)
+    Cascade ordered Deal-first because the typical Lead → Deal promotion path
+    means a Deal record's existence is the stronger 'no gap' signal — the
+    Lead might still exist alongside the Deal but isn't the active sales
+    artifact. If we matched Lead first we'd flag Lead→Deal-promoted records
+    as Gap A (false positive).
+    """
 
-    # Pass 2: substring match on deals
+    # Pass 1: Deal direct match via any non-email candidate.
     for c in candidates:
         if c["kind"] == "email":
             continue
@@ -225,18 +234,60 @@ def _classify(
             if _matches(needle, dname):
                 return ("deal", d)
 
-    # Pass 3: substring match on leads
+    # Pass 2: Try to find a Lead. Email-exact first, then name substring.
+    found_lead: dict | None = None
     for c in candidates:
-        if c["kind"] == "email":
+        if c["kind"] != "email":
             continue
-        needle = c["value"]
-        if len(needle) < 3:
-            continue
-        for lname, l in lead_index["by_name_lower"]:
-            if _matches(needle, lname):
-                return ("lead", l)
+        l = lead_index["by_email"].get(c["value"])
+        if l:
+            found_lead = l
+            break
+    if not found_lead:
+        for c in candidates:
+            if c["kind"] == "email":
+                continue
+            needle = c["value"]
+            if len(needle) < 3:
+                continue
+            for lname, l in lead_index["by_name_lower"]:
+                if _matches(needle, lname):
+                    found_lead = l
+                    break
+            if found_lead:
+                break
+
+    # Pass 3: If we found a Lead, derive its email-domain-root and re-check
+    # Deals. Fathom data is mostly name-only, so the Lead's email is often
+    # the ONLY way to discover the company name to match against Deal.dealname.
+    # This is what catches Madhur Kabra → Lead madhur@colab91.com → Deal "Colab91".
+    if found_lead:
+        contact_email = (found_lead.get("contact_email") or "").lower()
+        if contact_email:
+            root = _email_domain_root(contact_email)
+            if root and len(root) >= 3:
+                for dname, d in deal_index["by_name_lower"]:
+                    if _matches(root, dname):
+                        return ("deal", d)
+        return ("lead", found_lead)
 
     return ("none", None)
+
+
+def _email_domain_root(email: str) -> str | None:
+    """Extract the company root from an email domain.
+
+    Strategy: take the part immediately before the TLD, since that's the
+    brand component. Handles plain (madhur@colab91.com → 'colab91') and
+    subdomain (smritycs@secretary.skoegle.com → 'skoegle') cases.
+    """
+    if "@" not in email:
+        return None
+    domain = email.split("@", 1)[1].lower().strip()
+    parts = [p for p in domain.split(".") if p]
+    if len(parts) >= 2:
+        return parts[-2]  # part right before TLD
+    return parts[0] if parts else None
 
 
 def _matches(needle: str, haystack: str) -> bool:
@@ -271,7 +322,7 @@ def _format_candidate_summary(candidates: list[dict]) -> str:
     """Compact human-readable summary of what we tried to match."""
     parts = []
     for c in candidates:
-        kind = {"email": "email", "name": "person", "title": "title"}[c["kind"]]
+        kind = {"email": "email", "name": "person", "title": "title", "domain_root": "domain"}[c["kind"]]
         parts.append(f"{kind}={c['value']}")
     return " · ".join(parts)
 
