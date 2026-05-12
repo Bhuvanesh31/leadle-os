@@ -47,10 +47,15 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
   - Group 2 (closed in window): `pipeline EQ "1906293444"` AND `dealstage IN ["3022478048", "3022478049"]` AND `closedate GTE <window.start>` AND `closedate LTE <window.end>`
   - Then **drop closed-lost deals whose createdate is before `<window.start>`** (these are admin/historical cleanup; user-confirmed pattern).
   - Paginate via `offset` until response has fewer than `limit` results. Default limit 200.
-- `mcp__claude_ai_HubSpot__search_crm_objects` for **contacts** (used as proxy for HubSpot Leads object, which the MCP doesn't expose):
-  - `lifecyclestage EQ "lead"` AND `createdate GTE <window.start>`
-  - After fetch, **drop leads whose `hubspot_owner_id` is not in the active-owner allowlist** (Sai 80765353, Akil 77758216, Suraj 82016648, Revops 77502812 — drops Joshna's leads + unassigned).
-  - Paginate via `offset` until empty.
+- **Leads** (REST connector — the vendor MCP doesn't expose HubSpot's Leads object; verified via `get_user_details`):
+
+  ```bash
+  source .venv/bin/activate && python -m connectors.hubspot.cli \
+    --start <window.start> --end <window.end> \
+    --owner 80765353 --owner 77758216 --owner 82016648 --owner 77502812
+  ```
+
+  Requires `HUBSPOT_PRIVATE_TOKEN` in env (HubSpot private app with `crm.objects.leads.read` scope). The `--owner` flags allowlist active humans (Sai, Akil, Suraj, RevOps) — drops Joshna-inactive and unassigned. Stdout is JSON to drop into `raw["sources"]["hubspot"]["data"]["leads"]` — semantically distinct from `contacts` (Leads = sales team's active work queue, contacts = anyone tagged "lead" lifecyclestage which is 15x noisier).
 - `mcp__claude_ai_HubSpot__search_owners`.
 - `mcp__claude_ai_HubSpot__get_properties` for deals (one call, used for stage-ID → label mapping).
 - Stage-ID mapping must include **Sales Pipeline stages only** (3022478048..3022488291). Stages from other pipelines map to `"other"` and are dropped from compute.
