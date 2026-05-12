@@ -16,32 +16,58 @@
 
 <section class="section">
   <div class="section-head">
-    <div class="section-num">Fathom Gap</div>
-    <h2 class="section-title">{{ window.label }} — Missing CRM Records</h2>
+    <div class="section-num">Gap A — Lead → Deal not promoted</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.gap_count_lead_to_deal | default(0) }} calls happened but Lead is still in Leads pipeline</h2>
   </div>
-  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">{{ p.gap_count | default(0) }} companies with calls in window but no deal in HubSpot.</div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    These had a Discovery or Proposal call recorded in Fathom, but the matching HubSpot Lead has not been promoted to a Deal in the Sales pipeline.
+  </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Company</th><th>Contact</th><th>Last Call</th><th>Type</th><th>CRM State</th><th>Action Needed</th></tr></thead>
+      <thead><tr><th>Matched Lead</th><th>Call</th><th>Date</th><th>Match basis</th><th>Action</th></tr></thead>
       <tbody>
-        {% for g in p.fathom_gap | default([]) %}
+        {% for g in p.fathom_gap_lead_to_deal | default([]) %}
         <tr>
-          <td>{{ g.company }}</td>
-          <td>{{ g.contact_email }}</td>
-          <td>{{ g.last_call_date }}</td>
-          <td>{{ g.call_type }}</td>
-          <td>{{ g.crm_state }}</td>
+          <td>{{ g.matched_record }}</td>
           <td>
-            {% if narratives.fathom_gap and not narratives.fathom_gap.degraded
-                and narratives.fathom_gap.actions[loop.index0] is defined %}
-              {{ narratives.fathom_gap.actions[loop.index0].action }}
-            {% else %}
-              {{ g.suggested_action_default | default('—') }}
-            {% endif %}
+            {% if g.meeting_url %}<a href="{{ g.meeting_url }}" target="_blank">{{ g.meeting_title }}</a>{% else %}{{ g.meeting_title }}{% endif %}
           </td>
+          <td>{{ g.last_call_date }}</td>
+          <td><code>{{ g.candidate }}</code></td>
+          <td>{{ g.suggested_action }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6">No Fathom gap in window.</td></tr>
+        <tr><td colspan="5">No Lead→Deal promotion gaps in window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap B — Call without CRM record</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.gap_count_no_crm | default(0) }} calls happened with someone not in HubSpot at all</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    These calls have no matching Lead, Deal, or Contact in HubSpot. Full CRM entry needed before anything else.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Meeting</th><th>Candidate</th><th>Date</th><th>Type</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for g in p.fathom_gap_no_crm | default([]) %}
+        <tr>
+          <td>
+            {% if g.meeting_url %}<a href="{{ g.meeting_url }}" target="_blank">{{ g.meeting_title }}</a>{% else %}{{ g.meeting_title }}{% endif %}
+          </td>
+          <td><code>{{ g.candidate }}</code></td>
+          <td>{{ g.last_call_date }}</td>
+          <td>{{ g.call_type }}</td>
+          <td>{{ g.suggested_action }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No missing-CRM gaps in window.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -148,7 +148,9 @@ def test_page3_actions_template_renders(env, context):
     """Test Page 3 Sales Actions template renders without errors."""
     html = env.get_template("page3_actions.html.j2").render(**context)
     assert "Sales Actions" in html
-    assert "Fathom Gap" in html
+    # Two gap sections (Lead-to-Deal not promoted, Call without CRM record)
+    assert "Lead" in html and "Deal" in html
+    assert "Call without CRM record" in html
     assert "Inbound" in html
     assert "Outbound" in html
 
