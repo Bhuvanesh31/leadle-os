@@ -43,6 +43,9 @@ LEAD_PROPERTIES = [
     "hs_associated_company_name",
     "hs_associated_company_domain",
     # Attribution — used by the source-hygiene check on page3.
+    # Leadle uses the custom property `lead_source_v2` rather than HubSpot's
+    # legacy `hs_contact_analytics_source` for primary lead attribution.
+    "lead_source_v2",
     "hs_contact_analytics_source",
 ]
 
@@ -178,7 +181,10 @@ def _shape_lead(lead: dict) -> dict[str, Any]:
         "contact_name": contact_name,
         "company_name": p.get("hs_associated_company_name"),
         "company_domain": p.get("hs_associated_company_domain"),
-        "source": p.get("hs_contact_analytics_source"),
+        # Prefer the custom lead_source_v2 attribution; fall back to legacy
+        # analytics source. The Page-3 hygiene check uses this directly.
+        "source": p.get("lead_source_v2") or p.get("hs_contact_analytics_source"),
+        "lead_source_v2": p.get("lead_source_v2"),
     }
 
 

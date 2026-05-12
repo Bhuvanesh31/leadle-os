@@ -128,6 +128,10 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
     # Source-attribution hygiene: Leads and Deals with no analytics-source
     # tracking. Both null and "UNKNOWN" count as missing — we can't attribute
     # revenue/channel performance without one.
+    # Lead-source hygiene checks the Leadle-custom `lead_source_v2` field
+    # specifically (not the legacy hs_contact_analytics_source). A Lead can
+    # have HubSpot's auto-tracked source set but be missing the v2 manual
+    # attribution — Leadle's reporting uses v2.
     leads_no_source = [
         {
             "id": l.get("id"),
@@ -139,8 +143,10 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
             "createdate": l.get("createdate"),
         }
         for l in leads
-        if not _has_source(l.get("source"))
+        if not _has_source(l.get("lead_source_v2"))
     ]
+    # Open-deal source hygiene only — closed-lost/won deals are history;
+    # backfilling their attribution doesn't change future channel decisions.
     deals_no_source = [
         {
             "id": d.get("id"),
@@ -151,7 +157,8 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
             "createdate": d.get("createdate"),
         }
         for d in deals
-        if not _has_source(d.get("hs_analytics_source"))
+        if d.get("dealstage") not in ("closedwon", "closedlost")
+        and not _has_source(d.get("deal_source"))
     ]
 
     return {
