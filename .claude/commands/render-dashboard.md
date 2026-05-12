@@ -42,13 +42,14 @@ You are rendering the Leadle dashboard. Follow this protocol exactly.
 Call each MCP for the data slices documented in spec §6. For each source, log "Fetching <source>..." before the call. On failure, mark `available: false, error: <msg>` and continue.
 
 **HubSpot:**
-- `mcp__claude_ai_HubSpot__search_crm_objects` for **deals** with filters:
-  - `pipeline EQ "1906293444"` (Sales Pipeline only — drop Waitlist, Old, Shared)
-  - `createdate GTE <window.start>` (drop historical deals like Freshworks/Rocketlane that were just modified)
+- `mcp__claude_ai_HubSpot__search_crm_objects` for **deals** — use TWO filterGroups (OR'd by HubSpot):
+  - Group 1 (active pipeline regardless of age): `pipeline EQ "1906293444"` AND `dealstage IN [open stages: 3022488285..3022488291]`
+  - Group 2 (closed in window): `pipeline EQ "1906293444"` AND `dealstage IN ["3022478048", "3022478049"]` AND `closedate GTE <window.start>` AND `closedate LTE <window.end>`
+  - Then **drop closed-lost deals whose createdate is before `<window.start>`** (these are admin/historical cleanup; user-confirmed pattern).
   - Paginate via `offset` until response has fewer than `limit` results. Default limit 200.
-- `mcp__claude_ai_HubSpot__search_crm_objects` for **contacts** with filters (used as proxy for HubSpot Leads object, which the MCP doesn't expose):
-  - `lifecyclestage EQ "lead"`
-  - `createdate GTE <window.start>`
+- `mcp__claude_ai_HubSpot__search_crm_objects` for **contacts** (used as proxy for HubSpot Leads object, which the MCP doesn't expose):
+  - `lifecyclestage EQ "lead"` AND `createdate GTE <window.start>`
+  - After fetch, **drop leads whose `hubspot_owner_id` is not in the active-owner allowlist** (Sai 80765353, Akil 77758216, Suraj 82016648, Revops 77502812 — drops Joshna's leads + unassigned).
   - Paginate via `offset` until empty.
 - `mcp__claude_ai_HubSpot__search_owners`.
 - `mcp__claude_ai_HubSpot__get_properties` for deals (one call, used for stage-ID → label mapping).
