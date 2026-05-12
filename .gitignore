@@ -88,4 +88,5 @@ Thumbs.db
 
 # Misc tooling caches
 .firecrawl/
+.playwright-mcp/
 .local/

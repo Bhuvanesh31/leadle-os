@@ -1,6 +1,6 @@
 ---
 description: Render the Leadle 4-tab dashboard from live MCP data
-allowed-tools: AskUserQuestion, Bash, mcp__claude_ai_HubSpot__*, mcp__lemlist__*, mcp__aimfox__*, mcp__instantly__*, mcp__fathom__*
+allowed-tools: AskUserQuestion, Bash, mcp__claude_ai_HubSpot__*, mcp__lemlist__*, mcp__instantly__*, mcp__fathom__*
 ---
 
 # /render-dashboard
@@ -48,7 +48,16 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
 - `mcp__claude_ai_HubSpot__search_owners`.
 - `mcp__claude_ai_HubSpot__get_properties` for deals (one call).
 
-**Lemlist, Aimfox, Instantly, Fathom:** introspect the MCP's tool list first via the MCP. Fetch campaigns + leads/conversations + per-campaign stats + (Fathom) meetings. Document tool names you used in a comment at the top of the cache file.
+**Lemlist, Instantly, Fathom:** introspect the MCP's tool list first via the MCP. Fetch campaigns + leads/conversations + per-campaign stats + (Fathom) meetings. Document tool names you used in a comment at the top of the cache file.
+
+**Aimfox** (REST fallback while vendor MCP OAuth is broken):
+
+```bash
+source .venv/bin/activate && python -m connectors.aimfox.cli \
+  --start <window.start> --end <window.end>
+```
+
+Requires `AIMFOX_API_KEY` in env (workspace setting → API access). Stdout is the JSON to drop verbatim into `raw["sources"]["aimfox"]`. If `AIMFOX_API_KEY` is missing or the API errors, the CLI prints `{"available": false, "reason": "..."}` — that's the expected degraded path, not a failure.
 
 Save all results to `.cache/dashboard_raw_<end_date>_<window_name>.json` matching the schema in spec §5 Phase 1.
 
