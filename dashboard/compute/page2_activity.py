@@ -92,7 +92,11 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
 
     Plus lead_rotting: subset of no_reply where createdate is >5d ago.
     """
-    leads = [l for l in leads if l.get("pipeline_stage_id") not in _CLOSED_LEAD_STAGES]
+    leads = [
+        l for l in leads
+        if l.get("pipeline_stage_id") not in _CLOSED_LEAD_STAGES
+        and _has_contact_identity(l)
+    ]
     # Build reply index keyed by lowercased email AND lowercased name (for
     # Aimfox name-only matching).
     replies_by_email: dict[str, dict] = {}
@@ -190,6 +194,28 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
         "lead_rotting": sorted(rotting, key=lambda x: -x["days_since_created"]),
         "rotting_count": len(rotting),
     }
+
+
+_INBOUND_FORM_PREFIX = re.compile(r"^Inbound\s*-\s*Form\s*-\s*", re.IGNORECASE)
+
+
+def _has_contact_identity(lead: dict) -> bool:
+    """Drop ghost leads — inbound form submissions where the contact name
+    didn't get captured.
+
+    A 'Inbound - Form -' lead_name with no suffix (i.e., empty after stripping
+    the prefix) AND no contact_name means the form fired but didn't carry the
+    person's name through. The contact_email may exist (from the form's email
+    field) but the lead is functionally an unenriched stub that HubSpot users
+    typically exclude from active-pipeline views.
+    """
+    if (lead.get("contact_name") or "").strip():
+        return True
+    lead_name = (lead.get("lead_name") or "").strip()
+    if not lead_name:
+        return False
+    suffix = _INBOUND_FORM_PREFIX.sub("", lead_name).strip()
+    return bool(suffix)
 
 
 def _did_we_respond(reply_record: dict, source: str) -> bool:
