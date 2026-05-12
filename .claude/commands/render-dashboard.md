@@ -42,13 +42,24 @@ You are rendering the Leadle dashboard. Follow this protocol exactly.
 Call each MCP for the data slices documented in spec §6. For each source, log "Fetching <source>..." before the call. On failure, mark `available: false, error: <msg>` and continue.
 
 **HubSpot:**
-- `mcp__claude_ai_HubSpot__search_crm_objects` for deals (filter `last_modified >= prior_start`), paginate until empty.
-- `mcp__claude_ai_HubSpot__search_crm_objects` for contacts (filter `createdate >= today - 365d`), paginate.
-- `mcp__claude_ai_HubSpot__search_crm_objects` for companies referenced.
+- `mcp__claude_ai_HubSpot__search_crm_objects` for **deals** with filters:
+  - `pipeline EQ "1906293444"` (Sales Pipeline only — drop Waitlist, Old, Shared)
+  - `createdate GTE <window.start>` (drop historical deals like Freshworks/Rocketlane that were just modified)
+  - Paginate via `offset` until response has fewer than `limit` results. Default limit 200.
+- `mcp__claude_ai_HubSpot__search_crm_objects` for **contacts** with filters (used as proxy for HubSpot Leads object, which the MCP doesn't expose):
+  - `lifecyclestage EQ "lead"`
+  - `createdate GTE <window.start>`
+  - Paginate via `offset` until empty.
 - `mcp__claude_ai_HubSpot__search_owners`.
-- `mcp__claude_ai_HubSpot__get_properties` for deals (one call).
+- `mcp__claude_ai_HubSpot__get_properties` for deals (one call, used for stage-ID → label mapping).
+- Stage-ID mapping must include **Sales Pipeline stages only** (3022478048..3022488291). Stages from other pipelines map to `"other"` and are dropped from compute.
 
-**Lemlist, Instantly, Fathom:** introspect the MCP's tool list first via the MCP. Fetch campaigns + leads/conversations + per-campaign stats + (Fathom) meetings. Document tool names you used in a comment at the top of the cache file.
+**Lemlist, Instantly:** introspect the MCP's tool list first via the MCP. Fetch campaigns + per-campaign stats with the window dates. Document tool names you used in a comment at the top of the cache file.
+
+**Fathom:** fetch meetings in window via `mcp__fathom__list_meetings`, then apply this filter before saving to cache (drop everything that doesn't match):
+- **Keep** if title (case-insensitive) contains `"discovery meeting"` OR `"proposal discussion"`.
+- **Keep** if title matches exactly `Impromptu Google Meet Meeting` or `Impromptu Zoom Meeting` AND the attendee-email set is a subset of `{sai@leadle.in, revops@leadle.in}` (no third-party attendees).
+- Drop everything else (Catchup, Sync-up, Review Call, all-hands, etc.).
 
 **Aimfox** (REST fallback while vendor MCP OAuth is broken):
 
