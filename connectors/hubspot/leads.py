@@ -56,8 +56,12 @@ def fetch(
     """Return {available, data: {leads, total}} or {available: False, reason: ...}.
 
     Filters: hs_createdate in [window_start, window_end].
-    If owner_allowlist is provided, only Leads owned by one of those IDs are kept
-    (drops Joshna-inactive and unassigned Leads — same rule as the contacts proxy).
+    If owner_allowlist is provided, only Leads owned by one of those IDs are kept.
+
+    Each shaped lead carries an `associated_deal_ids: list[str]` populated from
+    HubSpot's lead-to-deal association table — this is what makes the Page 3
+    gap analysis authoritative (no more name-matching heuristics needed when
+    a real association exists in HubSpot).
     """
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     owns_client = client is None
@@ -68,6 +72,11 @@ def fetch(
         if owner_allowlist is not None:
             allow = set(owner_allowlist)
             shaped = [l for l in shaped if l.get("hubspot_owner_id") in allow]
+        # Augment with lead → deal associations
+        lead_ids = [l["id"] for l in shaped if l.get("id")]
+        associations = _fetch_lead_deal_associations(client, lead_ids)
+        for l in shaped:
+            l["associated_deal_ids"] = associations.get(l["id"], [])
         return {
             "available": True,
             "data": {"leads": shaped, "total": len(shaped)},
@@ -82,6 +91,35 @@ def fetch(
     finally:
         if owns_client:
             client.close()
+
+
+def _fetch_lead_deal_associations(client: httpx.Client, lead_ids: list[str]) -> dict[str, list[str]]:
+    """Return {lead_id: [deal_id, ...]} from HubSpot's association API.
+
+    Uses /crm/v3/associations/leads/deals/batch/read. Returns 207 (partial)
+    when some leads have associations and others don't — this is normal.
+    Leads with no associations appear in the response's errors[] array as
+    NO_ASSOCIATIONS_FOUND, not in results[].
+    """
+    out: dict[str, list[str]] = {}
+    if not lead_ids:
+        return out
+    BATCH_SIZE = 100
+    for i in range(0, len(lead_ids), BATCH_SIZE):
+        batch = lead_ids[i : i + BATCH_SIZE]
+        r = client.post(
+            f"{_BASE_URL}/crm/v3/associations/leads/deals/batch/read",
+            json={"inputs": [{"id": str(lid)} for lid in batch]},
+        )
+        # 207 = multi-status (some succeeded, some had no associations)
+        if r.status_code not in (200, 207):
+            r.raise_for_status()
+        for result in r.json().get("results", []):
+            from_id = result.get("from", {}).get("id")
+            if not from_id:
+                continue
+            out[from_id] = [t.get("id") for t in result.get("to", []) if t.get("id")]
+    return out
 
 
 def _paginated_search(client: httpx.Client, window_start: date, window_end: date) -> list[dict]:

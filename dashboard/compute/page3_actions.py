@@ -257,18 +257,27 @@ def _classify(
             if found_lead:
                 break
 
-    # Pass 3: If we found a Lead, try two routes to discover an associated Deal:
-    #
-    #   3a. The Lead's email-domain-root — catches the common case where the
-    #       Deal is named after the brand root (Colab91, Evitar.ai, Getayna).
-    #   3b. The Lead's hs_associated_company_name — catches cases where the
-    #       company name diverges from the email domain (LevoWorld brand →
-    #       Deal 'Levo Exhibitions & Events'; HubSpot's company association
-    #       carries the full legal/registered name which often matches Deals).
-    #
-    # Both routes go through the same _matches normalization (substring after
-    # stripping whitespace/punctuation, plus all-words-present for multi-word).
+    # Pass 3: If we found a Lead, check whether HubSpot has an authoritative
+    # Lead → Deal association. This is the strongest 'no gap' signal — it's
+    # what Sai's UI shows when he clicks "View associated Deals" on the Lead.
+    # If present, the Lead has been promoted; no need for any name heuristics.
     if found_lead:
+        associated_deal_ids = found_lead.get("associated_deal_ids") or []
+        if associated_deal_ids:
+            # Resolve the first associated deal in the lookup (best-effort).
+            for did in associated_deal_ids:
+                for dname, d in deal_index["by_name_lower"]:
+                    if str(d.get("id")) == str(did):
+                        return ("deal", d)
+            # Association exists but deal isn't in our lookup window
+            # (could be in a different pipeline). Still classify as Deal —
+            # the hygiene check is satisfied; we just don't have the row.
+            return ("deal", {"id": associated_deal_ids[0], "dealname": "(associated deal, outside lookup)"})
+
+        # Fallback: try name-based heuristics when no explicit association
+        # exists. This covers the case where Sai created a Deal but didn't
+        # associate it with the Lead — still imperfect but better than
+        # nothing.
         deal_search_terms = []
         contact_email = (found_lead.get("contact_email") or "").lower()
         if contact_email:

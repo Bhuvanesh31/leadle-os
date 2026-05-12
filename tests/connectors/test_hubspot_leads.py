@@ -47,6 +47,8 @@ def test_fetch_returns_shaped_leads():
                 "total": 2,
                 "results": [_sample_lead(1), _sample_lead(2)],
             })
+        if request.url.path.endswith("/crm/v3/associations/leads/deals/batch/read"):
+            return httpx.Response(200, json={"results": []})
         return httpx.Response(404)
 
     with _make_client(handler) as client:
@@ -68,6 +70,8 @@ def test_fetch_paginates_via_after_cursor():
     pages_seen: list[str | None] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/crm/v3/associations/leads/deals/batch/read"):
+            return httpx.Response(200, json={"results": []})
         body = request.read().decode()
         import json as _json
         after = _json.loads(body).get("after")
@@ -94,6 +98,8 @@ def test_fetch_filters_by_owner_allowlist():
     """owner_allowlist drops leads whose hubspot_owner_id isn't in the set."""
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/crm/v3/associations/leads/deals/batch/read"):
+            return httpx.Response(200, json={"results": []})
         return httpx.Response(200, json={
             "total": 3,
             "results": [
