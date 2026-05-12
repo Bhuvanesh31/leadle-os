@@ -62,7 +62,7 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
 
 **Instantly:**
 - `mcp__instantly__list_campaigns` (paginate via starting_after). **Filter to campaigns whose name contains "leadle" (case-insensitive)** — drops client campaigns (Intellikon, PiSystems, Anovate, Ei_*, etc.).
-- `mcp__instantly__get_campaign_analytics` twice: once with `start_date=window.start, end_date=window.end` for windowed stats, once with NO date filter for all-time. Save windowed as `stats`, all-time as `overall_stats` per campaign. Compute Leadle-only `overall_totals` at the source level.
+- `mcp__instantly__get_campaign_analytics` twice: once with `start_date=window.start, end_date=window.end` for windowed stats, once with `start_date=2026-01-01, end_date=2026-12-31` for 2026 YTD ("overall" = Leadle's revamped-efforts era, not true lifetime). Save windowed as `stats`, 2026 as `overall_stats` per campaign.
 - `mcp__instantly__list_emails` (email_type="received", preview_only=true, limit=100, sort_order="desc"; paginate). Dedupe by `lead` email field, keep most recent timestamp per lead. Flag is_auto_reply when subject matches `/^(Automatic reply|Out of office|Auto-reply)/i`. Save into `raw["sources"]["instantly"]["data"]["leads"]` with `{email, replied_at, channel: "email", is_auto_reply, is_positive: !is_auto_reply}`.
 
 **Fathom:** fetch meetings in window via `mcp__fathom__list_meetings`, then apply this filter before saving to cache (drop everything that doesn't match):
@@ -82,7 +82,9 @@ Requires `AIMFOX_API_KEY` in env (workspace setting → API access). The `--name
 
 Aimfox replied-lead fetch (for sections 6/7): GET `https://api.aimfox.com/api/v2/conversations?limit=100`, filter to those where `last_activity_at` is in window (epoch-ms). Save into `raw["sources"]["aimfox"]["data"]["leads"]` with `{name, linkedin_public_id, replied_at, channel: "linkedin", is_positive: true}`. Aimfox is LinkedIn-only — no email available, so cross-joins use name matching.
 
-**Aimfox all-time per-campaign metrics** (for the overall reply count tile — windowed analytics undercounts because /conversations only tracks active threads): for each Leadle campaign returned by the CLI, GET `https://api.aimfox.com/api/v2/campaigns/{id}/metrics` (no date filter — returns lifetime). Aggregate `sent_connections + sent_messages + sent_inmails + message_requests` as `overall_stats.sends`, `replies + inmail_replies` as `overall_stats.replies`. Surface a workspace-level `overall_totals` for the dashboard reply tile.
+**Aimfox 2026 per-campaign metrics** (for the overall reply count tile): run the CLI with `--start 2026-01-01 --end 2026-12-31 --name-contains Leadle`. This windows the analytics endpoint to Leadle's revamped-efforts era. Save as `overall_stats` per campaign and `overall_totals` at source level. (Aimfox lifetime = 2026 in current data since campaigns were all created in 2026 — but the date filter keeps it correct as time passes.)
+
+**Lemlist 2026 per-campaign stats** (for overall reply count tile): `mcp__lemlist__get_campaigns_stats` with `startDate=2026-01-01`, `endDate=2026-12-31`, all 36 campaign IDs in one call. Save as `overall_stats` per campaign + `overall_totals` at source level.
 
 Save all results to `.cache/dashboard_raw_<end_date>_<window_name>.json` matching the schema in spec §5 Phase 1.
 
