@@ -21,6 +21,7 @@ def fetch(
     window_start: date,
     window_end: date,
     *,
+    name_contains: str | None = None,
     client: httpx.Client | None = None,
 ) -> dict[str, Any]:
     """Return {available, data: {campaigns: [...]}} or {available: False, reason: ...}.
@@ -28,12 +29,19 @@ def fetch(
     The returned shape matches what raw["sources"]["aimfox"] must look like for
     dashboard.compute.page4_outreach to consume. On any HTTP error we degrade
     to available=False so the dashboard renders cleanly without aimfox data.
+
+    If name_contains is set, campaigns whose name doesn't contain that substring
+    (case-insensitive) are dropped before the per-campaign metrics calls — this
+    is both a relevance filter and a cost saver (one HTTP call per kept campaign).
     """
     headers = {"Authorization": f"Bearer {api_key}"}
     owns_client = client is None
     client = client or httpx.Client(headers=headers, timeout=_TIMEOUT)
     try:
         campaigns = _list_campaigns(client)
+        if name_contains:
+            needle = name_contains.lower()
+            campaigns = [c for c in campaigns if needle in (c.get("name") or "").lower()]
         start_ms, end_ms = _window_to_epoch_ms(window_start, window_end)
         out = [
             _shape_campaign(c, _fetch_window_metrics(client, c["id"], start_ms, end_ms))
@@ -42,7 +50,11 @@ def fetch(
         return {
             "available": True,
             "data": {"campaigns": out},
-            "meta": {"source": "rest", "window": [window_start.isoformat(), window_end.isoformat()]},
+            "meta": {
+                "source": "rest",
+                "window": [window_start.isoformat(), window_end.isoformat()],
+                "name_contains": name_contains,
+            },
         }
     except httpx.HTTPError as e:
         return {"available": False, "reason": f"aimfox REST error: {type(e).__name__}: {e}"}

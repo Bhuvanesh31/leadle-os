@@ -54,10 +54,11 @@ Call each MCP for the data slices documented in spec §6. For each source, log "
 
 ```bash
 source .venv/bin/activate && python -m connectors.aimfox.cli \
-  --start <window.start> --end <window.end>
+  --start <window.start> --end <window.end> \
+  --name-contains Leadle
 ```
 
-Requires `AIMFOX_API_KEY` in env (workspace setting → API access). Stdout is the JSON to drop verbatim into `raw["sources"]["aimfox"]`. If `AIMFOX_API_KEY` is missing or the API errors, the CLI prints `{"available": false, "reason": "..."}` — that's the expected degraded path, not a failure.
+Requires `AIMFOX_API_KEY` in env (workspace setting → API access). The `--name-contains Leadle` flag drops other-client campaigns we don't care about (case-insensitive substring match). Stdout is the JSON to drop verbatim into `raw["sources"]["aimfox"]`. If `AIMFOX_API_KEY` is missing or the API errors, the CLI prints `{"available": false, "reason": "..."}` — that's the expected degraded path, not a failure.
 
 Save all results to `.cache/dashboard_raw_<end_date>_<window_name>.json` matching the schema in spec §5 Phase 1.
 

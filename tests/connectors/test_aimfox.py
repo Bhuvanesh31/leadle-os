@@ -64,7 +64,11 @@ def test_fetch_aggregates_buckets_into_campaign_stats():
         result = fetch("test", date(2026, 5, 1), date(2026, 5, 7), client=client)
 
     assert result["available"] is True
-    assert result["meta"] == {"source": "rest", "window": ["2026-05-01", "2026-05-07"]}
+    assert result["meta"] == {
+        "source": "rest",
+        "window": ["2026-05-01", "2026-05-07"],
+        "name_contains": None,
+    }
     camps = result["data"]["campaigns"]
     assert len(camps) == 2
     alpha = next(c for c in camps if c["id"] == "c-alpha")
@@ -107,7 +111,11 @@ def test_fetch_handles_empty_workspace():
     assert result == {
         "available": True,
         "data": {"campaigns": []},
-        "meta": {"source": "rest", "window": ["2026-05-01", "2026-05-07"]},
+        "meta": {
+            "source": "rest",
+            "window": ["2026-05-01", "2026-05-07"],
+            "name_contains": None,
+        },
     }
 
 
@@ -144,6 +152,63 @@ def test_window_to_epoch_ms_uses_utc_not_local():
     expected_end_floor = int(datetime(2026, 5, 1, 23, 59, 59, tzinfo=timezone.utc).timestamp() * 1000)
     assert start_ms == expected_start
     assert end_ms >= expected_end_floor
+
+
+def test_fetch_filters_campaigns_by_name_contains_before_metrics_calls():
+    """name_contains should drop irrelevant campaigns BEFORE per-campaign metrics fetches."""
+    metrics_calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/campaigns"):
+            return httpx.Response(200, json={
+                "status": "ok",
+                "campaigns": [
+                    {"id": "1", "name": "Leadle_GTM_Open_House", "state": "ACTIVE"},
+                    {"id": "2", "name": "ClientX_Outbound", "state": "ACTIVE"},
+                    {"id": "3", "name": "leadle_revops_cold", "state": "ACTIVE"},  # lowercase
+                    {"id": "4", "name": "Random Campaign", "state": "ACTIVE"},
+                ],
+            })
+        if request.url.path.endswith("/analytics/interactions"):
+            metrics_calls.append(request.url.params["campaign_id"])
+            return httpx.Response(200, json={"status": "ok", "count": 0, "buckets": []})
+        return httpx.Response(404)
+
+    with _make_client(handler) as client:
+        result = fetch(
+            "test", date(2026, 5, 1), date(2026, 5, 7),
+            name_contains="Leadle", client=client,
+        )
+
+    # Only campaigns 1 and 3 should be kept (case-insensitive substring match)
+    kept_ids = {c["id"] for c in result["data"]["campaigns"]}
+    assert kept_ids == {"1", "3"}
+    # Metrics endpoint must NOT have been called for the dropped campaigns (cost saver)
+    assert set(metrics_calls) == {"1", "3"}
+    assert result["meta"]["name_contains"] == "Leadle"
+
+
+def test_fetch_without_name_contains_keeps_all_campaigns():
+    """When name_contains is None, the filter is a no-op (backwards compatible)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/campaigns"):
+            return httpx.Response(200, json={
+                "status": "ok",
+                "campaigns": [
+                    {"id": "1", "name": "Leadle X", "state": "ACTIVE"},
+                    {"id": "2", "name": "ClientX", "state": "ACTIVE"},
+                ],
+            })
+        if request.url.path.endswith("/analytics/interactions"):
+            return httpx.Response(200, json={"status": "ok", "count": 0, "buckets": []})
+        return httpx.Response(404)
+
+    with _make_client(handler) as client:
+        result = fetch("test", date(2026, 5, 1), date(2026, 5, 7), client=client)
+
+    assert len(result["data"]["campaigns"]) == 2
+    assert result["meta"]["name_contains"] is None
 
 
 def test_sum_buckets_ignores_unused_fields():

@@ -22,13 +22,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="connectors.aimfox.cli")
     parser.add_argument("--start", required=True, help="Window start (ISO date, e.g. 2026-05-01)")
     parser.add_argument("--end", required=True, help="Window end (ISO date, e.g. 2026-05-31)")
+    parser.add_argument(
+        "--name-contains",
+        default=None,
+        help="Case-insensitive substring filter on campaign name (e.g. 'Leadle')",
+    )
     args = parser.parse_args(argv)
 
     api_key = os.environ.get("AIMFOX_API_KEY")
     if not api_key:
         result = {"available": False, "reason": "AIMFOX_API_KEY not set in environment"}
     else:
-        result = fetch(api_key, date.fromisoformat(args.start), date.fromisoformat(args.end))
+        result = fetch(
+            api_key,
+            date.fromisoformat(args.start),
+            date.fromisoformat(args.end),
+            name_contains=args.name_contains,
+        )
 
     json.dump(result, sys.stdout)
     sys.stdout.write("\n")
