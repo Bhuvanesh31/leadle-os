@@ -152,3 +152,67 @@ def timing_heatmap(data: ClientData, rubric: dict) -> dict:
         "timezone": rubric["timezone"],
         "note": "Engagement (opens/clicks), not replies. LinkedIn timing N/A (Aimfox).",
     }
+
+
+def lead_ladder(data: ClientData, rubric: dict) -> dict:
+    hot: list[dict] = []
+    seen: set[str] = set()
+    for w in data.warm_leads:
+        key = (w.linkedin_url or w.name).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        is_meeting = _status_hits(w.status, rubric["meeting_statuses"])
+        is_positive = _status_hits(w.status, rubric["positive_statuses"])
+        if is_meeting or is_positive:
+            hot.append({
+                "name": w.name, "title": w.title, "company": w.company,
+                "channel": w.channel, "status": w.status, "tier": "Hot",
+                "response_text": w.response_text,
+            })
+    # Warm tier = engaged on LinkedIn (accepted) not already Hot
+    warm: list[dict] = []
+    for e in data.linkedin:
+        if e.event_type != "accepted":
+            continue
+        key = (e.profile_url or e.prospect_name).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        warm.append({
+            "name": e.prospect_name, "title": e.title, "company": e.company,
+            "channel": "LinkedIn", "status": "Accepted invite", "tier": "Warm",
+            "response_text": "",
+        })
+    reached = len(data.emails) + len(data.linkedin) - len(hot) - len(warm)
+    return {"hot": hot, "warm": warm, "reached_count": max(reached, 0)}
+
+
+def coverage(data: ClientData) -> dict:
+    by_segment: dict[str, dict] = defaultdict(lambda: {"targets": 0, "contacted": 0})
+    contacted_companies = {e.company for e in data.emails} | {
+        e.company for e in data.linkedin}
+    for t in data.targets:
+        seg = by_segment[t.segment]
+        seg["targets"] += 1
+        if t.name in contacted_companies:
+            seg["contacted"] += 1
+    return {
+        "by_segment": dict(by_segment),
+        "target_total": len(data.targets),
+        "contacted_total": len(contacted_companies),
+    }
+
+
+def compute_all(data: ClientData, rubric: dict) -> dict:
+    k = kpis(data, rubric)
+    return {
+        "kpis": k,
+        "scorecard": scorecard(k, rubric),
+        "campaigns": campaign_table(data, rubric),
+        "senders": sender_wise(data, rubric),
+        "deliverability": deliverability(data, rubric),
+        "timing": timing_heatmap(data, rubric),
+        "leads": lead_ladder(data, rubric),
+        "coverage": coverage(data),
+    }
