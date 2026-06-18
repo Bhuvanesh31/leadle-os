@@ -11,8 +11,8 @@ def _data():
 def test_email_events_filtered_to_client():
     d = _data()
     assert all(e.campaign.lower().startswith("upsta_") for e in d.emails)
-    # OtherClient/Acme_Campaign_V1 row excluded
-    assert len(d.emails) == 5
+    # OtherClient/Acme_Campaign_V1 row excluded; fixture has 6 UPSTA rows (2 email_sent)
+    assert len(d.emails) == 6
     assert sum(1 for e in d.emails if e.event_type == "email_opened") == 2
 
 
