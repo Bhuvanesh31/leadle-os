@@ -1,192 +1,244 @@
 # Client-facing outreach dashboard — design
 
-Date: 2026-06-17
+Date: 2026-06-17 (updated 2026-06-18 to match approved layout mock)
 Status: Draft for review
 Author: Bhuvanesh (RevOps Architect) + Claude
 Sample client: **UPSTA**
+Layout reference: 4 mock screenshots (Northwind/ASU "campaign report", weekly + monthly).
 
 ## 1. Purpose
 
-A per-client, on-demand dashboard Leadle can share with a client to show the outreach
-run on their behalf and the leads it is producing. It answers four questions in one view:
-proof of work (what we ran), ROI (what it produced), channel performance (LinkedIn vs Email
-vs Warm Calling), and a named-lead drill-down ("show me who is interested").
+A per-client, on-demand outreach **campaign report** Leadle generates to show the outreach
+run for a client and how it is performing. The approved layout is metric-dense: KPI tiles,
+benchmark grades, per-campaign and per-content breakdowns, sender + deliverability health,
+timing, a written narrative, recommended actions, and forward targets.
 
-This is distinct from the existing internal dashboard (`dashboard/render.py`), which reads
-HubSpot + Fathom and editorializes for Sai's brief. The client dashboard is proof-first,
-non-self-critical, and must not surface internal IP or tone (Signal-to-Motion vocabulary,
-"funnel leak", "hygiene gaps").
+It is distinct from the internal HubSpot/Fathom dashboard (`dashboard/render.py`). It is
+built **once** but rendered for **two audiences** (see §3.1): an internal full-depth review
+and a client-safe subset.
 
 ## 2. Scope
 
 ### In scope (v1)
-- One dashboard per client, scoped by campaign/sequence name key (`Upsta_*` / "UPSTA").
+- One report per client, scoped by campaign/sequence name key (`Upsta_*` / "UPSTA").
 - **On-demand render only** — a command produces a point-in-time HTML snapshot. No live
   refresh, no scheduling.
-- **Source = the client's Google "Prospect list" workbook** for v1. The workbook already
-  contains hand-exported Aimfox (LinkedIn) and Instantly (email) event tables plus a
-  human-curated Responses tracker, so v1 needs zero new API integrations.
-- Output: a static HTML file per client, optionally uploaded to Supabase for a signed URL.
-- First deliverable: render the UPSTA sample to show the team.
+- **Two cadences**: `--period weekly` (WoW deltas) and `--period monthly` (MoM deltas).
+- **Two audiences**: `--audience internal` (everything) and `--audience client` (subset
+  with operator-internal blocks hidden). Block visibility is config-driven (§3.1).
+- **Source = the client's Google "Prospect list" workbook** (v1). It already holds the
+  hand-exported Aimfox + Instantly event tables and the human Responses tracker, so v1 needs
+  no new API integration.
+- **Snapshot persistence**: every render writes its computed aggregates to a Supabase table.
+  Powers WoW/MoM deltas (diff vs prior snapshot) AND accumulates the per-client history that
+  v2 cross-client benchmarks will need.
+- **Grading**: letter grades from a fixed rubric in `config/` (no cross-client compare yet).
+- **Meetings booked / positive replies**: ground truth = the human Responses tracker.
+- Output: static HTML per (client, period, audience); optional Supabase upload for a link.
+- First deliverable: render the UPSTA sample for the team.
 
 ### Out of scope (v2+)
-- **Live API ingestion** (Instantly + Aimfox direct) replacing the Sheet as the quant source.
-  Designed-for via a source interface, not built now.
-- Multi-tenant auth / client login. Phase 1 stays single-operator (Bhuvanesh renders + shares).
-- Write-back to any source system (read-only invariant holds).
-- HeyReach (not used by UPSTA; add when a client uses it, behind the same source interface).
+- **Real benchmark scorecard + Targets vs portfolio segment** (median/quartile across
+  Leadle's clients). v1 uses a config rubric; v2 computes percentiles from the accumulated
+  snapshot history. The snapshot schema is designed now so v2 is a read, not a backfill.
+- **Live API ingestion** (Instantly + Aimfox direct) replacing the Sheet, behind the same
+  source interface.
+- Multi-tenant client auth / login. Phase 1 stays single-operator.
+- Write-back to source systems (read-only invariant holds).
+- HeyReach source (no UPSTA usage; add behind the source interface when a client uses it).
 
 ## 3. Architecture
 
 ```
-On-demand:  python -m dashboard.client.render --client UPSTA
-            (and/or a /render-client-dashboard slash command wrapper)
+On-demand:  python -m dashboard.client.render --client UPSTA --period monthly --audience client
+            (and a /render-client-report slash-command wrapper)
         │
         ▼
 dashboard/client/
   sources/
     base.py          # ClientSource protocol: read(client) -> ClientData
-    sheet_source.py  # v1: parse the Google workbook tabs -> ClientData
+    sheet_source.py  # v1: parse Google workbook tabs -> ClientData
     live_source.py   # v2 placeholder: Instantly + Aimfox MCP, same ClientData shape
-  model.py           # normalized dataclasses (see §5)
-  compute.py         # pure script: funnel math, rates, lead ladder, coverage
-  render.py          # CLI: source -> compute -> Jinja -> HTML (+ optional Supabase upload)
+  model.py           # normalized dataclasses (§5)
+  compute.py         # pure script: funnels, rates, grades, sender/timing, deltas, coverage
+  snapshots.py       # read/write snapshot rows (Supabase) + diff vs prior
+  agents/
+    narrative.py     # Sonnet: prose narrative (client-safe voice)
+    actions.py       # Sonnet: "actions this period" (internal audience only)
+  render.py          # CLI: source -> compute -> (agents) -> Jinja -> HTML (+ upload)
   templates/
-    client_base.html.j2        # client-safe styling, no internal IP/tone
-    client_dashboard.html.j2   # the four content sections
+    report_base.html.j2
+    report.html.j2          # renders blocks; each block gated by audience + availability
+    blocks/*.html.j2        # one partial per block (kpis, scorecard, campaigns, content,
+                            #   senders, timing, deliverability, leads, narrative, actions,
+                            #   targets)
 config/
-  client_dashboard.yaml        # lead-ladder thresholds, channel labels, toggles
+  client_report_layout.yaml # block order + per-block audience visibility (internal|client|both)
+  client_report_rubric.yaml # grade thresholds, KPI definitions, channel labels, toggles
+schemas/
+  NNNN_client_dashboard_snapshots.sql
 docs/data-shape/
-  prospect-list-sheet.md       # observed shape of the workbook (already written)
+  prospect-list-sheet.md    # already written
         │
         ▼
-reports/client/UPSTA-2026-06-17.html   (gitignored)
+reports/client/UPSTA-2026-06-monthly-client.html   (gitignored)
++ Supabase: client_dashboard_snapshots row
 ```
 
-### Boundaries
-- `sources/*` is the **only** layer that knows where data physically lives. This is the
-  v1→v2 seam: swapping `sheet_source` for `live_source` must not touch compute or templates.
-- `compute.py` is deterministic Python (counts/rates/classification by fixed rule) — a
-  **script**, per the impact rule. No agent: inputs are structured, output is arithmetic.
-- `templates/` is a **separate tree** from the internal dashboard so client-safe tone is
-  structurally enforced, not relied upon by discipline.
+### 3.1 Two-audience rendering
+Blocks are declared in `config/client_report_layout.yaml` with a `visibility` of
+`internal`, `client`, or `both`. `render.py --audience` filters blocks accordingly. Default
+mapping (reviewer can adjust):
 
-### Why not extend `dashboard/render.py`
-That pipeline (raw.json → compute pages 1-4 → narrative agents → windows) is built for the
-internal HubSpot/Fathom brief and shares no data with client outreach reporting. Folding
-client output into it would couple a client artifact to internal machinery and risk tone/IP
-leakage. We reuse only conventions (Jinja env, Supabase upload helper), not the pipeline.
+| Block | internal | client |
+|---|:-:|:-:|
+| KPI tiles | ✓ | ✓ |
+| Benchmark scorecard (grades) | ✓ | ✓ |
+| Which campaign performed | ✓ | ✓ |
+| Content performance (steps/templates) | ✓ | ✓ (softened) |
+| Sender-wise health | ✓ | ✗ |
+| Timing heatmap | ✓ | ✓ |
+| Deliverability flags | ✓ | ✗ |
+| Warm & named leads (drill-down) | ✓ | ✓ |
+| Narrative | ✓ | ✓ (client voice) |
+| Actions this period | ✓ | ✗ |
+| Targets (next period) | ✓ | ✓ |
+
+Two template trees are NOT needed — one template, config-gated blocks. Client-safe tone is
+enforced by (a) hiding internal blocks and (b) the narrative agent receiving an
+`audience=client` instruction.
+
+### 3.2 Why not extend `dashboard/render.py`
+That pipeline serves the internal HubSpot/Fathom brief and shares no data with outreach
+reporting. We reuse conventions (Jinja env, Supabase helpers, config-driven layout) but keep
+a separate module to prevent data coupling and tone/IP leakage.
 
 ## 4. Data sources (v1)
 
-All from the workbook `1GgFeDdXpy1ZlDjH8bTWNL_c7m0ihSSO_-iYNyzadCQg`. Shapes recorded in
+From workbook `1GgFeDdXpy1ZlDjH8bTWNL_c7m0ihSSO_-iYNyzadCQg`; shapes in
 `docs/data-shape/prospect-list-sheet.md`. Tabs consumed:
 
-| Tab | Role | Layer |
-|---|---|---|
-| Email event export (Instantly) | sent/opened/clicked/bounced events, keyed by `Upsta_*` campaign | quantitative |
-| LinkedIn event export (Aimfox) | connect/accepted/reply events | quantitative |
-| Responses tracker (human) | named dispositions ("Long follow up"), warm-call outcomes, response text | qualitative |
-| Target company lists | addressable universe per segment (US / Singapore) | coverage denominator |
-| Onboarding checklist + ICP | campaign-live dates, channels, segment context | context |
+| Tab | Feeds |
+|---|---|
+| Email event export (Instantly) | KPIs, campaign table, sender-wise, timing, deliverability |
+| LinkedIn event export (Aimfox) | KPIs, campaign table (accept/reply); templates (unranked) |
+| Responses tracker (human) | positive replies, meetings booked, named-lead drill-down |
+| Target company lists | coverage denominator (by segment) |
+| Onboarding + ICP | campaign-live dates, channels, segment context |
 
-The workbook is large (~600k chars all tabs); the source reads it once and splits by header
-signature. Never load the whole thing into a model context for analysis — parse to records.
+UPSTA observed (2026-06-17): LinkedIn invite 239 / accept 42 / reply 3; Email sent 224 /
+opened 129 / clicked 41 / bounced 16; tracker ~1 disposition logged (campaign young).
 
-UPSTA observed tallies (2026-06-17): LinkedIn invites 239 / accepted 42 / replied 3;
-Email sent 224 / opened 129 / clicked 41 / bounced 16 / auto-reply 1 / OOO 1; Responses
-tracker ~1 logged disposition (campaign young).
+**Verification needed during build**: whether Instantly events carry the sequence-step index
+(gates per-step content reply rates). If absent, the Content block shows step *sends* and an
+unranked note, mirroring the mock's own LinkedIn caveat.
 
 ## 5. Normalized model (`model.py`)
 
 ```
-EmailEvent(company, to_name, event_type, campaign, ts, from_email)
-LinkedInEvent(event_type, company, profile_url, prospect_name, title)
-WarmLead(channel, account, response_date, status, response_text,
-         linkedin_url, name, title, company, company_url, location)
+EmailEvent(company, to_name, event_type, campaign, ts, from_email, step?)
+LinkedInEvent(event_type, company, profile_url, prospect_name, title, ts?)
+WarmLead(channel, account, response_date, status, response_text, linkedin_url,
+         name, title, company, company_url, location)   # status drives positive/meeting
 TargetCo(name, country, location, linkedin_url, industry, size, segment, domain)
 Context(client, channels[], campaign_live_dates{}, icp{})
 ClientData(emails[], linkedin[], warm_leads[], targets[], context)
+
+Snapshot(client, period_kind, period_end, rendered_at, metrics{json})
 ```
 
-`ClientData` is the contract every source returns and compute consumes.
+`ClientData` is the contract every source returns. `Snapshot.metrics` is the flat KPI bag
+used for deltas and (v2) cross-client percentiles.
 
-## 6. Compute (`compute.py`)
+## 6. Compute (`compute.py`) — deterministic script
 
-Pure functions over `ClientData`:
-- `email_funnel` — sent, opened, clicked, bounced + open%/click%/bounce%.
-- `li_funnel` — invites (connect), accepted, replied + accept%/reply%.
-- `channel_table` — per channel: reached, engaged, engagement-rate, positive replies.
-- `lead_ladder` — classify each known person into **Hot / Warm / Reached** by config rule:
-  - **Hot**: replied (positive) OR warm-call booked/positive disposition.
-  - **Warm**: accepted LinkedIn invite OR clicked an email link OR opened 2+ times.
-  - **Reached**: contacted, no engagement yet.
-  Join people across event tables + tracker on LinkedIn URL, then Name+Company. Human
-  tracker status overrides derived status.
-- `coverage` — distinct companies contacted vs target universe, broken down by segment.
+- **KPIs**: emails sent/opened/clicked/bounced + rates; invites/accepted/replied + rates;
+  positive replies and meetings (from tracker status); within the selected period window.
+- **Deltas**: each KPI vs the matching prior snapshot (same client + cadence). First render
+  → `baseline` (no arrow).
+- **Benchmark scorecard**: per-metric letter grade from `client_report_rubric.yaml`
+  thresholds (e.g. reply ≥7% = A). `Overall` = weighted roll-up. (v2: replace thresholds
+  with portfolio percentiles.)
+- **Campaign table**: per `Upsta_*` campaign — channel, sends, reply/accept rate, positives,
+  grade.
+- **Sender-wise**: group email by `from_email` — volume, reply/accept, bounce rate + flag.
+- **Timing heatmap**: email reply (or open) rate by weekday × hour bucket from event
+  timestamps. LinkedIn timing = N/A (Aimfox export lacks it) — rendered as a stated gap.
+- **Coverage**: distinct companies contacted vs target universe, by segment.
+- **Lead ladder**: classify known people Hot / Warm / Reached (Hot = positive reply or
+  meeting from tracker; Warm = accepted invite / clicked / 2+ opens; else Reached). Join on
+  LinkedIn URL then Name+Company; human tracker status wins.
 
-Thresholds and channel labels live in `config/client_dashboard.yaml`.
+## 7. Agents (judgment — Sonnet)
 
-## 7. Dashboard content & layout
+- **narrative.py**: writes the prose summary (mock's "Narrative"). Inputs = computed
+  aggregates + deltas + grades. Receives `audience`; for `client` it applies
+  `LEADLE_CONTEXT.md` client-safe voice and omits internal mechanics (mailbox warming, etc.).
+- **actions.py** (internal only): derives "actions this period" (scale X, swap subject,
+  pause/warm inbox). Never rendered for `audience=client`.
 
-Order: hero → ① funnel → ② channels → ③ named leads → ④ coverage.
+Both degrade gracefully: if the agent fails, its block renders a neutral fallback and the
+rest of the report still renders.
 
-- **Hero strip**: client name, reporting window, campaign-live dates, 3-4 headline tiles
-  (prospects contacted, engaged, warm/hot leads, channels).
-- **① Outcome funnel (proof of work)**: LinkedIn and Email funnels side by side (they are
-  structurally different and must not be summed into one misleading funnel). Warm-calling
-  shows a "just kicked off" state until the tracker fills.
-- **② Channel performance**: compact comparison table across LinkedIn / Email / Warm Calls.
-- **③ Warm & engaged leads (named drill-down)**: table of real people — Name · Title ·
-  Company · Channel · Status (Hot/Warm + human disposition) · response text. This is the
-  payoff section. Populated from tracker + engaged tier.
-- **④ Reach & coverage (collapsible context)**: target universe by segment, top industries,
-  "X of Y target accounts contacted", optional onboarding-health line.
+## 8. Dashboard content & layout (matches mock)
 
-### Tone constraints (client-safe)
-Proof-first, plain, honest. Apply `LEADLE_CONTEXT.md` voice (conversational, dry, short
-sentences, no em dashes, no AI-sounding filler). Forbidden: internal vocabulary
-(Signal-to-Motion, buying posture, funnel leak, hygiene), self-critical framing, captions
-that merely summarize.
+Order: KPI tiles → Benchmark scorecard → Which campaign performed → Content performance
+(email steps + LinkedIn templates) → Sender-wise → Timing heatmap → Deliverability flags →
+Warm & named leads → Narrative → Actions → Targets. Header carries client name, report kind,
+period label, and a `sample data` tag when applicable. Each KPI tile shows value + delta.
 
-### Data-quality display (resolved default)
-Bounces and gaps shown to the client as a small soft footnote (e.g. "16 emails bounced —
-list being cleaned"), honest but not alarming. Toggleable via
-`config/client_dashboard.yaml: show_data_quality_notes` (default: true). Flip if the team
-prefers internal-only.
+### Tone constraints
+`LEADLE_CONTEXT.md` voice: conversational, dry, short sentences, no em dashes, no AI filler,
+no captions that merely summarize. Client render additionally forbids internal vocabulary
+(Signal-to-Motion, buying posture, funnel leak, hygiene) and self-critical operator framing.
 
-## 8. Error handling & degradation
+### Data-quality display
+Bounces/gaps shown as a small soft footnote on the client render
+(`rubric.yaml: show_data_quality_notes`, default true); full deliverability block on internal.
 
-- **Missing tab / unparseable table**: that section renders a neutral "not available for
-  this period" state; the rest of the dashboard still renders. Never hard-fail the whole page.
-- **Empty Responses tracker**: section ③ falls back to the engaged tier (clicked/accepted)
-  so it is never blank while a campaign is live.
-- **Client key matches nothing** (e.g. wrong `--client`): render aborts with a clear message
-  listing the campaign-name prefixes actually found, rather than emitting an empty dashboard.
-- **Bounce/auto-reply events**: excluded from "engaged"; bounces surfaced only in the data-
-  quality footnote.
+## 9. Error handling & degradation
 
-## 9. Sample plan (first deliverable)
+- Missing/unparseable tab → that block renders "not available this period"; report still
+  renders.
+- Empty Responses tracker → leads block falls back to the engaged tier (clicked/accepted) so
+  it is never blank while a campaign is live; meetings/positives show 0 honestly.
+- First render (no prior snapshot) → deltas show `baseline`, not fake zeros.
+- `--client` matches nothing → abort with the campaign-name prefixes actually found.
+- Agent failure → neutral fallback for that block only.
 
-1. Implement `model.py`, `sheet_source.py`, `compute.py`, `config/client_dashboard.yaml`.
-2. Implement `render.py` + the two templates (start from the internal dashboard's base
-   styling, stripped of internal sections).
-3. Render UPSTA → `reports/client/UPSTA-2026-06-17.html`.
-4. Show the team. Collect feedback on layout, tone, and which numbers matter most.
+## 10. Snapshot store (`schemas/NNNN_client_dashboard_snapshots.sql`)
 
-Success = the team looks at the UPSTA HTML and can say "yes, ship this to clients" or gives
-concrete layout/tone changes.
+Supabase table `client_dashboard_snapshots(client, period_kind, period_end, rendered_at,
+metrics jsonb, primary key (client, period_kind, period_end))`. Upsert per render. Deltas
+read the prior `period_end`. v2 benchmarks read across `client` for a given `period_kind`.
+(Schema added now per the phase-gated migration rule; one table, no premature typing of
+`metrics`.)
 
-## 10. v2 path (not now)
+## 11. Sample plan (first deliverable)
 
-- Implement `live_source.py` against Instantly + Aimfox MCP, returning the same `ClientData`.
-  Quant funnel becomes live at render time; tracker/ICP/coverage may stay sheet-sourced or
-  move to their own stores. No change to compute or templates.
-- Optional: HeyReach source for clients who use it.
-- Optional: schedule/regenerate on a cadence, or per-client signed-URL hosting.
+1. `model.py`, `sheet_source.py`, `config/*.yaml`, `compute.py`.
+2. `snapshots.py` + migration (local-JSON fallback acceptable for the very first sample if
+   Supabase write is friction).
+3. `render.py` + templates/blocks; start styling from the internal dashboard base.
+4. `agents/narrative.py` (actions.py can follow).
+5. Render UPSTA monthly, both audiences → `reports/client/`.
+6. Show the team; collect layout/tone/metric feedback.
 
-## 11. Open questions for reviewer
-- Section order: lead with funnel (current) or with named leads? (Current: funnel-first.)
-- Data-quality footnote: show to client (current default) or internal-only?
-- Hosting for the sample: local HTML file is enough, or upload to Supabase for a shareable
-  link immediately?
+Success = the team can say "ship this to clients" or give concrete changes.
+
+## 12. v2 path (not now)
+- Replace rubric grades + Targets with real percentiles from accumulated snapshots.
+- `live_source.py` (Instantly + Aimfox MCP) and optional HeyReach source.
+- Optional scheduled regeneration / per-client signed-URL hosting.
+
+## 13. Decisions captured
+- Audience: one pipeline, two config-gated renders (internal full, client subset).
+- Benchmarks: config rubric in v1; real cross-client in v2 (snapshot history banked now).
+- Deltas: persist a snapshot every render; first render = baseline.
+- Meetings + positive replies: human Responses tracker is ground truth.
+
+## 14. Open for reviewer
+- Per-block client visibility table in §3.1 — adjust any rows.
+- Keep the "Warm & named leads" drill-down (not in the mock but earlier agreed) on the client
+  render, or internal-only?
+- Sample hosting: local HTML enough, or upload to Supabase immediately?
