@@ -25,5 +25,5 @@
   <div class="sub">{{ period_label }}{% if sample %} · sample data{% endif %}</div>
  </header>
  {% block body %}{% endblock %}
- <footer class="sub" style="margin:18px 0">Generated {{ rendered_at }} · audience: {{ audience }}</footer>
+ <footer class="sub" style="margin:18px 0">Generated {{ rendered_at }}{% if audience == "internal" %} · audience: internal{% endif %}</footer>
 </div></body></html>

@@ -21,6 +21,7 @@ def test_visible_blocks_respect_audience():
     client_keys = {b["key"] for b in render.visible_blocks(layout, "client")}
     assert "senders" not in client_keys
     assert "actions" not in client_keys
+    assert "deliverability" not in client_keys
     assert "kpis" in client_keys
     internal_keys = {b["key"] for b in render.visible_blocks(layout, "internal")}
     assert "senders" in internal_keys
@@ -44,4 +45,4 @@ def test_internal_render_shows_sender_health():
                          audience="internal", period_label="June 2026",
                          client="UPSTA", layout=layout, rubric=rubric)
     assert "Sender health" in html
-    assert "Pause &amp; warm inbox." in html or "Pause & warm inbox." in html
+    assert "Pause &amp; warm inbox." in html

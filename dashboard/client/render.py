@@ -36,7 +36,7 @@ def visible_blocks(layout: dict, audience: str) -> list[dict]:
 def render(data, metrics, deltas_bag, narrative, actions, *, audience, period_label,
            client, layout, rubric, sample=False) -> str:
     env = Environment(loader=FileSystemLoader(str(_TEMPLATES)),
-                      autoescape=select_autoescape(["html", "xml"]))
+                      autoescape=True)
     template = env.get_template("report.html.j2")
     return template.render(
         client=client, period_label=period_label, audience=audience, sample=sample,
