@@ -1,0 +1,24 @@
+# Letter grades from fixed thresholds (v1). v2 replaces with portfolio percentiles.
+# Each metric: descending list of [min_fraction, letter]; first match wins.
+grades:
+  open_rate:   [[0.55, "A"], [0.40, "B"], [0.25, "C"], [0.0, "D"]]
+  reply_rate:  [[0.07, "A"], [0.04, "B"], [0.02, "C"], [0.0, "D"]]
+  positive:    [[0.03, "A"], [0.015, "B"], [0.007, "C"], [0.0, "D"]]
+  bounce_rate: [[0.0, "A"], [0.02, "B"], [0.04, "C"], [0.06, "D"]]   # lower is better (ascending)
+  accept_rate: [[0.30, "A"], [0.20, "B"], [0.12, "C"], [0.0, "D"]]
+# bounce_rate is "lower is better": compute applies it ascending (see compute.grade()).
+ascending_metrics: ["bounce_rate"]
+# Tracker status -> outcome classification (case-insensitive substring match).
+positive_statuses: ["interested", "positive", "follow up", "long follow up", "meeting", "call booked"]
+meeting_statuses: ["meeting", "call booked", "demo"]
+# Engagement-timing heatmap.
+timezone: "America/Detroit"   # UPSTA primary region; SG events fold in with a caveat note
+dayparts:
+  - ["Early 5-9",     5,  9]
+  - ["Morning 9-12",  9,  12]
+  - ["Midday 12-15",  12, 15]
+  - ["Afternoon 15-18", 15, 18]
+  - ["Evening 18-22", 18, 22]
+toggles:
+  show_data_quality_notes: true
+bounce_flag_threshold: 0.04   # senders at/above this bounce fraction get flagged
