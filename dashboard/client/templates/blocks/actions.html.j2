@@ -1,0 +1,3 @@
+{# dashboard/client/templates/blocks/actions.html.j2 #}
+{% if actions.actions %}<ul>{% for a in actions.actions %}<li>{{ a }}</li>{% endfor %}</ul>
+{% else %}<div class="note">No actions flagged.</div>{% endif %}

@@ -1,0 +1,3 @@
+{# dashboard/client/templates/blocks/targets.html.j2 #}
+{% set cov = metrics.coverage %}
+<div class="note">{{ cov.contacted_total }} of {{ cov.target_total }} target accounts contacted.</div>

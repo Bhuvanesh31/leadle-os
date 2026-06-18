@@ -1,0 +1,10 @@
+{# dashboard/client/templates/report.html.j2 #}
+{% extends "report_base.html.j2" %}
+{% block body %}
+ {% for b in blocks %}
+   <section>
+     <h2>{{ b.title }}</h2>
+     {% include "blocks/" + b.key + ".html.j2" %}
+   </section>
+ {% endfor %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{# dashboard/client/templates/report_base.html.j2 #}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>{{ client }} — campaign report</title>
+<style>
+ body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;margin:0;background:#fafafa}
+ .wrap{max-width:900px;margin:0 auto;padding:24px}
+ h1{font-size:20px;margin:0} .sub{color:#666;font-size:13px}
+ .tag{background:#eef;border-radius:4px;padding:1px 6px;font-size:11px;color:#446}
+ section{background:#fff;border:1px solid #eee;border-radius:8px;padding:16px;margin:14px 0}
+ h2{font-size:14px;margin:0 0 10px;color:#333}
+ .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+ .tile{background:#f7f7f9;border-radius:6px;padding:10px}
+ .tile .v{font-size:20px;font-weight:600} .tile .l{font-size:11px;color:#777}
+ .delta-up{color:#197;font-size:11px} .delta-base{color:#999;font-size:11px}
+ table{width:100%;border-collapse:collapse;font-size:13px}
+ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f0f0f0}
+ .grade{display:inline-block;width:20px;text-align:center;border-radius:4px;background:#eef;font-weight:600}
+ .heat td{text-align:center} .note{color:#888;font-size:12px;margin-top:8px}
+ .flag{color:#b44}
+</style></head>
+<body><div class="wrap">
+ <header>
+  <h1>{{ client }} <span class="tag">campaign report</span></h1>
+  <div class="sub">{{ period_label }}{% if sample %} · sample data{% endif %}</div>
+ </header>
+ {% block body %}{% endblock %}
+ <footer class="sub" style="margin:18px 0">Generated {{ rendered_at }} · audience: {{ audience }}</footer>
+</div></body></html>

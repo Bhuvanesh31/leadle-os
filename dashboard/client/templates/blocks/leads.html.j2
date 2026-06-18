@@ -1,0 +1,10 @@
+{# dashboard/client/templates/blocks/leads.html.j2 #}
+{% set L = metrics.leads %}
+{% if L.hot or L.warm %}
+<table><tr><th>Name</th><th>Title</th><th>Company</th><th>Channel</th><th>Status</th></tr>
+ {% for x in L.hot + L.warm %}
+ <tr><td>{{ x.name }}</td><td>{{ x.title }}</td><td>{{ x.company }}</td>
+     <td>{{ x.channel }}</td><td>{{ x.tier }} · {{ x.status }}</td></tr>
+ {% endfor %}</table>
+{% else %}<div class="note">No warm leads logged yet — campaign is live.</div>{% endif %}
+<div class="note">{{ L.reached_count }} prospects reached.</div>

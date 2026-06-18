@@ -1,0 +1,9 @@
+{# dashboard/client/templates/blocks/campaigns.html.j2 #}
+{% if metrics.campaigns %}
+<table><tr><th>Campaign</th><th>Channel</th><th>Sent</th><th>Rate</th><th>Grade</th></tr>
+ {% for c in metrics.campaigns %}
+ <tr><td>{{ c.name }}</td><td>{{ c.channel }}</td><td>{{ c.sends }}</td>
+     <td>{{ '%.1f%%' % (c.rate*100) }} {{ c.rate_label }}</td>
+     <td><span class="grade">{{ c.grade }}</span></td></tr>
+ {% endfor %}</table>
+{% else %}<div class="note">No campaign activity this period.</div>{% endif %}

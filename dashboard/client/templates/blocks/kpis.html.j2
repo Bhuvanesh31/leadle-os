@@ -1,0 +1,17 @@
+{# dashboard/client/templates/blocks/kpis.html.j2 #}
+{% set k = metrics.kpis %}
+<div class="tiles">
+  {% for label, key, pct in [
+      ("Emails sent","emails_sent",False),("Open rate","open_rate",True),
+      ("Positive replies","positive_replies",False),("Meetings","meetings",False),
+      ("Invites","invites",False),("Accept rate","accept_rate",True),
+      ("LI replies","li_replied",False),("Bounce rate","bounce_rate",True)] %}
+   <div class="tile">
+     <div class="v">{% if pct %}{{ '%.0f%%' % (k[key]*100) }}{% else %}{{ k[key] }}{% endif %}</div>
+     <div class="l">{{ label }}</div>
+     {% set d = deltas.get(key) %}
+     {% if d and d.baseline %}<div class="delta-base">baseline</div>
+     {% elif d and d.delta is not none %}<div class="delta-up">Δ {{ d.delta }}</div>{% endif %}
+   </div>
+  {% endfor %}
+</div>

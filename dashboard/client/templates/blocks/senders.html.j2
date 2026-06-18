@@ -1,0 +1,7 @@
+{# dashboard/client/templates/blocks/senders.html.j2 #}
+<table><tr><th>Sender</th><th>Volume</th><th>Open rate</th><th>Bounce</th></tr>
+ {% for s in metrics.senders %}
+ <tr><td>{{ s.from_email }}</td><td>{{ s.volume }}</td>
+     <td>{{ '%.0f%%' % (s.open_rate*100) }}</td>
+     <td class="{{ 'flag' if s.flag }}">{{ '%.1f%%' % (s.bounce_rate*100) }}</td></tr>
+ {% endfor %}</table>

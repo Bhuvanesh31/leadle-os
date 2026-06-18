@@ -1,0 +1,6 @@
+{# dashboard/client/templates/blocks/scorecard.html.j2 #}
+{% set s = metrics.scorecard %}
+<table><tr>
+ {% for m, g in s.grades.items() %}<th>{{ m }}</th>{% endfor %}<th>Overall</th></tr><tr>
+ {% for m, g in s.grades.items() %}<td><span class="grade">{{ g }}</span></td>{% endfor %}
+ <td><span class="grade">{{ s.overall }}</span></td></tr></table>

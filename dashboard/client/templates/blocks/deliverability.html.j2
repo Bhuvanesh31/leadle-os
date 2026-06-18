@@ -1,0 +1,6 @@
+{# dashboard/client/templates/blocks/deliverability.html.j2 #}
+{% if metrics.deliverability %}
+ {% for f in metrics.deliverability %}
+   <div class="flag">{{ f.sender }} bounce {{ '%.1f%%' % (f.bounce_rate*100) }} — {{ f.note }}</div>
+ {% endfor %}
+{% else %}<div class="note">No deliverability flags.</div>{% endif %}

@@ -1,0 +1,7 @@
+{# dashboard/client/templates/blocks/timing.html.j2 #}
+{% set t = metrics.timing %}
+<table class="heat"><tr><th>Day</th>{% for p in t.dayparts %}<th>{{ p }}</th>{% endfor %}</tr>
+ {% for wd in t.weekdays %}<tr><td>{{ wd }}</td>
+   {% for p in t.dayparts %}<td>{{ t.grid[wd][p] or '' }}</td>{% endfor %}</tr>
+ {% endfor %}</table>
+<div class="note">Best: {{ t.best.weekday }} {{ t.best.daypart }} ({{ t.timezone }}). {{ t.note }}</div>
