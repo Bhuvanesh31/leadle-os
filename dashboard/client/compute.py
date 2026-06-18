@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from zoneinfo import ZoneInfo
 
 from dashboard.client.model import ClientData
 
@@ -83,3 +84,71 @@ def campaign_table(data: ClientData, rubric: dict) -> list[dict]:
             "grade": grade("open_rate", _rate(opened, sends), rubric),
         })
     return rows
+
+
+def sender_wise(data: ClientData, rubric: dict) -> list[dict]:
+    agg: dict[str, Counter] = defaultdict(Counter)
+    for e in data.emails:
+        agg[e.from_email][e.event_type] += 1
+    threshold = rubric["bounce_flag_threshold"]
+    rows = []
+    for sender, c in sorted(agg.items()):
+        sent = c.get("email_sent", 0)
+        vol = sum(c.values())
+        bounced = c.get("email_bounced", 0)
+        denom = sent or vol
+        bounce_rate = _rate(bounced, denom)
+        rows.append({
+            "from_email": sender, "volume": vol,
+            "opened": c.get("email_opened", 0),
+            "open_rate": _rate(c.get("email_opened", 0), sent),
+            "bounced": bounced, "bounce_rate": bounce_rate,
+            "flag": bounce_rate >= threshold,
+        })
+    return rows
+
+
+def deliverability(data: ClientData, rubric: dict) -> list[dict]:
+    flags = []
+    for s in sender_wise(data, rubric):
+        if s["flag"]:
+            flags.append({
+                "sender": s["from_email"],
+                "bounce_rate": s["bounce_rate"],
+                "note": "pause & warm",
+            })
+    return flags
+
+
+def _daypart(hour: int, dayparts: list) -> str | None:
+    for label, start, end in dayparts:
+        if start <= hour < end:
+            return label
+    return None
+
+
+def timing_heatmap(data: ClientData, rubric: dict) -> dict:
+    tz = ZoneInfo(rubric["timezone"])
+    dayparts = rubric["dayparts"]
+    weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    labels = [d[0] for d in dayparts]
+    grid = {wd: {lbl: 0 for lbl in labels} for wd in weekdays}
+    best = {"weekday": None, "daypart": None, "count": -1}
+    for e in data.emails:
+        if e.event_type not in ("email_opened", "link_clicked"):
+            continue
+        local = e.ts.astimezone(tz)
+        wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][local.weekday()]
+        if wd not in grid:
+            continue
+        part = _daypart(local.hour, dayparts)
+        if part is None:
+            continue
+        grid[wd][part] += 1
+        if grid[wd][part] > best["count"]:
+            best = {"weekday": wd, "daypart": part, "count": grid[wd][part]}
+    return {
+        "weekdays": weekdays, "dayparts": labels, "grid": grid, "best": best,
+        "timezone": rubric["timezone"],
+        "note": "Engagement (opens/clicks), not replies. LinkedIn timing N/A (Aimfox).",
+    }
