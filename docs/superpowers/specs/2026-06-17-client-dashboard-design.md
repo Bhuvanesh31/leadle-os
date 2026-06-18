@@ -162,8 +162,15 @@ used for deltas and (v2) cross-client percentiles.
 - **Campaign table**: per `Upsta_*` campaign — channel, sends, reply/accept rate, positives,
   grade.
 - **Sender-wise**: group email by `from_email` — volume, reply/accept, bounce rate + flag.
-- **Timing heatmap**: email reply (or open) rate by weekday × hour bucket from event
-  timestamps. LinkedIn timing = N/A (Aimfox export lacks it) — rendered as a stated gap.
+- **Timing heatmap (engagement, not reply)**: email **open/click** activity by weekday ×
+  **day-part** bucket. Relabelled from the mock's "reply rate" because the Instantly export
+  carries no reply event (sent/opened/clicked/bounced/auto-reply only); genuine replies live
+  in the human tracker as **date-only**, so they cannot be hour-bucketed. Verified on UPSTA:
+  170 timestamped engagement events, clearly clustered (Tue/Thu, 13:00–18:00 UTC). Bucket by
+  the **campaign's configured timezone** (`campaign_schedule.timezone`, e.g. America/Detroit,
+  Asia/Brunei); fall back to UTC with a stated caveat if absent. Use weekday × day-part
+  (~4–5 columns) — 170 events is too thin for a 24-hour grid. LinkedIn timing = N/A (Aimfox
+  export has no timestamp column) — rendered as a stated gap, matching the mock.
 - **Coverage**: distinct companies contacted vs target universe, by segment.
 - **Lead ladder**: classify known people Hot / Warm / Reached (Hot = positive reply or
   meeting from tracker; Warm = accepted invite / clicked / 2+ opens; else Reached). Join on
@@ -183,7 +190,7 @@ rest of the report still renders.
 ## 8. Dashboard content & layout (matches mock)
 
 Order: KPI tiles → Benchmark scorecard → Which campaign performed → Content performance
-(email steps + LinkedIn templates) → Sender-wise → Timing heatmap → Deliverability flags →
+(email steps + LinkedIn templates) → Sender-wise → Engagement-timing heatmap → Deliverability flags →
 Warm & named leads → Narrative → Actions → Targets. Header carries client name, report kind,
 period label, and a `sample data` tag when applicable. Each KPI tile shows value + delta.
 
