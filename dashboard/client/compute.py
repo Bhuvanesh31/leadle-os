@@ -204,6 +204,20 @@ def coverage(data: ClientData) -> dict:
     }
 
 
+def channel_reach(data: ClientData) -> dict:
+    """Unique prospects reached per channel, from the spine cadence IDs.
+    Non-empty Aimfox ID = entered LinkedIn cadence; Instantly ID = entered email cadence.
+    Dedupe on the id value (it is the unique key); 'both' = holds both ids."""
+    li = {t.aimfox_id for t in data.targets if t.aimfox_id}
+    em = {t.instantly_id for t in data.targets if t.instantly_id}
+    both = {t.aimfox_id for t in data.targets if t.aimfox_id and t.instantly_id}
+    return {
+        "linkedin_reached": len(li),
+        "email_reached": len(em),
+        "both_reached": len(both),
+    }
+
+
 def compute_all(data: ClientData, rubric: dict) -> dict:
     k = kpis(data, rubric)
     return {
@@ -215,4 +229,5 @@ def compute_all(data: ClientData, rubric: dict) -> dict:
         "timing": timing_heatmap(data, rubric),
         "leads": lead_ladder(data, rubric),
         "coverage": coverage(data),
+        "reach": channel_reach(data),
     }

@@ -46,3 +46,10 @@ def test_internal_render_shows_sender_health():
                          client="UPSTA", layout=layout, rubric=rubric)
     assert "Sender health" in html
     assert "Pause &amp; warm inbox." in html
+
+
+def test_reach_block_visible_to_both_audiences():
+    layout = yaml.safe_load((_CFG / "client_report_layout.yaml").read_text())
+    for audience in ("internal", "client"):
+        keys = [b["key"] for b in render.visible_blocks(layout, audience)]
+        assert "reach" in keys

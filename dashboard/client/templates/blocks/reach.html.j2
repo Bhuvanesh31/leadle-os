@@ -1,0 +1,7 @@
+{# dashboard/client/templates/blocks/reach.html.j2 #}
+{% set r = metrics.reach %}
+<div class="tiles">
+  <div class="tile"><div class="v">{{ r.linkedin_reached }}</div><div class="l">Reached on LinkedIn</div></div>
+  <div class="tile"><div class="v">{{ r.email_reached }}</div><div class="l">Reached on email</div></div>
+  <div class="tile"><div class="v">{{ r.both_reached }}</div><div class="l">Both channels</div></div>
+</div>

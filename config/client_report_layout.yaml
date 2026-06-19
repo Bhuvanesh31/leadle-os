@@ -7,6 +7,7 @@ blocks:
   - {key: senders,       title: "Sender health",             visibility: internal}
   - {key: timing,        title: "Engagement timing",         visibility: both}
   - {key: deliverability, title: "Deliverability flags",     visibility: internal}
+  - {key: reach,         title: "Channel reach",             visibility: both}
   - {key: leads,         title: "Warm & named leads",        visibility: both}
   - {key: narrative,     title: "Narrative",                 visibility: both}
   - {key: actions,       title: "Actions this period",       visibility: internal}
