@@ -49,6 +49,9 @@ class TargetCo:
     size: str
     segment: str
     domain: str
+    aimfox_id: str = ""
+    aimfox_urn: str = ""
+    instantly_id: str = ""
 
 
 @dataclass

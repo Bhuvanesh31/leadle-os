@@ -32,26 +32,49 @@ def _is_sep(line: str) -> bool:
     return set(line.replace("|", "").replace(" ", "")) <= set(":-")
 
 
+def _tables_under(lines: list[str], header_prefix: str):
+    """Yield (header_cells, data_rows) for EVERY table whose header starts with
+    header_prefix. The Drive flatten re-emits the header for each paginated block."""
+    i, n = 0, len(lines)
+    while i < n:
+        if lines[i].startswith(header_prefix):
+            header = _cells(lines[i])
+            i += 1
+            rows: list[list[str]] = []
+            while i < n:
+                ln = lines[i]
+                if not ln.strip().startswith("|"):
+                    i += 1
+                    continue
+                if _is_sep(ln):
+                    i += 1
+                    continue
+                if any(ln.startswith(h) for h in _ALL_HEADERS):
+                    break  # next table (possibly the same header = next page)
+                rows.append(_cells(ln))
+                i += 1
+            yield header, rows
+        else:
+            i += 1
+
+
 def _rows_under(lines: list[str], header_prefix: str) -> list[list[str]]:
-    """Return data rows of the first table whose header starts with header_prefix."""
+    """Data rows across ALL tables under header_prefix, concatenated."""
     out: list[list[str]] = []
-    i = 0
-    while i < len(lines) and not lines[i].startswith(header_prefix):
-        i += 1
-    i += 1  # skip header
-    while i < len(lines):
-        ln = lines[i]
-        if not ln.strip().startswith("|"):
-            i += 1
-            continue
-        if _is_sep(ln):
-            i += 1
-            continue
-        if any(ln.startswith(h) for h in _ALL_HEADERS):
-            break
-        out.append(_cells(ln))
-        i += 1
+    for _header, rows in _tables_under(lines, header_prefix):
+        out.extend(rows)
     return out
+
+
+def _col(header: list[str], *names: str) -> int:
+    for nm in names:
+        if nm in header:
+            return header.index(nm)
+    return -1
+
+
+def _g(row: list[str], idx: int) -> str:
+    return row[idx] if 0 <= idx < len(row) else ""
 
 
 def parse(workbook_text: str, client: str) -> ClientData:
@@ -87,10 +110,27 @@ def parse(workbook_text: str, client: str) -> ClientData:
         warm.append(WarmLead(*r[:10], r[11]))
 
     targets: list[TargetCo] = []
-    for r in _rows_under(lines, _H_TARGET):
-        if len(r) < 8 or r[0] in ("", "Company Name"):
-            continue
-        targets.append(TargetCo(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]))
+    for header, rows in _tables_under(lines, _H_TARGET):
+        c_name = _col(header, "Company Name")
+        c_country = _col(header, "Company Country")
+        c_loc = _col(header, "Company Location")
+        c_li = _col(header, "Company Linked In URL", "Company LinkedIn URL")
+        c_ind = _col(header, "Primary Industry")
+        c_size = _col(header, "Size (Text)", "Size")
+        c_seg = _col(header, "Account Process")
+        c_dom = _col(header, "Company Domain")
+        c_af = _col(header, "Aimfox ID")
+        c_urn = _col(header, "Aimfox URN")
+        c_inst = _col(header, "Instantly ID")
+        for r in rows:
+            name = _g(r, c_name)
+            if name in ("", "Company Name"):
+                continue
+            targets.append(TargetCo(
+                name, _g(r, c_country), _g(r, c_loc), _g(r, c_li), _g(r, c_ind),
+                _g(r, c_size), _g(r, c_seg), _g(r, c_dom),
+                aimfox_id=_g(r, c_af), aimfox_urn=_g(r, c_urn),
+                instantly_id=_g(r, c_inst)))
 
     channels: list[str] = []
     for r in _rows_under(lines, _H_ICP):

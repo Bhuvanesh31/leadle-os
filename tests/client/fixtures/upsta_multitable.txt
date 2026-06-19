@@ -1,0 +1,23 @@
+| Column 1 | Offering to the market | Channels | Target Market Segment |
+| :-: | :-: | :-: | :-: |
+| ICP 1 |  | LinkedIn, Email | Mid market |
+
+| Company Name | Company Country | Company Location | Company Linked In URL | Primary Industry | Size (Text) | Account Process | First Name | Last Name | Full Name | Company Domain | Aimfox ID | Aimfox URN | Instantly ID |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Real Alloy | United States | Cleveland | https://www.linkedin.com/company/real-alloy | Manufacturing | 1,001-5,000 | US_Set 1 | Chris | Garisek | Chris Garisek | realalloy.com | 229856678 | ACoAAA2zVaY | 019e89de-both |
+| Metropolitan | United States | Perth Amboy | https://www.linkedin.com/company/metropolitan | Logistics | 501-1,000 | US_Set 1 | Petrus | vds | Petrus vds | gomwd.com | 59745740 | ACoAAAOPpcw |  |
+
+| Company Name | Company Country | Company Location | Company Linked In URL | Primary Industry | Size (Text) | Account Process | First Name | Last Name | Full Name | Company Domain | Aimfox ID | Aimfox URN | Instantly ID |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Pegasus Logistics | United States | Coppell | https://www.linkedin.com/company/pegasus | Logistics | 501-1,000 | US_Set 1 | Scott | Donahue | Scott Donahue | pegasus.com |  |  | 019e89de-email |
+| Mapletree | Singapore | Singapore | https://www.linkedin.com/company/mapletree | Real Estate | 1,001-5,000 | SG_Set 1 | Oh | Chuan | Oh Chuan | mapletree.com.sg |  |  |  |
+
+| Company Name | To Name | Event Type | Campaign Name | Event Timestamp | From Email |
+| :-: | :-: | :-: | :-: | :-: | :-: |
+| Real Alloy |  | email_sent | Upsta_SFDI_V1 | 2026-06-04T13:00:00.000Z | a@upsta.co |
+| Real Alloy |  | email_opened | Upsta_SFDI_V1 | 2026-06-05T13:00:00.000Z | a@upsta.co |
+
+| Company Name | To Name | Event Type | Campaign Name | Event Timestamp | From Email |
+| :-: | :-: | :-: | :-: | :-: | :-: |
+| Pegasus Logistics |  | email_sent | Upsta_PMP_V1 | 2026-06-06T13:00:00.000Z | a@upsta.co |
+| Globex |  | email_opened | Upsta_PMP_V1 | 2026-06-07T13:00:00.000Z | a@upsta.co |
