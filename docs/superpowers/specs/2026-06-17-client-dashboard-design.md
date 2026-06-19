@@ -123,7 +123,7 @@ From workbook `1GgFeDdXpy1ZlDjH8bTWNL_c7m0ihSSO_-iYNyzadCQg`; shapes in
 | Email event export (Instantly) | KPIs, campaign table, sender-wise, timing, deliverability |
 | LinkedIn event export (Aimfox) | KPIs, campaign table (accept/reply); templates (unranked) |
 | Responses tracker (human) | positive replies, meetings booked, named-lead drill-down |
-| Target company lists | coverage denominator (by segment) |
+| Prospect spine (target lists, per-prospect) | coverage denominator (by segment); cadence IDs → channel reach |
 | Onboarding + ICP | campaign-live dates, channels, segment context |
 
 UPSTA observed (2026-06-17): LinkedIn invite 239 / accept 42 / reply 3; Email sent 224 /
@@ -140,7 +140,9 @@ EmailEvent(company, to_name, event_type, campaign, ts, from_email, step?)
 LinkedInEvent(event_type, company, profile_url, prospect_name, title, ts?)
 WarmLead(channel, account, response_date, status, response_text, linkedin_url,
          name, title, company, company_url, location)   # status drives positive/meeting
-TargetCo(name, country, location, linkedin_url, industry, size, segment, domain)
+TargetCo(name, country, location, linkedin_url, industry, size, segment, domain,
+         aimfox_id, aimfox_urn, instantly_id)   # one row per PROSPECT; IDs = cadence entry
+
 Context(client, channels[], campaign_live_dates{}, icp{})
 ClientData(emails[], linkedin[], warm_leads[], targets[], context)
 
@@ -172,6 +174,12 @@ used for deltas and (v2) cross-client percentiles.
   (~4–5 columns) — 170 events is too thin for a 24-hour grid. LinkedIn timing = N/A (Aimfox
   export has no timestamp column) — rendered as a stated gap, matching the mock.
 - **Coverage**: distinct companies contacted vs target universe, by segment.
+- **Channel reach (cadence IDs)**: from the prospect spine's `Aimfox ID` / `Instantly ID`
+  columns — unique prospects reached on LinkedIn (distinct non-empty `Aimfox ID`), on email
+  (distinct non-empty `Instantly ID`), and on **both** (rows holding both). Deterministic, no
+  event join; a blank ID means the prospect has not entered that cadence. Dedupe on the ID
+  value. Spine parsing is **header-name-aware** (the table is per-prospect, wide, and varies
+  in width), and reads **all paginated blocks** under the header.
 - **Lead ladder**: classify known people Hot / Warm / Reached (Hot = positive reply or
   meeting from tracker; Warm = accepted invite / clicked / 2+ opens; else Reached). Join on
   LinkedIn URL then Name+Company; human tracker status wins.
@@ -191,7 +199,9 @@ rest of the report still renders.
 
 Order: KPI tiles → Benchmark scorecard → Which campaign performed → Content performance
 (email steps + LinkedIn templates) → Sender-wise → Engagement-timing heatmap → Deliverability flags →
-Warm & named leads → Narrative → Actions → Targets. Header carries client name, report kind,
+Channel reach → Warm & named leads → Narrative → Actions → Targets. "Channel reach" (unique
+prospects reached per channel + both-channel overlap, from the spine cadence IDs) is visible
+to both audiences (config flag flips it to internal-only if desired). Header carries client name, report kind,
 period label, and a `sample data` tag when applicable. Each KPI tile shows value + delta.
 
 ### Tone constraints
@@ -235,7 +245,12 @@ Success = the team can say "ship this to clients" or give concrete changes.
 
 ## 12. v2 path (not now)
 - Replace rubric grades + Targets with real percentiles from accumulated snapshots.
-- `live_source.py` (Instantly + Aimfox MCP) and optional HeyReach source.
+- `live_source.py` (Instantly + Aimfox MCP) and optional HeyReach source. **Identity backbone:
+  the spine's per-prospect `Instantly ID` / `Aimfox ID` / `Aimfox URN` are the deterministic
+  join keys** — `Instantly ID` → Instantly lead's email events; `Aimfox ID`/URN → Aimfox
+  lead's invite/accept/reply events. This replaces v1's company-name + `Upsta_*` campaign
+  matching. Verify the API round-trip (IDs resolve to live records) before relying on it; the
+  v1 event dumps do not carry these IDs.
 - Optional scheduled regeneration / per-client signed-URL hosting.
 
 ## 13. Decisions captured

@@ -1695,6 +1695,326 @@ the success gate from the spec).
 
 ---
 
+> **Tasks 11–12 added 2026-06-19** (cadence-ID update). Execution order on resume:
+> **Task 11 → Task 12 → Task 10** (Task 10's re-render/show-team gate runs last, after the
+> parser fix and the reach block exist). Task 11 also fixes the known multi-table parser bug.
+
+### Task 11: Parser hardening — paginated tables + header-aware spine + cadence IDs
+
+**Why:** The Drive flatten splits each large table into multiple consecutive blocks (same
+header re-emitted); the v1 parser read only the first, so live UPSTA KPIs came out 0. The
+prospect spine is per-prospect, wide, and varies in width, and now carries
+`Aimfox ID | Aimfox URN | Instantly ID`. Fix both: concatenate all blocks under a header, and
+parse the spine by column NAME.
+
+**Files:**
+- Modify: `dashboard/client/model.py` (TargetCo + 3 fields)
+- Modify: `dashboard/client/sources/sheet_source.py` (`_tables_under`, `_rows_under` concat, header-aware targets)
+- Create: `tests/client/fixtures/upsta_multitable.txt`
+- Test: `tests/client/test_sheet_source.py` (2 new tests)
+
+**Interfaces:**
+- Consumes: existing `_cells`, `_is_sep`, `_ALL_HEADERS`, `_H_*` signatures.
+- Produces: `TargetCo(..., aimfox_id="", aimfox_urn="", instantly_id="")`; `_rows_under` now
+  returns rows across ALL matching tables.
+
+- [ ] **Step 1: Extend the model**
+
+```python
+@dataclass
+class TargetCo:
+    name: str
+    country: str
+    location: str
+    linkedin_url: str
+    industry: str
+    size: str
+    segment: str
+    domain: str
+    aimfox_id: str = ""
+    aimfox_urn: str = ""
+    instantly_id: str = ""
+```
+
+- [ ] **Step 2: Write the failing tests** (`tests/client/test_sheet_source.py`, append)
+
+```python
+_MT = Path(__file__).parent / "fixtures" / "upsta_multitable.txt"
+
+
+def _mt():
+    return sheet_source.parse(_MT.read_text(), client="UPSTA")
+
+
+def test_email_events_concatenated_across_paginated_tables():
+    d = _mt()
+    # two email blocks, 2 UPSTA rows each -> 4 (old parser read only the first block)
+    assert len(d.emails) == 4
+    assert sum(1 for e in d.emails if e.event_type == "email_sent") == 2
+
+
+def test_spine_pages_and_cadence_ids_parsed_by_header():
+    d = _mt()
+    assert len(d.targets) == 4  # both spine pages read
+    by = {t.name: t for t in d.targets}
+    # header-aware: domain comes from the "Company Domain" column, not a fixed index
+    assert by["Real Alloy"].domain == "realalloy.com"
+    assert by["Real Alloy"].aimfox_id == "229856678"
+    assert by["Real Alloy"].instantly_id == "019e89de-both"
+    assert by["Pegasus Logistics"].aimfox_id == ""   # email-only prospect
+    assert by["Mapletree"].instantly_id == ""        # not in any cadence yet
+```
+
+- [ ] **Step 3: Create the fixture** (`tests/client/fixtures/upsta_multitable.txt`)
+
+```
+| Column 1 | Offering to the market | Channels | Target Market Segment |
+| :-: | :-: | :-: | :-: |
+| ICP 1 |  | LinkedIn, Email | Mid market |
+
+| Company Name | Company Country | Company Location | Company Linked In URL | Primary Industry | Size (Text) | Account Process | First Name | Last Name | Full Name | Company Domain | Aimfox ID | Aimfox URN | Instantly ID |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Real Alloy | United States | Cleveland | https://www.linkedin.com/company/real-alloy | Manufacturing | 1,001-5,000 | US_Set 1 | Chris | Garisek | Chris Garisek | realalloy.com | 229856678 | ACoAAA2zVaY | 019e89de-both |
+| Metropolitan | United States | Perth Amboy | https://www.linkedin.com/company/metropolitan | Logistics | 501-1,000 | US_Set 1 | Petrus | vds | Petrus vds | gomwd.com | 59745740 | ACoAAAOPpcw |  |
+
+| Company Name | Company Country | Company Location | Company Linked In URL | Primary Industry | Size (Text) | Account Process | First Name | Last Name | Full Name | Company Domain | Aimfox ID | Aimfox URN | Instantly ID |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Pegasus Logistics | United States | Coppell | https://www.linkedin.com/company/pegasus | Logistics | 501-1,000 | US_Set 1 | Scott | Donahue | Scott Donahue | pegasus.com |  |  | 019e89de-email |
+| Mapletree | Singapore | Singapore | https://www.linkedin.com/company/mapletree | Real Estate | 1,001-5,000 | SG_Set 1 | Oh | Chuan | Oh Chuan | mapletree.com.sg |  |  |  |
+
+| Company Name | To Name | Event Type | Campaign Name | Event Timestamp | From Email |
+| :-: | :-: | :-: | :-: | :-: | :-: |
+| Real Alloy |  | email_sent | Upsta_SFDI_V1 | 2026-06-04T13:00:00.000Z | a@upsta.co |
+| Real Alloy |  | email_opened | Upsta_SFDI_V1 | 2026-06-05T13:00:00.000Z | a@upsta.co |
+
+| Company Name | To Name | Event Type | Campaign Name | Event Timestamp | From Email |
+| :-: | :-: | :-: | :-: | :-: | :-: |
+| Pegasus Logistics |  | email_sent | Upsta_PMP_V1 | 2026-06-06T13:00:00.000Z | a@upsta.co |
+| Globex |  | email_opened | Upsta_PMP_V1 | 2026-06-07T13:00:00.000Z | a@upsta.co |
+```
+
+- [ ] **Step 4: Run the new tests, verify they FAIL**
+
+Run: `python -m pytest tests/client/test_sheet_source.py -k "concatenated or cadence_ids" -v`
+Expected: FAIL (old `_rows_under` reads first table only; `TargetCo` has no `aimfox_id`).
+
+- [ ] **Step 5: Implement** (`dashboard/client/sources/sheet_source.py`)
+
+Replace `_rows_under` with a multi-table generator + concatenator, add header helpers, and
+rewrite the targets loop to be header-aware. Email/LinkedIn/warm/ICP loops keep calling
+`_rows_under` (now concatenating across all blocks — this is the multi-table bug fix).
+
+```python
+def _tables_under(lines: list[str], header_prefix: str):
+    """Yield (header_cells, data_rows) for EVERY table whose header starts with
+    header_prefix. The Drive flatten re-emits the header for each paginated block."""
+    i, n = 0, len(lines)
+    while i < n:
+        if lines[i].startswith(header_prefix):
+            header = _cells(lines[i])
+            i += 1
+            rows: list[list[str]] = []
+            while i < n:
+                ln = lines[i]
+                if not ln.strip().startswith("|"):
+                    i += 1
+                    continue
+                if _is_sep(ln):
+                    i += 1
+                    continue
+                if any(ln.startswith(h) for h in _ALL_HEADERS):
+                    break  # next table (possibly the same header = next page)
+                rows.append(_cells(ln))
+                i += 1
+            yield header, rows
+        else:
+            i += 1
+
+
+def _rows_under(lines: list[str], header_prefix: str) -> list[list[str]]:
+    """Data rows across ALL tables under header_prefix, concatenated."""
+    out: list[list[str]] = []
+    for _header, rows in _tables_under(lines, header_prefix):
+        out.extend(rows)
+    return out
+
+
+def _col(header: list[str], *names: str) -> int:
+    for nm in names:
+        if nm in header:
+            return header.index(nm)
+    return -1
+
+
+def _g(row: list[str], idx: int) -> str:
+    return row[idx] if 0 <= idx < len(row) else ""
+```
+
+Rewrite the targets loop in `parse()` (replace the old positional `for r in _rows_under(lines, _H_TARGET)` block):
+
+```python
+    targets: list[TargetCo] = []
+    for header, rows in _tables_under(lines, _H_TARGET):
+        c_name = _col(header, "Company Name")
+        c_country = _col(header, "Company Country")
+        c_loc = _col(header, "Company Location")
+        c_li = _col(header, "Company Linked In URL", "Company LinkedIn URL")
+        c_ind = _col(header, "Primary Industry")
+        c_size = _col(header, "Size (Text)", "Size")
+        c_seg = _col(header, "Account Process")
+        c_dom = _col(header, "Company Domain")
+        c_af = _col(header, "Aimfox ID")
+        c_urn = _col(header, "Aimfox URN")
+        c_inst = _col(header, "Instantly ID")
+        for r in rows:
+            name = _g(r, c_name)
+            if name in ("", "Company Name"):
+                continue
+            targets.append(TargetCo(
+                name, _g(r, c_country), _g(r, c_loc), _g(r, c_li), _g(r, c_ind),
+                _g(r, c_size), _g(r, c_seg), _g(r, c_dom),
+                aimfox_id=_g(r, c_af), aimfox_urn=_g(r, c_urn),
+                instantly_id=_g(r, c_inst)))
+```
+
+- [ ] **Step 6: Run the full client suite**
+
+Run: `python -m pytest tests/client/ -v`
+Expected: PASS — new tests green; all prior tests still green (single-table fixture → one
+block → identical results; `domain` for the narrow fixture still resolves via header name;
+new TargetCo fields default to "").
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add dashboard/client/model.py dashboard/client/sources/sheet_source.py \
+        tests/client/fixtures/upsta_multitable.txt tests/client/test_sheet_source.py
+git commit -m "fix(client-dash): read all paginated tables; header-aware spine parse + cadence IDs"
+```
+
+### Task 12: Channel-reach compute + dashboard block
+
+**Why:** Surface unique prospects reached per channel and the both-channel overlap, computed
+deterministically from the spine cadence IDs (no event join).
+
+**Files:**
+- Modify: `dashboard/client/compute.py` (`channel_reach` + bag entry)
+- Modify: `config/client_report_layout.yaml` (add `reach` block before `leads`)
+- Create: `dashboard/client/templates/blocks/reach.html.j2`
+- Test: `tests/client/test_compute.py` (append), `tests/client/test_render.py` (append)
+
+**Interfaces:**
+- Consumes: `TargetCo.aimfox_id`, `TargetCo.instantly_id` (Task 11).
+- Produces: `compute.channel_reach(data) -> {"linkedin_reached", "email_reached", "both_reached"}`;
+  `compute_all` bag gains `"reach"`; template reads `metrics.reach`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`tests/client/test_compute.py` (append):
+
+```python
+from dashboard.client.model import ClientData, TargetCo
+
+
+def _reach_targets():
+    return [
+        TargetCo("Real Alloy", "US", "", "", "Mfg", "", "US_Set 1", "realalloy.com",
+                 aimfox_id="A1", aimfox_urn="U1", instantly_id="I1"),   # both
+        TargetCo("Metropolitan", "US", "", "", "Log", "", "US_Set 1", "gomwd.com",
+                 aimfox_id="A2", aimfox_urn="U2", instantly_id=""),     # LinkedIn only
+        TargetCo("Pegasus", "US", "", "", "Log", "", "US_Set 1", "pegasus.com",
+                 aimfox_id="", aimfox_urn="", instantly_id="I3"),       # email only
+        TargetCo("Mapletree", "SG", "", "", "RE", "", "SG_Set 1", "mapletree.com.sg"),  # neither
+    ]
+
+
+def test_channel_reach_counts_unique_per_channel_and_both():
+    r = compute.channel_reach(ClientData(targets=_reach_targets()))
+    assert r == {"linkedin_reached": 2, "email_reached": 2, "both_reached": 1}
+
+
+def test_channel_reach_dedupes_on_id_value():
+    ts = _reach_targets() + [
+        TargetCo("Dup", "US", "", "", "Mfg", "", "US_Set 1", "dup.com",
+                 aimfox_id="A1", instantly_id="I1")]  # repeats A1/I1
+    r = compute.channel_reach(ClientData(targets=ts))
+    assert r == {"linkedin_reached": 2, "email_reached": 2, "both_reached": 1}
+```
+
+`tests/client/test_render.py` (append):
+
+```python
+def test_reach_block_visible_to_both_audiences():
+    layout = yaml.safe_load((_CFG / "client_report_layout.yaml").read_text())
+    for audience in ("internal", "client"):
+        keys = [b["key"] for b in render.visible_blocks(layout, audience)]
+        assert "reach" in keys
+```
+
+(`compute`, `yaml`, `_CFG`, `render` are already imported at the top of these files.)
+
+- [ ] **Step 2: Run, verify FAIL**
+
+Run: `python -m pytest tests/client/test_compute.py -k channel_reach tests/client/test_render.py -k reach_block -v`
+Expected: FAIL (`channel_reach` undefined; no `reach` block in layout).
+
+- [ ] **Step 3: Implement compute** (`dashboard/client/compute.py`)
+
+```python
+def channel_reach(data: ClientData) -> dict:
+    """Unique prospects reached per channel, from the spine cadence IDs.
+    Non-empty Aimfox ID = entered LinkedIn cadence; Instantly ID = entered email cadence.
+    Dedupe on the id value (it is the unique key); 'both' = holds both ids."""
+    li = {t.aimfox_id for t in data.targets if t.aimfox_id}
+    em = {t.instantly_id for t in data.targets if t.instantly_id}
+    both = {t.aimfox_id for t in data.targets if t.aimfox_id and t.instantly_id}
+    return {
+        "linkedin_reached": len(li),
+        "email_reached": len(em),
+        "both_reached": len(both),
+    }
+```
+
+Add to the `compute_all` bag (after `"coverage": coverage(data),`):
+
+```python
+        "reach": channel_reach(data),
+```
+
+- [ ] **Step 4: Add the layout block** (`config/client_report_layout.yaml`, before the `leads` row)
+
+```yaml
+  - {key: reach,         title: "Channel reach",             visibility: both}
+```
+
+- [ ] **Step 5: Create the block template** (`dashboard/client/templates/blocks/reach.html.j2`)
+
+```jinja
+{# dashboard/client/templates/blocks/reach.html.j2 #}
+{% set r = metrics.reach %}
+<div class="tiles">
+  <div class="tile"><div class="v">{{ r.linkedin_reached }}</div><div class="l">Reached on LinkedIn</div></div>
+  <div class="tile"><div class="v">{{ r.email_reached }}</div><div class="l">Reached on email</div></div>
+  <div class="tile"><div class="v">{{ r.both_reached }}</div><div class="l">Both channels</div></div>
+</div>
+```
+
+- [ ] **Step 6: Run the full client suite**
+
+Run: `python -m pytest tests/client/ -v`
+Expected: PASS. `test_compute_all_assembles_bag` still green (it asserts a superset).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add dashboard/client/compute.py config/client_report_layout.yaml \
+        dashboard/client/templates/blocks/reach.html.j2 \
+        tests/client/test_compute.py tests/client/test_render.py
+git commit -m "feat(client-dash): channel-reach block from spine cadence IDs"
+```
+
+---
+
 ## Self-Review
 
 **1. Spec coverage**
