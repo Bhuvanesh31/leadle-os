@@ -144,3 +144,229 @@ def parse(workbook_text: str, client: str) -> ClientData:
 
 def read(client: str, workbook_path: str) -> ClientData:
     return parse(Path(workbook_path).read_text(encoding="utf-8"), client)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# XLSX ingestion (openpyxl)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SPINE_TABS = ["Prospect Data-US", "Prospect Data- Singapore"]
+_WH_LINKEDIN = "Webhook - LinkedIn"
+_WH_EMAIL = "Webhook - Email"
+_RESP_TAB = "Response Tracker"
+
+# LinkedIn reply Event Types that indicate a human reply
+_LI_REPLY_TYPES = {"reply", "campaign_reply"}
+
+
+def _hdr_map(row) -> dict[str, int]:
+    """Return {header_name: col_index} for a header row of openpyxl cells."""
+    return {
+        str(cell.value).strip(): idx
+        for idx, cell in enumerate(row)
+        if cell.value is not None
+    }
+
+
+def _get(row_vals: list, col_map: dict[str, int], *names: str) -> str:
+    """Return first non-None value for any of *names; empty string when absent."""
+    for name in names:
+        idx = col_map.get(name)
+        if idx is not None and idx < len(row_vals):
+            v = row_vals[idx]
+            if v is not None:
+                return str(v).strip()
+    return ""
+
+
+def _coerce_aimfox_id(raw: str) -> str:
+    """openpyxl reads numeric cells as float; '229856678.0' -> '229856678'."""
+    if not raw:
+        return raw
+    try:
+        return str(int(float(raw)))
+    except (ValueError, OverflowError):
+        return raw
+
+
+def _parse_ts(v) -> datetime | None:
+    """Coerce openpyxl cell value to datetime. Handles datetime objects and ISO strings."""
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        return v
+    s = str(v).strip()
+    if not s:
+        return None
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S+00:00",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+    ):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _is_header_repeat(row: tuple, header_tuple: tuple) -> bool:
+    """Return True if row is a repeated emission of the header (pagination artifact).
+
+    Compares normalised string values of both tuples so the check is exact.
+    """
+    row_strs = tuple(str(v).strip() if v is not None else "" for v in row)
+    hdr_strs = tuple(str(v).strip() if v is not None else "" for v in header_tuple)
+    return row_strs == hdr_strs
+
+
+def read_xlsx(path: str) -> ClientData:
+    """Parse the client prospect XLSX workbook and return a ClientData.
+
+    Uses openpyxl(read_only=True, data_only=True). Resolves columns by header
+    NAME (not position). Skips repeated header rows (pagination artifact) and
+    all-None rows. Int-coerces numeric Aimfox IDs to avoid float artifacts.
+    """
+    import openpyxl  # local import — not always in the text-parse path
+
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+
+    targets: list[TargetCo] = []
+    replies: list = []
+    opens: list = []
+    warm_leads: list[WarmLead] = []
+
+    # ── Spine tabs ────────────────────────────────────────────────────────────
+    for tab_name in _SPINE_TABS:
+        if tab_name not in wb.sheetnames:
+            continue
+        ws = wb[tab_name]
+        rows = ws.iter_rows(values_only=True)
+        header_row = next(rows, None)
+        if header_row is None:
+            continue
+        col_map = {
+            str(v).strip(): idx
+            for idx, v in enumerate(header_row)
+            if v is not None
+        }
+        for row in rows:
+            if all(v is None for v in row):
+                continue
+            if _is_header_repeat(row, header_row):
+                continue
+            rv = list(row)
+            name = _get(rv, col_map, "Company Name")
+            if not name:
+                continue
+            raw_af = _get(rv, col_map, "Aimfox ID")
+            targets.append(TargetCo(
+                name=name,
+                country=_get(rv, col_map, "Company Country"),
+                location=_get(rv, col_map, "Company Location"),
+                linkedin_url=_get(rv, col_map, "Company Linked In URL", "Company LinkedIn URL"),
+                industry=_get(rv, col_map, "Primary Industry"),
+                size=_get(rv, col_map, "Size (Text)", "Size"),
+                segment=_get(rv, col_map, "Account Process"),
+                domain=_get(rv, col_map, "Company Domain"),
+                aimfox_id=_coerce_aimfox_id(raw_af),
+                aimfox_urn=_get(rv, col_map, "Aimfox URN"),
+                instantly_id=_get(rv, col_map, "Instantly ID"),
+            ))
+
+    # ── Webhook - LinkedIn ────────────────────────────────────────────────────
+    if _WH_LINKEDIN in wb.sheetnames:
+        ws = wb[_WH_LINKEDIN]
+        rows_iter = ws.iter_rows(values_only=True)
+        header_row = next(rows_iter, None)
+        if header_row is not None:
+            col_map = {
+                str(v).strip(): idx
+                for idx, v in enumerate(header_row)
+                if v is not None
+            }
+            from dashboard.client.model import ReplyRecord
+            for row in rows_iter:
+                if all(v is None for v in row):
+                    continue
+                if _is_header_repeat(row, header_row):
+                    continue
+                rv = list(row)
+                evt = _get(rv, col_map, "Event Type").lower()
+                if evt not in _LI_REPLY_TYPES:
+                    continue
+                sentiment = _get(rv, col_map, "Reply Sentiment") or "untagged"
+                campaign = _get(rv, col_map, "Campaign Name")
+                name = _get(rv, col_map, "Prospect Name")
+                raw_ts = rv[col_map["Timestamp"]] if "Timestamp" in col_map else None
+                ts = _parse_ts(raw_ts)
+                replies.append(ReplyRecord(
+                    channel="linkedin",
+                    campaign=campaign,
+                    sentiment=sentiment,
+                    name=name,
+                    ts=ts,
+                ))
+
+    # ── Webhook - Email ───────────────────────────────────────────────────────
+    if _WH_EMAIL in wb.sheetnames:
+        ws = wb[_WH_EMAIL]
+        rows_iter = ws.iter_rows(values_only=True)
+        header_row = next(rows_iter, None)
+        if header_row is not None:
+            col_map = {
+                str(v).strip(): idx
+                for idx, v in enumerate(header_row)
+                if v is not None
+            }
+            from dashboard.client.model import OpenEvent
+            for row in rows_iter:
+                if all(v is None for v in row):
+                    continue
+                if _is_header_repeat(row, header_row):
+                    continue
+                rv = list(row)
+                evt = _get(rv, col_map, "Event Type").lower()
+                if evt == "email_opened":
+                    raw_ts = rv[col_map["Event Timestamp"]] if "Event Timestamp" in col_map else None
+                    ts = _parse_ts(raw_ts)
+                    opens.append(OpenEvent(channel="email", ts=ts))
+
+    # ── Response Tracker ─────────────────────────────────────────────────────
+    if _RESP_TAB in wb.sheetnames:
+        ws = wb[_RESP_TAB]
+        rows_iter = ws.iter_rows(values_only=True)
+        header_row = next(rows_iter, None)
+        if header_row is not None:
+            col_map = {
+                str(v).strip(): idx
+                for idx, v in enumerate(header_row)
+                if v is not None
+            }
+            for row in rows_iter:
+                if all(v is None for v in row):
+                    continue
+                if _is_header_repeat(row, header_row):
+                    continue
+                rv = list(row)
+                channel = _get(rv, col_map, "Channel")
+                if not channel:
+                    continue
+                warm_leads.append(WarmLead(
+                    channel=channel,
+                    account=_get(rv, col_map, "Account"),
+                    response_date=_get(rv, col_map, "Response Date"),
+                    status=_get(rv, col_map, "Status"),
+                    response_text=_get(rv, col_map, "Response"),
+                    linkedin_url=_get(rv, col_map, "LinkedIn"),
+                    name=_get(rv, col_map, "Name"),
+                    title=_get(rv, col_map, "Job Title"),
+                    company=_get(rv, col_map, "Company"),
+                    company_url=_get(rv, col_map, "Company Url"),
+                    location=_get(rv, col_map, "Loc"),
+                ))
+
+    wb.close()
+    return ClientData(targets=targets, replies=replies, opens=opens, warm_leads=warm_leads)
