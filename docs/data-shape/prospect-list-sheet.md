@@ -59,6 +59,32 @@ distinct table. Flattened observations below — **schema not yet typed** (explo
   each re-emitting the SAME header row. A parser that reads only the first block under a
   header undercounts badly (observed: email/LinkedIn KPIs came out 0). Read ALL blocks under
   each header signature and concatenate.
+- **CRITICAL — do NOT ingest via the Drive text flatten** (`read_file_content` / the
+  natural-language rendering). For a workbook this size it is **silently truncated**: the
+  rendering returned only ~261 of 1,229 prospects (US cut at ~150/942, SG at ~111/287) with
+  NO error, just fewer rows. Every reach number came out ~5x low and internally consistent —
+  the worst kind of wrong. **Ingest the raw XLSX instead**: Drive `download_file_content` with
+  `exportMimeType = application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, then
+  parse cell-by-cell with `openpyxl` (read_only, data_only). This reads every row of every tab.
+  The legacy `--workbook <text dump>` path in `dashboard/client/render.py` inherits the
+  truncation and must move to XLSX ingestion before the numbers can be trusted.
+
+## Prospect spine tabs — real structure (verified 2026-06-19 via XLSX)
+
+The per-prospect spine lives in two tabs (exact names, mind the spacing):
+
+| Tab | People (excl. header) | Aimfox ID | Instantly ID | Both | Neither |
+|---|---|---|---|---|---|
+| `Prospect Data-US` (no space)      | 942   | 642 | 664 distinct | 529 | 162 |
+| `Prospect Data- Singapore` (space) | 287   | 165 | 198 distinct | 137 | 60  |
+| **Combined**                       | 1,229 | 807 | 862 distinct | 666 | 222 |
+
+Header is 23 cols; the three ID columns are the last three (`Aimfox ID | Aimfox URN |
+Instantly ID`), but resolve by NAME not position (the US tab has no `Start Date` col; some
+segments do). A few Instantly IDs repeat (866 present → 862 distinct = ~4 dupes, same person
+on two rows) — dedupe on the ID value, not the row. The 21 full tab list also includes
+`Accounts Data-*`, event-export tabs (`Invite Sent`, `Connection Accepted`, `First Email
+Sent`, `Email Opened`, ...), `Response Tracker`, `DNC List`, and `Webhook -*` mirrors.
 
 ## Update 2026-06-19 — per-prospect cadence IDs (identity backbone)
 
@@ -88,8 +114,70 @@ Instantly-only, some Aimfox-only."
   the fragile company-name + `Upsta_*` campaign-prefix matching with an exact per-prospect
   join. It is the proper backbone for `live_source.py`.
 
-**Caveat (verify before building the v2 join):** confirmed these IDs exist and are populated
-on the spine and that their formats are the platforms' native ids; have NOT yet round-tripped
-a fetch through the Instantly/Aimfox APIs (Instantly MCP was disconnected, Aimfox needs
-re-auth). The event-dump tabs (6/7) do NOT carry these IDs — they are keyed by Profile URL /
-email — so in v1 the IDs add the reach layer but do not retro-join to the manual dumps.
+**Round-trip VERIFIED 2026-06-19 (both join keys live):**
+- **Aimfox:** sheet `Aimfox ID` (numeric) → `GET https://api.aimfox.com/api/v2/leads/{id}`
+  returns HTTP 200 with the full profile and `lead.origins` = the campaign(s) it belongs to
+  (e.g. `Upsta_US_SFDIP_CFO_V1`). The numeric ID is the key. The **`Aimfox URN` is NOT a
+  lookup key** — `/leads/{urn}` returns 422. The collection route `/leads` (no id) 404s; only
+  the item route works. 7/7 sampled IDs (US + SG) resolved.
+- **Instantly:** sheet `Instantly ID` → `get_lead(id)` (MCP) returns `campaign` (one of the 5
+  `Upsta_*` ids), per-lead `email_open_count` / `email_reply_count` / `email_click_count`,
+  `status`, and full payload (Title, Process, Country, LinkedIn URL). 3/3 sampled resolved.
+- **Cross-channel proof:** a prospect with both IDs (Christopher Garisek, aid `229856678` /
+  iid `019e89de-c4f3…`) resolves on both; Aimfox `public_identifier` and the Instantly
+  payload LinkedIn URL share the same slug → same human, both channels, confirmed by one row.
+
+**Reach reconciliation (sheet distinct IDs vs live API reach):** Aimfox 807 sheet IDs vs 780
+live reached (~3%); Instantly 862 sheet IDs vs 870 live reached (~1%). The sheet runs slightly
+ahead because an ID is stamped on *add*, while "reached" needs a send to have fired (the gap is
+the in-flight queue). **"Reached on both" (666) is computable ONLY from the sheet** — it is the
+sole place one row holds both an Aimfox ID and an Instantly ID; neither API can join to the
+other. This is why the spine stays in the pipeline as the identity bridge.
+
+The event-dump tabs do NOT carry these IDs — they are keyed by Profile URL / email — so they
+do not retro-join to the ID backbone.
+
+## Update 2026-06-19 — webhook reply tabs (`Webhook - LinkedIn` / `Webhook - Email`)
+
+These two tabs are the **reply + segmentation source** (verified via XLSX, repeated-header
+pagination handled). They carry richer, timestamped event streams than the manual event-dump
+tabs (6/7) and, crucially, a `Reply Sentiment` column.
+
+**`Webhook - LinkedIn`** (897 rows, 2026-05-14 → 2026-06-19). Cols:
+`Event Type | Company Name | Profile Url | Company Url | Prospect Name | Title | Sender
+Profile | Campaign Name | Timestamp | Date Extraction | Connection request sent date |
+Connection Accepted Date | Reply Date | Reply Messages | Industry | Size | Company Country |
+Process | Variant | Reply Sentiment`.
+- `Event Type` ∈ {`connect`=invite sent, `accepted`, `message`=sequence step, `reply` /
+  `campaign_reply`=inbound human reply, `campaign_ended`}.
+- Association key (per operator): **Aimfox ID** — resolve `Profile Url` → spine row → `Aimfox
+  ID`. (The tab itself stores `Profile Url`, not the numeric ID.)
+- **`Variant` is 100% empty** (897/897) in the sheet — but "which message/variant worked" IS
+  answerable from the **Aimfox API**: `GET /campaigns/{id}` returns `flows[]`, each
+  `PRIMARY_CONNECT` flow carries the connection-note `template.message` (the actual variant
+  text). Per-variant performance comes from `GET /analytics/interactions?campaign_id=…`
+  (`sent_connections`, `accepted_connections`, `replies`) — and `&flow_id=…` filters to a
+  single A/B flow (verified: campaign total 8 vs flow-filtered 1). The campaign *name* is the
+  variant key (`V1/V2/V3_A-C`, `SFDIP_CFO_V1/V2`). Ranked May+June: `Upsta_US_PMP_V1` is the
+  only variant that drew replies (3 / 2.2%); `Reconciliation_V3_*` are dead (0% accept).
+  Extractor `/tmp/afx_variants.py` → `/tmp/afx_variants.json`.
+- Replies are rare: May 2 (1 neutral, 1 negative), June 2 (1 neutral, 1 untagged). **0 positive.**
+
+**`Webhook - Email`** (2389 rows, **2026-06-03 → 2026-06-19 only** — email is a *single month*,
+no May baseline). Cols: `Company Name | To Name | Event Type | Campaign Name | Event Timestamp
+| From Email | To Email | Reply Message | Sent Date | Email Open date | Reply Date | Email
+click date | Sequence Number | Title | Website | Company Size | Company Country | Industry |
+Prospect Linkedin Profile | Reply Sentiment`.
+- `Event Type` ∈ {`email_sent`, `email_opened`, `link_clicked`, `email_bounced`,
+  `auto_reply_received`, `lead_out_of_office`, `campaign_completed_for_lead_without_reply`}.
+  **There is NO human-reply event type** and `Reply Sentiment` is 100% empty → human email
+  replies = 0. `auto_reply_received`/`lead_out_of_office` are automated, not human replies.
+- Association key (per operator): **`Prospect Linkedin Profile`** column → spine row.
+- **Rates are unique-prospect, not event count** (events double-count opens). June: 870
+  prospects sent, 766 delivered, 224 unique opened (29.2% of delivered), 21 clicked (2.7%).
+  **Bounce is event-based** (operator's call): 105 `email_bounced` / 1661 `email_sent` events
+  = **6.3%** (above the <4% benchmark).
+
+**Leads rule (operator):** any *positive* response = a lead. Current count = **0** (0 positive
+replies on either channel). **Upsta benchmarks:** open 20%, click 2%, positive replies 4/mo,
+total replies 12/mo, bounce <4%. Extractor: `/tmp/reply_metrics.py` → `/tmp/reply_metrics.json`.
