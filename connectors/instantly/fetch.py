@@ -40,7 +40,9 @@ def fetch(
             needle = name_contains.lower()
             camps = [c for c in camps if needle in (c.get("name") or "").lower()]
         out = [_shape(c, _analytics(client, c["id"], window_start, window_end)) for c in camps]
-        return {"available": True, "data": {"campaigns": out, "senders": [], "steps": []}}
+        senders = _account_senders(client)
+        steps = _campaign_steps(client, camps)
+        return {"available": True, "data": {"campaigns": out, "senders": senders, "steps": steps}}
     except httpx.HTTPError as e:
         return {"available": False, "reason": f"instantly REST error: {type(e).__name__}: {e}"}
     finally:
@@ -65,6 +67,53 @@ def _analytics(client: httpx.Client, cid: str, start, end) -> dict:
     if isinstance(a, list):
         a = a[0] if a else {}
     return a
+
+
+def _account_senders(client: httpx.Client) -> list[dict]:
+    """Fetch per-sender stats from GET /accounts/analytics. Returns [] on error."""
+    try:
+        r = client.get(f"{_BASE_URL}/accounts/analytics")
+        r.raise_for_status()
+        rows = r.json()
+    except httpx.HTTPError:
+        return []
+    if not isinstance(rows, list):
+        return []
+    result = []
+    for row in rows:
+        email = row.get("from_email")
+        if not email:
+            continue
+        result.append({
+            "from_email": email,
+            "sent": int(row.get("sent", 0) or 0),
+            "bounced": int(row.get("bounced", 0) or 0),
+        })
+    return result
+
+
+def _campaign_steps(client: httpx.Client, camps: list[dict]) -> list[dict]:
+    """Fetch per-step analytics for each campaign. Returns [] on error."""
+    all_steps = []
+    for c in camps:
+        try:
+            r = client.get(
+                f"{_BASE_URL}/campaigns/analytics/steps",
+                params={"id": c["id"]},
+            )
+            r.raise_for_status()
+            rows = r.json()
+        except httpx.HTTPError:
+            continue
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            all_steps.append({
+                "step": row.get("step"),
+                "opened": int(row.get("opened", 0) or 0),
+                "clicked": int(row.get("clicked", 0) or 0),
+            })
+    return all_steps
 
 
 def _shape(c: dict, a: dict) -> dict[str, Any]:

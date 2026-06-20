@@ -16,8 +16,16 @@ def _rubric():
     return yaml.safe_load((_CFG / "client_report_rubric.yaml").read_text())
 
 
-def test_sender_wise_groups_by_from_email():
-    rows = compute.sender_wise(_data(), _rubric())
+def test_sender_wise_reads_data_senders():
+    """sender_wise now reads data.senders (Task 9 rewrite); verify shape + flag."""
+    from dashboard.client.model import ClientData
+    data = ClientData(
+        senders=[
+            {"from_email": "augustine@upsta.co",   "sent": 100, "bounced": 1},
+            {"from_email": "augustine.m@upstahq.com", "sent": 50, "bounced": 1},
+        ],
+    )
+    rows = compute.sender_wise(data, _rubric())
     senders = {r["from_email"] for r in rows}
     assert "augustine@upsta.co" in senders
     a = next(r for r in rows if r["from_email"] == "augustine.m@upstahq.com")

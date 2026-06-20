@@ -232,3 +232,160 @@ def test_campaign_table_zero_guard_no_sent():
     assert em["secondary"] == 0.0
     assert li["reply_rate"] == 0.0
     assert li["secondary"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Task 9: variants(), content_steps(), sender_wise() (rewrite)
+# ---------------------------------------------------------------------------
+
+def test_variants_returns_sorted_and_flags_winner():
+    data = ClientData(
+        linkedin_campaigns=[
+            LinkedInCampaign("Upsta_US_PMP_V1", invites=188, accepted=9, replied=3, variant_message="Hi founder, noticed you lead GTM at"),
+            LinkedInCampaign("Upsta_Recon_V3",   invites=46,  accepted=0, replied=0, variant_message="Hi recon"),
+        ],
+    )
+    rows = compute.variants(data, RUBRIC)
+    assert len(rows) == 2
+    # sorted by reply_rate desc: PMP (3/188) before Recon (0/46)
+    assert rows[0]["name"] == "Upsta_US_PMP_V1"
+    assert rows[1]["name"] == "Upsta_Recon_V3"
+    # rates
+    assert abs(rows[0]["reply_rate"] - 3 / 188) < 1e-9
+    assert abs(rows[0]["accept_rate"] - 9 / 188) < 1e-9
+    assert rows[0]["replies"] == 3
+    # winner = first row with replies > 0
+    assert rows[0]["winner"] is True
+    assert rows[1]["winner"] is False
+
+
+def test_variants_hook_truncated_to_80_chars():
+    long_msg = "A" * 100
+    data = ClientData(
+        linkedin_campaigns=[LinkedInCampaign("V1", invites=10, accepted=1, replied=1, variant_message=long_msg)],
+    )
+    rows = compute.variants(data, RUBRIC)
+    assert rows[0]["hook"] == long_msg[:80]
+
+
+def test_variants_empty_variant_message_gives_empty_hook():
+    data = ClientData(
+        linkedin_campaigns=[LinkedInCampaign("V1", invites=10, accepted=1, replied=0, variant_message="")],
+    )
+    rows = compute.variants(data, RUBRIC)
+    assert rows[0]["hook"] == ""
+
+
+def test_variants_empty_linkedin_campaigns_returns_empty():
+    data = ClientData()
+    rows = compute.variants(data, RUBRIC)
+    assert rows == []
+
+
+def test_variants_no_winner_when_all_replies_zero():
+    data = ClientData(
+        linkedin_campaigns=[
+            LinkedInCampaign("V1", invites=50, accepted=5, replied=0),
+            LinkedInCampaign("V2", invites=30, accepted=2, replied=0),
+        ],
+    )
+    rows = compute.variants(data, RUBRIC)
+    # No winner when all replies == 0
+    assert all(r["winner"] is False for r in rows)
+
+
+def test_variants_zero_guard_on_invites():
+    data = ClientData(
+        linkedin_campaigns=[LinkedInCampaign("V1", invites=0, accepted=0, replied=0)],
+    )
+    rows = compute.variants(data, RUBRIC)
+    assert rows[0]["reply_rate"] == 0.0
+    assert rows[0]["accept_rate"] == 0.0
+
+
+def test_content_steps_basic():
+    data = ClientData(
+        content_steps=[
+            {"step": 1, "opened": 15, "clicked": 3},
+            {"step": 2, "opened": 5,  "clicked": 1},
+        ],
+    )
+    rows = compute.content_steps(data)
+    assert len(rows) == 2
+    assert rows[0]["step"] == 1
+    # open_rate: opened / (opened + clicked) or some sensible denom — per spec "sensible denom"
+    # The simplest sensible denom is opened+clicked (engagement events per step)
+    assert "open_rate" in rows[0]
+
+
+def test_content_steps_zero_guard():
+    data = ClientData(
+        content_steps=[{"step": 1, "opened": 0, "clicked": 0}],
+    )
+    rows = compute.content_steps(data)
+    assert rows[0]["open_rate"] == 0.0
+
+
+def test_content_steps_empty_returns_empty():
+    data = ClientData()
+    rows = compute.content_steps(data)
+    assert rows == []
+
+
+def test_sender_wise_reads_data_senders():
+    """sender_wise now reads data.senders (list of dicts) not data.emails events."""
+    data = ClientData(
+        senders=[
+            {"from_email": "alice@upsta.co", "sent": 60, "bounced": 2},
+            {"from_email": "bob@upsta.co",   "sent": 40, "bounced": 3},
+        ],
+    )
+    rows = compute.sender_wise(data, RUBRIC)
+    assert len(rows) == 2
+    alice = next(r for r in rows if r["from_email"] == "alice@upsta.co")
+    assert alice["volume"] == 60
+    assert alice["bounced"] == 2
+    assert abs(alice["bounce_rate"] - 2 / 60) < 1e-9
+    assert "flag" in alice
+
+
+def test_sender_wise_flag_at_threshold():
+    """bounce_rate >= bounce_flag_threshold (0.04) should set flag=True."""
+    data = ClientData(
+        senders=[
+            {"from_email": "high@upsta.co", "sent": 100, "bounced": 4},  # exactly 0.04 -> flag
+            {"from_email": "low@upsta.co",  "sent": 100, "bounced": 3},  # 0.03 -> no flag
+        ],
+    )
+    rows = compute.sender_wise(data, RUBRIC)
+    high = next(r for r in rows if r["from_email"] == "high@upsta.co")
+    low  = next(r for r in rows if r["from_email"] == "low@upsta.co")
+    assert high["flag"] is True
+    assert low["flag"] is False
+
+
+def test_sender_wise_empty_senders_returns_empty():
+    data = ClientData()
+    rows = compute.sender_wise(data, RUBRIC)
+    assert rows == []
+
+
+def test_sender_wise_zero_guard_on_sent():
+    data = ClientData(
+        senders=[{"from_email": "x@x.co", "sent": 0, "bounced": 0}],
+    )
+    rows = compute.sender_wise(data, RUBRIC)
+    assert rows[0]["bounce_rate"] == 0.0
+
+
+def test_deliverability_still_works_with_new_sender_shape():
+    """deliverability() calls sender_wise() — verify the flag key is preserved."""
+    data = ClientData(
+        senders=[
+            {"from_email": "flagged@upsta.co", "sent": 100, "bounced": 5},  # 0.05 >= 0.04
+            {"from_email": "ok@upsta.co",      "sent": 100, "bounced": 1},  # 0.01 < 0.04
+        ],
+    )
+    flags = compute.deliverability(data, RUBRIC)
+    assert len(flags) == 1
+    assert flags[0]["sender"] == "flagged@upsta.co"

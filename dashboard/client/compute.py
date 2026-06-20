@@ -163,23 +163,57 @@ def campaign_table(data: ClientData, rubric: dict) -> list[dict]:
     return email_rows + li_rows
 
 
+def variants(data: ClientData, rubric: dict) -> list[dict]:
+    """Per-LinkedIn-campaign variant performance. Sorted by (reply_rate desc, accept_rate desc).
+    The first row with replies > 0 is marked winner=True; all others False."""
+    rows = []
+    for c in data.linkedin_campaigns:
+        accept_rate = _rate(c.accepted, c.invites)
+        reply_rate = _rate(c.replied, c.invites)
+        rows.append({
+            "name": c.name,
+            "accept_rate": accept_rate,
+            "replies": c.replied,
+            "reply_rate": reply_rate,
+            "hook": (c.variant_message or "")[:80],
+            "winner": False,
+        })
+    rows.sort(key=lambda r: (-r["reply_rate"], -r["accept_rate"]))
+    # Flag first row with replies > 0 as winner
+    for r in rows:
+        if r["replies"] > 0:
+            r["winner"] = True
+            break
+    return rows
+
+
+def content_steps(data: ClientData) -> list[dict]:
+    """Per-step open rates from Instantly step analytics (data.content_steps)."""
+    rows = []
+    for s in data.content_steps:
+        opened = int(s.get("opened", 0) or 0)
+        clicked = int(s.get("clicked", 0) or 0)
+        denom = opened + clicked
+        rows.append({
+            "step": s.get("step"),
+            "open_rate": _rate(opened, denom),
+        })
+    return rows
+
+
 def sender_wise(data: ClientData, rubric: dict) -> list[dict]:
-    agg: dict[str, Counter] = defaultdict(Counter)
-    for e in data.emails:
-        agg[e.from_email][e.event_type] += 1
+    """Per-sender bounce health from data.senders (list of {from_email, sent, bounced})."""
     threshold = rubric["bounce_flag_threshold"]
     rows = []
-    for sender, c in sorted(agg.items()):
-        sent = c.get("email_sent", 0)
-        vol = sum(c.values())
-        bounced = c.get("email_bounced", 0)
-        denom = sent or vol
-        bounce_rate = _rate(bounced, denom)
+    for s in data.senders:
+        sent = int(s.get("sent", 0) or 0)
+        bounced = int(s.get("bounced", 0) or 0)
+        bounce_rate = _rate(bounced, sent)
         rows.append({
-            "from_email": sender, "volume": vol,
-            "opened": c.get("email_opened", 0),
-            "open_rate": _rate(c.get("email_opened", 0), sent),
-            "bounced": bounced, "bounce_rate": bounce_rate,
+            "from_email": s.get("from_email"),
+            "volume": sent,
+            "bounced": bounced,
+            "bounce_rate": bounce_rate,
             "flag": bounce_rate >= threshold,
         })
     return rows
