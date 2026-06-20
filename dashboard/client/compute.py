@@ -17,27 +17,72 @@ def _status_hits(status: str, keywords: list[str]) -> bool:
 
 
 def kpis(data: ClientData, rubric: dict) -> dict:
-    ec = Counter(e.event_type for e in data.emails)
-    sent = ec.get("email_sent", 0)
-    opened = ec.get("email_opened", 0)
-    clicked = ec.get("link_clicked", 0)
-    bounced = ec.get("email_bounced", 0)
-    lc = Counter(e.event_type for e in data.linkedin)
-    invites = lc.get("connect", 0)
-    accepted = lc.get("accepted", 0)
-    li_replied = lc.get("reply", 0)
-    positive = sum(1 for w in data.warm_leads
-                   if _status_hits(w.status, rubric["positive_statuses"]))
+    # Aggregate from campaign-level data; fall back to event-based counts when
+    # email_campaigns is empty (supports legacy event-only ClientData shapes).
+    if data.email_campaigns:
+        sent = sum(c.sent for c in data.email_campaigns)
+        opened = sum(c.opened for c in data.email_campaigns)
+        clicked = sum(c.clicked for c in data.email_campaigns)
+        bounced = sum(c.bounced for c in data.email_campaigns)
+    else:
+        ec = Counter(e.event_type for e in data.emails)
+        sent = ec.get("email_sent", 0)
+        opened = ec.get("email_opened", 0)
+        clicked = ec.get("link_clicked", 0)
+        bounced = ec.get("email_bounced", 0)
+
+    if data.linkedin_campaigns:
+        invites = sum(c.invites for c in data.linkedin_campaigns)
+        accepted = sum(c.accepted for c in data.linkedin_campaigns)
+    else:
+        lc = Counter(e.event_type for e in data.linkedin)
+        invites = lc.get("connect", 0)
+        accepted = lc.get("accepted", 0)
+
+    delivered = sent - bounced
+
+    # Reply counts from ReplyRecord list (new path) or LinkedIn events (legacy)
+    if data.replies:
+        li_replies = sum(1 for r in data.replies if r.channel == "linkedin")
+        email_replies = sum(1 for r in data.replies if r.channel == "email")
+        total_replies = li_replies + email_replies
+        positive_replies = sum(1 for r in data.replies if r.sentiment == "positive")
+        neutral_replies = sum(1 for r in data.replies if r.sentiment == "neutral")
+        negative_replies = sum(1 for r in data.replies if r.sentiment == "negative")
+    else:
+        lc = Counter(e.event_type for e in data.linkedin)
+        li_replies = lc.get("reply", 0)
+        email_replies = 0
+        total_replies = li_replies
+        positive_replies = sum(1 for w in data.warm_leads
+                               if _status_hits(w.status, rubric["positive_statuses"]))
+        neutral_replies = 0
+        negative_replies = 0
+
+    # Warm-lead outcomes from tracker (meeting_statuses)
     meetings = sum(1 for w in data.warm_leads
                    if _status_hits(w.status, rubric["meeting_statuses"]))
+
     return {
-        "emails_sent": sent, "opened": opened, "clicked": clicked, "bounced": bounced,
-        "open_rate": _rate(opened, sent), "click_rate": _rate(clicked, sent),
-        "bounce_rate": _rate(bounced, sent),
-        "invites": invites, "accepted": accepted, "li_replied": li_replied,
+        "emails_sent": sent,
+        "opened": opened,
+        "clicked": clicked,
+        "bounced": bounced,
+        "delivered": delivered,
+        "open_rate": _rate(opened, delivered),
+        "click_rate": _rate(clicked, delivered),
+        "bounce_rate": _rate(bounced, sent),        # event-based: bounced/sent
+        "invites": invites,
+        "accepted": accepted,
         "accept_rate": _rate(accepted, invites),
-        "li_reply_rate": _rate(li_replied, invites),
-        "positive_replies": positive, "meetings": meetings,
+        "li_replies": li_replies,
+        "email_replies": email_replies,
+        "total_replies": total_replies,
+        "positive_replies": positive_replies,
+        "neutral_replies": neutral_replies,
+        "negative_replies": negative_replies,
+        "leads": positive_replies,                  # leads == positive_replies
+        "meetings": meetings,
     }
 
 
@@ -57,10 +102,14 @@ def grade(metric: str, value: float, rubric: dict) -> str:
 
 
 def scorecard(k: dict, rubric: dict) -> dict:
+    # reply_rate: total replies relative to emails sent (combined channel proxy)
+    total_sent = k.get("emails_sent", 0) + k.get("invites", 0)
     metrics = {
-        "open_rate": k["open_rate"], "reply_rate": k["li_reply_rate"],
+        "open_rate": k["open_rate"],
+        "reply_rate": _rate(k["total_replies"], total_sent),
         "positive": _rate(k["positive_replies"], max(k["emails_sent"], 1)),
-        "bounce_rate": k["bounce_rate"], "accept_rate": k["accept_rate"],
+        "bounce_rate": k["bounce_rate"],
+        "accept_rate": k["accept_rate"],
     }
     grades = {m: grade(m, v, rubric) for m, v in metrics.items()}
     order = "ABCDF"

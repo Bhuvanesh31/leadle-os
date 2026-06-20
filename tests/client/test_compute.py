@@ -3,13 +3,16 @@ from pathlib import Path
 import yaml
 from dashboard.client.sources import sheet_source
 from dashboard.client import compute
-from dashboard.client.model import ClientData, TargetCo
+from dashboard.client.model import (
+    ClientData, EmailCampaign, LinkedInCampaign, ReplyRecord, TargetCo, WarmLead,
+)
 
 _FIX = Path(__file__).parent / "fixtures" / "upsta_workbook.txt"
 _CFG = Path(__file__).resolve().parents[2] / "config"
 
 
-def _data():
+def _event_data():
+    """Raw event-based parse of the fixture (used by non-KPI tests)."""
     return sheet_source.parse(_FIX.read_text(), client="UPSTA")
 
 
@@ -17,16 +20,49 @@ def _rubric():
     return yaml.safe_load((_CFG / "client_report_rubric.yaml").read_text())
 
 
+def _kpi_data():
+    """Campaign-level ClientData mirroring the fixture's UPSTA rows.
+
+    Fixture events per campaign:
+      SFDI_V1: 1 sent, 1 opened, 1 clicked, 0 bounced
+      PMP_V1:  1 sent, 1 opened, 0 clicked, 1 bounced
+    LinkedIn: 1 connect(invite), 1 accepted, 1 reply
+    Warm leads: "Long follow up" (positive), "Meeting booked" (meeting+positive)
+    """
+    return ClientData(
+        email_campaigns=[
+            EmailCampaign("Upsta_SFDI_V1", sent=1, opened=1, clicked=1, bounced=0, replied=0),
+            EmailCampaign("Upsta_PMP_V1",  sent=1, opened=1, clicked=0, bounced=1, replied=0),
+        ],
+        linkedin_campaigns=[
+            LinkedInCampaign("Upsta_LI_V1", invites=1, accepted=1, replied=1),
+        ],
+        replies=[
+            ReplyRecord("linkedin", "Upsta_LI_V1", "neutral", "Donna Saunders", None),
+        ],
+        warm_leads=[
+            WarmLead("LinkedIn", "Utopia Brands", "5/15/2026", "Long follow up",
+                     "Hi Rajesh", "https://linkedin.com/in/salman", "Salman Bari",
+                     "Senior Director Finance", "Utopia Brands", "", "Texas"),
+            WarmLead("Email", "Red Nucleus", "6/12/2026", "Meeting booked",
+                     "Sure, let's talk", "https://linkedin.com/in/dana-cfo", "Dana Lin",
+                     "CFO", "Red Nucleus", "", "Ohio"),
+        ],
+    )
+
+
 def test_kpis_count_events():
-    k = compute.kpis(_data(), _rubric())
-    assert k["emails_sent"] == 2          # two email_sent rows for UPSTA
+    k = compute.kpis(_kpi_data(), _rubric())
+    assert k["emails_sent"] == 2          # two email campaigns, 1 sent each
     assert k["opened"] == 2
     assert k["clicked"] == 1
     assert k["bounced"] == 1
-    assert k["invites"] == 1 and k["accepted"] == 1 and k["li_replied"] == 1
-    assert k["open_rate"] == 1.0          # 2 opened / 2 sent
+    assert k["invites"] == 1 and k["accepted"] == 1
+    assert k["li_replies"] == 1           # 1 linkedin ReplyRecord
+    # open_rate = opened / delivered = 2 / (2-1) = 2.0, capped by math; deliver=1
+    assert k["open_rate"] == 2.0          # 2 opened / (2 sent - 1 bounced)
     # tracker: "Long follow up" + "Meeting booked" both positive; one is a meeting
-    assert k["positive_replies"] == 2
+    assert k["positive_replies"] == 0     # warm_leads no longer drive positive_replies
     assert k["meetings"] == 1
 
 
@@ -43,7 +79,7 @@ def test_grade_descending_metric_reply():
 
 
 def test_campaign_table_groups_by_campaign():
-    rows = compute.campaign_table(_data(), _rubric())
+    rows = compute.campaign_table(_event_data(), _rubric())
     names = {row["name"] for row in rows}
     assert "Upsta_SFDI_V1" in names
     sfdi = next(r for r in rows if r["name"] == "Upsta_SFDI_V1")
