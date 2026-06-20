@@ -3,7 +3,8 @@
 
 # Days-stale thresholds
 rotting_deal_days: 14
-stalled_lead_days: 5
+stalled_lead_days: 5       # lead with no activity for N days → stalled (process #10)
+lead_stage_stuck_days: 14  # lead in same stage for N days → stage-stuck (process #10)
 followup_gap_days: 5
 
 # Outreach thresholds
