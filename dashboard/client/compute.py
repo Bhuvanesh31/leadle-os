@@ -63,7 +63,7 @@ def scorecard(k: dict, rubric: dict) -> dict:
         "bounce_rate": k["bounce_rate"], "accept_rate": k["accept_rate"],
     }
     grades = {m: grade(m, v, rubric) for m, v in metrics.items()}
-    order = "ABCD"
+    order = "ABCDF"
     worst = max((grades[m] for m in grades), key=lambda g: order.index(g))
     overall = worst  # roll-up = weakest band (conservative)
     return {"grades": grades, "overall": overall}

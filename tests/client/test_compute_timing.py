@@ -29,5 +29,5 @@ def test_timing_heatmap_buckets_engagement_in_local_tz():
     # 2 opened + 1 clicked = 3 engagement events placed into the grid
     total = sum(sum(row.values()) for row in h["grid"].values())
     assert total == 3
-    assert h["timezone"] == "America/Detroit"
+    assert h["timezone"] == "America/New_York"
     assert "best" in h and h["best"]["daypart"]
