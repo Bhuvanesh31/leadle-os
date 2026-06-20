@@ -1,6 +1,7 @@
 """Deterministic compute over ClientData. Pure functions, no I/O, no agents."""
 from __future__ import annotations
 
+import math
 from collections import Counter, defaultdict
 from zoneinfo import ZoneInfo
 
@@ -244,8 +245,8 @@ def timing_heatmap(data: ClientData, rubric: dict) -> dict:
     labels = [d[0] for d in dayparts]
     grid = {wd: {lbl: 0 for lbl in labels} for wd in weekdays}
     best = {"weekday": None, "daypart": None, "count": -1}
-    for e in data.emails:
-        if e.event_type not in ("email_opened", "link_clicked"):
+    for e in data.opens:
+        if e.channel != "email":
             continue
         local = e.ts.astimezone(tz)
         wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][local.weekday()]
@@ -257,10 +258,23 @@ def timing_heatmap(data: ClientData, rubric: dict) -> dict:
         grid[wd][part] += 1
         if grid[wd][part] > best["count"]:
             best = {"weekday": wd, "daypart": part, "count": grid[wd][part]}
+    mx = max(grid[wd][lbl] for wd in weekdays for lbl in labels)
+    levels = {
+        wd: {
+            lbl: (0 if grid[wd][lbl] == 0 else math.ceil(4 * grid[wd][lbl] / mx))
+            for lbl in labels
+        }
+        for wd in weekdays
+    } if mx > 0 else {wd: {lbl: 0 for lbl in labels} for wd in weekdays}
     return {
-        "weekdays": weekdays, "dayparts": labels, "grid": grid, "best": best,
+        "weekdays": weekdays,
+        "dayparts": labels,
+        "grid": grid,
+        "levels": levels,
+        "max": mx,
+        "best": best,
         "timezone": rubric["timezone"],
-        "note": "Engagement (opens/clicks), not replies. LinkedIn timing N/A (Aimfox).",
+        "note": "Engagement (opens), not replies. LinkedIn timing N/A (Aimfox).",
     }
 
 
