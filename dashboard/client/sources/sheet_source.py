@@ -159,15 +159,6 @@ _RESP_TAB = "Response Tracker"
 _LI_REPLY_TYPES = {"reply", "campaign_reply"}
 
 
-def _hdr_map(row) -> dict[str, int]:
-    """Return {header_name: col_index} for a header row of openpyxl cells."""
-    return {
-        str(cell.value).strip(): idx
-        for idx, cell in enumerate(row)
-        if cell.value is not None
-    }
-
-
 def _get(row_vals: list, col_map: dict[str, int], *names: str) -> str:
     """Return first non-None value for any of *names; empty string when absent."""
     for name in names:
@@ -300,7 +291,7 @@ def read_xlsx(path: str) -> ClientData:
                 sentiment = _get(rv, col_map, "Reply Sentiment") or "untagged"
                 campaign = _get(rv, col_map, "Campaign Name")
                 name = _get(rv, col_map, "Prospect Name")
-                raw_ts = rv[col_map["Timestamp"]] if "Timestamp" in col_map else None
+                raw_ts = _get(rv, col_map, "Timestamp") if "Timestamp" in col_map else None
                 ts = _parse_ts(raw_ts)
                 replies.append(ReplyRecord(
                     channel="linkedin",
@@ -330,7 +321,7 @@ def read_xlsx(path: str) -> ClientData:
                 rv = list(row)
                 evt = _get(rv, col_map, "Event Type").lower()
                 if evt == "email_opened":
-                    raw_ts = rv[col_map["Event Timestamp"]] if "Event Timestamp" in col_map else None
+                    raw_ts = _get(rv, col_map, "Event Timestamp") if "Event Timestamp" in col_map else None
                     ts = _parse_ts(raw_ts)
                     opens.append(OpenEvent(channel="email", ts=ts))
 

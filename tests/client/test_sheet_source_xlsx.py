@@ -32,10 +32,10 @@ def test_xlsx_aimfox_id_int_coercion():
 
 
 def test_xlsx_skips_repeated_header_rows():
-    """The LinkedIn webhook has a repeated header row — must produce exactly 1 reply."""
+    """The LinkedIn webhook has a repeated header row — must produce exactly 2 replies."""
     d = sheet_source.read_xlsx(str(FIX))
     li_replies = [r for r in d.replies if r.channel == "linkedin"]
-    assert len(li_replies) == 1
+    assert len(li_replies) == 2
 
 
 def test_xlsx_email_opens_exclude_sent():
@@ -47,8 +47,10 @@ def test_xlsx_email_opens_exclude_sent():
 
 def test_xlsx_reply_sentiment_untagged_when_blank():
     """Blank Reply Sentiment should be normalised to 'untagged'."""
-    # The fixture doesn't have a blank-sentiment reply, but we can verify
-    # the only reply row carries "neutral" (not blank/None).
     d = sheet_source.read_xlsx(str(FIX))
-    for r in d.replies:
-        assert r.sentiment not in (None, ""), f"Blank sentiment on {r}"
+    li_replies = [r for r in d.replies if r.channel == "linkedin"]
+    # one row has "neutral", the new row has blank -> must normalise to "untagged"
+    sentiments = {r.sentiment for r in li_replies}
+    assert "untagged" in sentiments, f"Expected 'untagged' in {sentiments}"
+    assert "neutral" in sentiments, f"Expected 'neutral' in {sentiments}"
+    assert None not in sentiments and "" not in sentiments, f"Blank sentinel leaked: {sentiments}"

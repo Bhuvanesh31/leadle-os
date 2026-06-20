@@ -78,6 +78,17 @@ def _make_wb() -> openpyxl.Workbook:
         "Software", "51-200", "US", "Prospect", "", "neutral",
     ]
     ws_li.append(reply_row)
+    # 2nd reply row: blank Reply Sentiment -> should normalise to "untagged"
+    ts_li2 = datetime(2026, 6, 11, 10, 0, 0)
+    reply_row_blank_sentiment = [
+        "reply", "Beta Inc", "https://linkedin.com/in/janesmith",
+        "https://linkedin.com/company/beta",
+        "Jane Smith", "CFO", "https://linkedin.com/in/sender",
+        "Upsta_US_PMP_V1", ts_li2, "2026-06-11",
+        "2026-05-05", "2026-05-12", "2026-06-11", "Tell me more",
+        "Finance", "11-50", "US", "Suspect", "", "",
+    ]
+    ws_li.append(reply_row_blank_sentiment)
     # Repeated header row (pagination artifact — must be skipped)
     ws_li.append(li_header)
 
