@@ -95,7 +95,8 @@ def test_fetch_senders_empty_when_endpoint_returns_empty():
 
 
 def test_fetch_populates_steps_from_campaigns_analytics_steps():
-    """Steps endpoint returns list of step analytics for the campaign."""
+    """Steps endpoint returns list of step analytics for the campaign.
+    Each captured step row must include sent, opened, and clicked."""
     tmap = {
         "/campaigns": {"items": [{"id": "c1", "name": "Upsta_V1"}]},
         "/campaigns/analytics": {"emails_sent_count": 100, "open_count": 20,
@@ -103,8 +104,8 @@ def test_fetch_populates_steps_from_campaigns_analytics_steps():
                                   "reply_count": 0},
         "/accounts/analytics": [],
         "/campaigns/analytics/steps": [
-            {"step": 1, "opened": 15, "clicked": 3},
-            {"step": 2, "opened": 5,  "clicked": 1},
+            {"step": 1, "sent": 100, "opened": 24, "clicked": 6},
+            {"step": 2, "sent": 80,  "opened": 15, "clicked": 3},
         ],
     }
     client = httpx.Client(transport=_mock(tmap))
@@ -112,21 +113,23 @@ def test_fetch_populates_steps_from_campaigns_analytics_steps():
     steps = out["data"]["steps"]
     assert len(steps) == 2
     assert steps[0]["step"] == 1
-    assert steps[0]["opened"] == 15
-    assert steps[0]["clicked"] == 3
+    assert steps[0]["sent"] == 100
+    assert steps[0]["opened"] == 24
+    assert steps[0]["clicked"] == 6
 
 
 def test_fetch_steps_missing_keys_default_to_zero():
-    """Step rows with missing opened/clicked keys should not raise."""
+    """Step rows with missing sent/opened/clicked keys should not raise."""
     tmap = {
         "/campaigns": {"items": [{"id": "c1", "name": "X"}]},
         "/campaigns/analytics": {},
         "/accounts/analytics": [],
-        "/campaigns/analytics/steps": [{"step": 1}],  # missing opened/clicked
+        "/campaigns/analytics/steps": [{"step": 1}],  # missing sent/opened/clicked
     }
     client = httpx.Client(transport=_mock(tmap))
     out = fetch("KEY", "2026-06-01", "2026-06-30", client=client)
     steps = out["data"]["steps"]
+    assert steps[0]["sent"] == 0
     assert steps[0]["opened"] == 0
     assert steps[0]["clicked"] == 0
 
@@ -143,7 +146,7 @@ def test_fetch_steps_aggregated_across_campaigns():
                                   "reply_count": 0},
         "/accounts/analytics": [],
         "/campaigns/analytics/steps": [
-            {"step": 1, "opened": 10, "clicked": 2},
+            {"step": 1, "sent": 50, "opened": 10, "clicked": 2},
         ],
     }
     client = httpx.Client(transport=_mock(tmap))

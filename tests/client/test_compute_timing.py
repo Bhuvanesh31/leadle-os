@@ -1,6 +1,7 @@
 # tests/client/test_compute_timing.py
 from pathlib import Path
 import yaml
+from dashboard.client.model import ClientData
 from dashboard.client.sources import sheet_source
 from dashboard.client import compute
 
@@ -18,7 +19,6 @@ def _rubric():
 
 def test_sender_wise_reads_data_senders():
     """sender_wise now reads data.senders (Task 9 rewrite); verify shape + flag."""
-    from dashboard.client.model import ClientData
     data = ClientData(
         senders=[
             {"from_email": "augustine@upsta.co",   "sent": 100, "bounced": 1},

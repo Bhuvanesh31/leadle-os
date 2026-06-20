@@ -304,23 +304,24 @@ def test_variants_zero_guard_on_invites():
 
 
 def test_content_steps_basic():
+    """open_rate = opened / sent; pin exact value."""
     data = ClientData(
         content_steps=[
-            {"step": 1, "opened": 15, "clicked": 3},
-            {"step": 2, "opened": 5,  "clicked": 1},
+            {"step": 1, "sent": 100, "opened": 24, "clicked": 6},
+            {"step": 2, "sent": 50,  "opened": 9,  "clicked": 2},
         ],
     )
     rows = compute.content_steps(data)
     assert len(rows) == 2
     assert rows[0]["step"] == 1
-    # open_rate: opened / (opened + clicked) or some sensible denom — per spec "sensible denom"
-    # The simplest sensible denom is opened+clicked (engagement events per step)
-    assert "open_rate" in rows[0]
+    assert abs(rows[0]["open_rate"] - 0.24) < 1e-9
+    assert abs(rows[1]["open_rate"] - 9 / 50) < 1e-9
 
 
-def test_content_steps_zero_guard():
+def test_content_steps_zero_sent_guard():
+    """Zero sent must yield open_rate == 0.0 (no ZeroDivisionError)."""
     data = ClientData(
-        content_steps=[{"step": 1, "opened": 0, "clicked": 0}],
+        content_steps=[{"step": 1, "sent": 0, "opened": 0, "clicked": 0}],
     )
     rows = compute.content_steps(data)
     assert rows[0]["open_rate"] == 0.0

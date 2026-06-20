@@ -192,11 +192,10 @@ def content_steps(data: ClientData) -> list[dict]:
     rows = []
     for s in data.content_steps:
         opened = int(s.get("opened", 0) or 0)
-        clicked = int(s.get("clicked", 0) or 0)
-        denom = opened + clicked
+        sent = int(s.get("sent", 0) or 0)
         rows.append({
             "step": s.get("step"),
-            "open_rate": _rate(opened, denom),
+            "open_rate": _rate(opened, sent),
         })
     return rows
 

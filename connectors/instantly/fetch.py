@@ -110,6 +110,7 @@ def _campaign_steps(client: httpx.Client, camps: list[dict]) -> list[dict]:
         for row in rows:
             all_steps.append({
                 "step": row.get("step"),
+                "sent": int(row.get("sent", 0) or 0),
                 "opened": int(row.get("opened", 0) or 0),
                 "clicked": int(row.get("clicked", 0) or 0),
             })
