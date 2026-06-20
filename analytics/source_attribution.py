@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import os
 import sys
@@ -178,9 +179,10 @@ def render_html(report: dict) -> str:
             "unattributed": "Unattributed",
             "unrecognized": "Unrecognized",
         }.get(item["classification"], item["classification"])
+        source_esc = _html.escape(item["source"])
         source_rows += f"""
         <tr>
-          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{item['source']}</td>
+          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{source_esc}</td>
           <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right">{item['count']}</td>
           <td style="padding:9px 14px">
             <span style="color:{cls_color};font-size:12px;font-weight:500">{cls_label}</span>
@@ -194,13 +196,15 @@ def render_html(report: dict) -> str:
             if g["is_active"] else
             '<span style="background:#f3f4f6;color:#9ca3af;border-radius:4px;padding:1px 6px;font-size:10px">archived/converted</span>'
         )
-        src_display = g["source"] if g["source"] else "(empty)"
+        src_display = _html.escape(g["source"]) if g["source"] else "(empty)"
+        lead_name_esc = _html.escape(g["lead_name"])
+        company_esc = _html.escape(g["company"])
         cls_color = "#9b2226" if g["classification"] == "unattributed" else "#b45309"
         gap_rows += f"""
         <tr>
           <td style="padding:10px 14px">
-            <div style="font-weight:500;font-size:13px">{g['lead_name']}</div>
-            <div style="font-size:12px;color:#6b7280">{g['company']}</div>
+            <div style="font-weight:500;font-size:13px">{lead_name_esc}</div>
+            <div style="font-size:12px;color:#6b7280">{company_esc}</div>
           </td>
           <td style="padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:{cls_color}">{src_display}</td>
           <td style="padding:10px 14px;font-size:12px;color:#374151">{g['stage_name']}</td>

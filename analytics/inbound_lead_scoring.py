@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import os
 import re
@@ -524,17 +525,21 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
         elif r["funding_stage"]:
             fund_display = r["funding_stage"]
 
+        lead_name = _html.escape(r["lead_name"])
+        company = _html.escape(r["company"])
+        jobtitle = _html.escape(r["jobtitle"])
+        fund_display_esc = _html.escape(fund_display)
         rows_html += f"""
         <tr>
           <td style="padding:10px 14px;color:#6b7280;font-size:12px">{rank}</td>
           <td style="padding:10px 14px">
-            <div style="font-weight:500">{r['lead_name']}</div>
-            <div style="font-size:12px;color:#6b7280">{r['company']}</div>
+            <div style="font-weight:500">{lead_name}</div>
+            <div style="font-size:12px;color:#6b7280">{company}</div>
           </td>
           <td style="padding:10px 14px">{_tier_badge(r['tier'])}</td>
           <td style="padding:10px 14px" title="{tip}">{_score_bar(r['score'])}</td>
           <td style="padding:10px 14px">
-            <div style="font-size:12px;font-weight:500">{r['jobtitle']}</div>
+            <div style="font-size:12px;font-weight:500">{jobtitle}</div>
             <div style="font-size:11px;color:#6b7280">{r['dm_tier']}</div>
             {missing_flags}
           </td>
@@ -542,7 +547,7 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
             <div>{r['revenue_fmt']}{' <span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:1px 4px;font-size:10px">web</span>' if r['web_enriched'] else ""}</div>
             <div style="color:#6b7280;font-size:11px">{f"{r['employees']:,} employees" if r['employees'] else "—"}</div>
           </td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{fund_display}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{fund_display_esc}</td>
           <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
           <td style="padding:10px 14px">{_days_cell(r['days_since'])}</td>
         </tr>"""

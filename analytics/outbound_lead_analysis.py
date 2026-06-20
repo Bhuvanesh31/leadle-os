@@ -23,6 +23,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import os
 import sys
@@ -123,11 +124,14 @@ def render_html(analysis: dict) -> str:
     for f in flags:
         tier_color = {"Hot": "#9b2226", "Warm": "#b45309", "Cold": "#6b7280"}[f["tier"]]
         days_label = f"{f['days_since']}d ago" if f["days_since"] is not None else "Never contacted"
+        lead_esc = _html.escape(f["lead"])
+        company_esc = _html.escape(f["company"])
+        reasons_esc = " | ".join(_html.escape(r) for r in f["reasons"])
         flag_rows += f"""
         <tr>
           <td style="padding:10px 14px">
-            <div style="font-weight:500">{f['lead']}</div>
-            <div style="font-size:12px;color:#6b7280">{f['company']}</div>
+            <div style="font-weight:500">{lead_esc}</div>
+            <div style="font-size:12px;color:#6b7280">{company_esc}</div>
           </td>
           <td style="padding:10px 14px">
             <span style="color:{tier_color};font-weight:600;font-size:12px">{f['tier']}</span>
@@ -135,7 +139,7 @@ def render_html(analysis: dict) -> str:
           </td>
           <td style="padding:10px 14px;font-size:12px;color:#374151">{f['stage']}</td>
           <td style="padding:10px 14px;font-size:12px;color:#6b7280">{days_label}</td>
-          <td style="padding:10px 14px;font-size:11px;color:#374151">{' | '.join(f['reasons'])}</td>
+          <td style="padding:10px 14px;font-size:11px;color:#374151">{reasons_esc}</td>
         </tr>"""
 
     no_flags = (

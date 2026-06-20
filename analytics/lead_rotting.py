@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import os
 import sys
@@ -228,16 +229,19 @@ def render_html(report: dict) -> str:
     for r in report["leads"]:
         if r["severity"] == "OK":
             continue  # OK leads don't need to appear in the rotting report
+        lead_name = _html.escape(r["lead_name"])
+        company = _html.escape(r["company"])
+        source = _html.escape(r["source"] or "(untracked)")
         rows_html += f"""
         <tr>
           <td style="padding:10px 14px">
-            <div style="font-weight:500;font-size:13px">{r['lead_name']}</div>
-            <div style="font-size:12px;color:#6b7280">{r['company']}</div>
+            <div style="font-weight:500;font-size:13px">{lead_name}</div>
+            <div style="font-size:12px;color:#6b7280">{company}</div>
           </td>
           <td style="padding:10px 14px">{_sev_badge(r['severity'])}</td>
           <td style="padding:10px 14px">
             <span style="font-size:12px;color:{'#1e40af' if r['channel']=='Outbound' else '#2d6a4f'};font-weight:500">{r['channel']}</span>
-            <div style="font-size:11px;color:#9ca3af">{r['source'] or '(untracked)'}</div>
+            <div style="font-size:11px;color:#9ca3af">{source}</div>
           </td>
           <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
           <td style="padding:10px 14px">{_days_cell(r['days_since_activity'], thresh['stalled_lead_days'], '#9b2226')}</td>
