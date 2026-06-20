@@ -123,20 +123,44 @@ def scorecard(k: dict, rubric: dict) -> dict:
 
 
 def campaign_table(data: ClientData, rubric: dict) -> list[dict]:
-    by_campaign: dict[str, Counter] = defaultdict(Counter)
-    for e in data.emails:
-        by_campaign[e.campaign][e.event_type] += 1
-    rows = []
-    for name, c in sorted(by_campaign.items()):
-        sends = c.get("email_sent", 0)
-        opened = c.get("email_opened", 0)
-        rows.append({
-            "name": name, "channel": "Email", "sends": sends,
-            "rate": _rate(opened, sends), "rate_label": "open",
-            "positives": 0,
-            "grade": grade("open_rate", _rate(opened, sends), rubric),
+    email_rows = []
+    for c in data.email_campaigns:
+        delivered = c.sent - c.bounced
+        reply_rate = _rate(c.replied, c.sent)
+        click_rate = _rate(c.clicked, delivered)
+        open_rate = _rate(c.opened, delivered)
+        bounce_rate = _rate(c.bounced, c.sent)
+        email_rows.append({
+            "name": c.name,
+            "channel": "Email",
+            "sent": c.sent,
+            "reply_rate": reply_rate,
+            "secondary": click_rate,
+            "secondary_label": "click",
+            "open_rate": open_rate,
+            "bounce_rate": bounce_rate,
+            "grade": grade("open_rate", open_rate, rubric),
         })
-    return rows
+    email_rows.sort(key=lambda r: (-r["reply_rate"], -r["secondary"], -r["open_rate"]))
+
+    li_rows = []
+    for c in data.linkedin_campaigns:
+        reply_rate = _rate(c.replied, c.invites)
+        accept_rate = _rate(c.accepted, c.invites)
+        li_rows.append({
+            "name": c.name,
+            "channel": "LinkedIn",
+            "sent": c.invites,
+            "reply_rate": reply_rate,
+            "secondary": accept_rate,
+            "secondary_label": "accept",
+            "open_rate": None,
+            "bounce_rate": None,
+            "grade": grade("accept_rate", accept_rate, rubric),
+        })
+    li_rows.sort(key=lambda r: (-r["reply_rate"], -r["secondary"]))
+
+    return email_rows + li_rows
 
 
 def sender_wise(data: ClientData, rubric: dict) -> list[dict]:

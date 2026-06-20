@@ -79,12 +79,19 @@ def test_grade_descending_metric_reply():
 
 
 def test_campaign_table_groups_by_campaign():
-    rows = compute.campaign_table(_event_data(), _rubric())
+    """campaign_table reads from email_campaigns + linkedin_campaigns.
+    _kpi_data() provides 2 email campaigns + 1 LinkedIn campaign."""
+    rows = compute.campaign_table(_kpi_data(), _rubric())
+    email_rows = [r for r in rows if r["channel"] == "Email"]
+    li_rows = [r for r in rows if r["channel"] == "LinkedIn"]
     names = {row["name"] for row in rows}
     assert "Upsta_SFDI_V1" in names
-    sfdi = next(r for r in rows if r["name"] == "Upsta_SFDI_V1")
+    sfdi = next(r for r in email_rows if r["name"] == "Upsta_SFDI_V1")
     assert sfdi["channel"] == "Email"
-    assert sfdi["sends"] == 1   # one email_sent for SFDI in fixture
+    assert sfdi["sent"] == 1           # EmailCampaign.sent = 1
+    assert sfdi["secondary_label"] == "click"
+    assert li_rows, "Expected at least one LinkedIn row"
+    assert li_rows[0]["secondary_label"] == "accept"
 
 
 def _reach_targets():
