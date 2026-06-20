@@ -1,0 +1,113 @@
+# Inbound lead scoring config — ICP-fit based.
+# All weights, thresholds, and title patterns editable here — no code changes needed.
+#
+# Score = decision_maker (40) + revenue (25) + funding (20) + spend_capacity (15) = 100 max
+
+# Sources classified as inbound (HubSpot lead_source_v2 values).
+# Leads not matching this list belong to outbound_lead_scoring (process #7).
+inbound_sources:
+  - "Web Form"
+  - "ORGANIC_SEARCH"
+  - "DIRECT_TRAFFIC"
+  - "REFERRALS"
+  - "SOCIAL_MEDIA"
+  - "PAID_SEARCH"
+  - "EMAIL_MARKETING"
+  - "OTHER_CAMPAIGNS"
+  - ""            # untracked source — treat as inbound by default
+# Outbound (excluded here): "LinkedIn Outbound", "Email Outbound"
+
+score_all_sources: false
+
+# ── Decision maker fit (max 40) ─────────────────────────────────────────────
+# A Manager can be a DM in a small company but not in a large one.
+decision_maker:
+  small_company_max_employees: 50   # <= this → small company
+
+  # First match wins. Keywords are case-insensitive substring matches against job title.
+  title_tiers:
+    - tier: c_suite
+      keywords:
+        - "CEO"
+        - "Founder"
+        - "Co-Founder"
+        - "Co Founder"
+        - "Owner"
+        - "President"
+        - "Managing Director"
+        - " MD"          # space prefix avoids matching "CMD" or "Cmd"
+        - "CTO"
+        - "CRO"
+        - "CMO"
+        - "CFO"
+        - "COO"
+        - "CPO"
+        - "Chief"
+      score: 40            # DM at any company size
+
+    - tier: vp_director
+      keywords:
+        - "VP "
+        - "Vice President"
+        - "Director"
+        - "Head of"
+        - "Head,"
+      score: 30            # DM at any company size
+
+    - tier: manager
+      keywords:
+        - "Manager"
+        - " Lead"
+        - "General Manager"
+        - " GM"
+        - "Senior Manager"
+      score_small: 22      # DM in small companies (<= small_company_max_employees)
+      score_large: 6       # not a DM in large companies
+
+    - tier: other          # IC, Analyst, Engineer, Associate, etc.
+      score: 0
+
+# ── Revenue fit (max 25) ────────────────────────────────────────────────────
+# HubSpot property: annualrevenue (on Company record, populated by enrichment).
+revenue:
+  icp_min_usd: 2000000     # $2M USD — ICP threshold for Leadle's offers
+  tiers:
+    - min_usd: 10000000
+      score: 25            # $10M+ — strong
+    - min_usd: 2000000
+      score: 20            # $2M–$10M — at ICP threshold
+    - min_usd: 500000
+      score: 8             # $500K–$2M — below ICP, possible
+    - min_usd: 1
+      score: 2             # any revenue reported
+  unknown_score: 0         # no revenue data (score 0, flag as missing)
+
+# ── Funding fit (max 20) ────────────────────────────────────────────────────
+# HubSpot property: total_money_raised (on Company, populated by Clay/Breeze enrichment).
+funding:
+  icp_min_usd: 2000000     # $2M USD total raised — ICP threshold
+  tiers:
+    - min_usd: 10000000
+      score: 20            # $10M+ raised
+    - min_usd: 2000000
+      score: 16            # $2M–$10M raised — at ICP threshold
+    - min_usd: 500000
+      score: 8             # some funding, below ICP
+    - min_usd: 1
+      score: 4             # any funding at all
+  unknown_score: 0         # bootstrapped or no data
+
+# ── Spend capacity (max 15) ─────────────────────────────────────────────────
+# Derived composite: can the company afford $10K/quarter ($40K/year)?
+# Confidence levels based on revenue and funding evidence.
+spend_capacity:
+  target_quarterly_usd: 10000      # $10K/Q target
+  high_score: 15     # revenue >= $2M (2% of revenue = $40K — clearly affordable)
+  medium_score: 8    # revenue $500K–$2M OR any funding (likely can stretch)
+  low_score: 0       # no evidence of budget
+
+# ── Score tiers ──────────────────────────────────────────────────────────────
+tiers:
+  hot: 65     # escalate to Sai immediately
+  warm: 35    # nurture this week
+  cold: 0     # review monthly
