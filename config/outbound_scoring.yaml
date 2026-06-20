@@ -1,0 +1,98 @@
+# Outbound lead scoring config — ICP-fit based.
+# Same 4 dimensions as inbound scoring. Only the source filter differs.
+# Weights and thresholds tunable here — no code changes needed.
+#
+# Score = decision_maker (40) + revenue (25) + funding (20) + spend_capacity (15) = 100 max
+
+# Sources classified as outbound (HubSpot lead_source_v2 values).
+outbound_sources:
+  - "LinkedIn Outbound"
+  - "Email Outbound"
+# Inbound (excluded here): "Web Form", "ORGANIC_SEARCH", "", etc. → see inbound_scoring.yaml
+
+# ── Decision maker fit (max 40) ─────────────────────────────────────────────
+decision_maker:
+  small_company_max_employees: 50
+
+  title_tiers:
+    - tier: c_suite
+      keywords:
+        - "CEO"
+        - "Founder"
+        - "Co-Founder"
+        - "Co Founder"
+        - "Owner"
+        - "President"
+        - "Managing Director"
+        - " MD"
+        - "CTO"
+        - "CRO"
+        - "CMO"
+        - "CFO"
+        - "COO"
+        - "CPO"
+        - "Chief"
+      score: 40
+
+    - tier: vp_director
+      keywords:
+        - "VP "
+        - "Vice President"
+        - "Director"
+        - "Head of"
+        - "Head,"
+      score: 30
+
+    - tier: manager
+      keywords:
+        - "Manager"
+        - " Lead"
+        - "General Manager"
+        - " GM"
+        - "Senior Manager"
+      score_small: 22
+      score_large: 6
+
+    - tier: other
+      score: 0
+
+# ── Revenue fit (max 25) ────────────────────────────────────────────────────
+revenue:
+  icp_min_usd: 2000000
+  tiers:
+    - min_usd: 10000000
+      score: 25
+    - min_usd: 2000000
+      score: 20
+    - min_usd: 500000
+      score: 8
+    - min_usd: 1
+      score: 2
+  unknown_score: 0
+
+# ── Funding fit (max 20) ────────────────────────────────────────────────────
+funding:
+  icp_min_usd: 2000000
+  tiers:
+    - min_usd: 10000000
+      score: 20
+    - min_usd: 2000000
+      score: 16
+    - min_usd: 500000
+      score: 8
+    - min_usd: 1
+      score: 4
+  unknown_score: 0
+
+# ── Spend capacity (max 15) ─────────────────────────────────────────────────
+spend_capacity:
+  target_quarterly_usd: 10000
+  high_score: 15
+  medium_score: 8
+  low_score: 0
+
+# ── Score tiers ──────────────────────────────────────────────────────────────
+tiers:
+  hot: 65
+  warm: 35
+  cold: 0
