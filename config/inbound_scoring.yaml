@@ -7,6 +7,9 @@
 # Leads not matching this list belong to outbound_lead_scoring (process #7).
 inbound_sources:
   - "Web Form"
+  - "LinkedIn Inbound"   # organic LinkedIn — prospects reaching out (not campaign-driven)
+  - "Reference"          # referral from existing client or partner
+  - "Inbound Call"       # phone enquiry
   - "ORGANIC_SEARCH"
   - "DIRECT_TRAFFIC"
   - "REFERRALS"
