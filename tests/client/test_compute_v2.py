@@ -75,6 +75,42 @@ def test_kpis_zero_guard_division():
     assert k["accept_rate"] == 0.0
 
 
+def test_scorecard_positive_zero_emails_grades_F():
+    """With emails_sent==0 but positive_replies>0, positive rate must be 0.0 (not 1.0),
+    and its grade must be 'F' — proving _rate() is used instead of max(emails_sent, 1)."""
+    from dashboard.client.model import ReplyRecord
+    # No email campaigns (emails_sent=0), but inject a positive reply via the legacy path
+    # by directly constructing a kpis dict to isolate scorecard's zero-guard.
+    k_zeroemails = {
+        "emails_sent": 0,
+        "fresh_prospects": 0,
+        "opened": 0,
+        "clicked": 0,
+        "bounced": 0,
+        "delivered": 0,
+        "open_rate": 0.0,
+        "click_rate": 0.0,
+        "bounce_rate": 0.0,
+        "invites": 0,
+        "accepted": 0,
+        "accept_rate": 0.0,
+        "li_replies": 0,
+        "email_replies": 0,
+        "total_replies": 1,
+        "positive_replies": 1,  # positive reply exists, but no emails were sent
+        "neutral_replies": 0,
+        "negative_replies": 0,
+        "leads": 1,
+        "meetings": 0,
+    }
+    sc = compute.scorecard(k_zeroemails, RUBRIC)
+    # positive = _rate(1, 0) = 0.0, not 1.0 — zero emails means zero positive rate
+    assert sc["grades"]["positive"] == "F", (
+        f"Expected 'F' but got '{sc['grades']['positive']}'; "
+        "scorecard() must use _rate() not max(emails_sent, 1)"
+    )
+
+
 def test_scorecard_open_grade_A():
     k = compute.kpis(_data(), RUBRIC)
     sc = compute.scorecard(k, RUBRIC)

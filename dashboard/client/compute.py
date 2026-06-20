@@ -25,6 +25,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
         clicked = sum(c.clicked for c in data.email_campaigns)
         bounced = sum(c.bounced for c in data.email_campaigns)
     else:
+        # TODO(Task-11): remove this fallback once compute_all + remaining functions are migrated
         ec = Counter(e.event_type for e in data.emails)
         sent = ec.get("email_sent", 0)
         opened = ec.get("email_opened", 0)
@@ -35,6 +36,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
         invites = sum(c.invites for c in data.linkedin_campaigns)
         accepted = sum(c.accepted for c in data.linkedin_campaigns)
     else:
+        # TODO(Task-11): remove this fallback once compute_all + remaining functions are migrated
         lc = Counter(e.event_type for e in data.linkedin)
         invites = lc.get("connect", 0)
         accepted = lc.get("accepted", 0)
@@ -50,6 +52,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
         neutral_replies = sum(1 for r in data.replies if r.sentiment == "neutral")
         negative_replies = sum(1 for r in data.replies if r.sentiment == "negative")
     else:
+        # TODO(Task-11): remove this fallback once compute_all + remaining functions are migrated
         lc = Counter(e.event_type for e in data.linkedin)
         li_replies = lc.get("reply", 0)
         email_replies = 0
@@ -65,6 +68,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
 
     return {
         "emails_sent": sent,
+        "fresh_prospects": sent,
         "opened": opened,
         "clicked": clicked,
         "bounced": bounced,
@@ -107,7 +111,7 @@ def scorecard(k: dict, rubric: dict) -> dict:
     metrics = {
         "open_rate": k["open_rate"],
         "reply_rate": _rate(k["total_replies"], total_sent),
-        "positive": _rate(k["positive_replies"], max(k["emails_sent"], 1)),
+        "positive": _rate(k["positive_replies"], k["emails_sent"]),
         "bounce_rate": k["bounce_rate"],
         "accept_rate": k["accept_rate"],
     }

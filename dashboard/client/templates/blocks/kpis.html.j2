@@ -5,7 +5,7 @@
       ("Emails sent","emails_sent",False),("Open rate","open_rate",True),
       ("Positive replies","positive_replies",False),("Meetings","meetings",False),
       ("Invites","invites",False),("Accept rate","accept_rate",True),
-      ("LI replies","li_replied",False),("Bounce rate","bounce_rate",True)] %}
+      ("LI replies","li_replies",False),("Bounce rate","bounce_rate",True)] %}
    <div class="tile">
      <div class="v">{% if pct %}{{ '%.0f%%' % (k[key]*100) }}{% else %}{{ k[key] }}{% endif %}</div>
      <div class="l">{{ label }}</div>
