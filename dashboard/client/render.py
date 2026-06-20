@@ -82,7 +82,8 @@ def main() -> int:
     else:
         narrative = asyncio.run(narrative_agent.synthesize(
             metrics, audience=args.audience, client=args.client))
-        actions = asyncio.run(actions_agent.synthesize(metrics, client=args.client))
+        actions = asyncio.run(actions_agent.synthesize(
+            metrics, client=args.client, rubric=rubric))
 
     label = args.period_label or f"{args.period} ending {args.period_end}"
     html = render(data, metrics, deltas_bag, narrative, actions,
