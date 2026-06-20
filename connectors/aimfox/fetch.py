@@ -115,6 +115,13 @@ def _shape_campaign(campaign: dict, metrics: dict[str, int]) -> dict[str, Any]:
     }
 
 
+def fetch_campaign_detail(client: httpx.Client, cid: str) -> dict:
+    """Return the `campaign` dict from GET /campaigns/{id}."""
+    r = client.get(f"{_BASE_URL}/campaigns/{cid}")
+    r.raise_for_status()
+    return r.json().get("campaign", {})
+
+
 def _window_to_epoch_ms(start: date, end: date) -> tuple[int, int]:
     start_dt = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
     end_dt = datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc)

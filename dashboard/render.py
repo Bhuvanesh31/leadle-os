@@ -55,7 +55,10 @@ def render(raw: dict, *, skip_agents: bool = False) -> str:
     layout = _load_yaml("dashboard_layout.yaml")
     window = _window_from_raw(raw)
 
-    today = date.fromisoformat(raw["window"]["end"])  # use window end for "today" framing
+    # Clamp to real today when window.end is in the future (e.g. current-quarter).
+    # Using window.end blindly makes every deal look ~weeks stale, since
+    # days_stale = today - last_activity.
+    today = min(date.fromisoformat(raw["window"]["end"]), date.today())
 
     analytics = {
         "page1": page1_revenue.compute(raw, rules, targets, window, today=today),
