@@ -57,7 +57,7 @@ def read(
 
 
 def _list_campaigns(client: httpx.Client) -> list[dict]:
-    r = client.get(f"{_BASE_URL}/campaigns", params={"page": 1})
+    r = client.get(f"{_BASE_URL}/campaigns")
     r.raise_for_status()
     return r.json().get("campaigns", [])
 
