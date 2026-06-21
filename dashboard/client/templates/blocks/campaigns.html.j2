@@ -18,7 +18,7 @@
         <td class="num">{{ c.sent }}</td>
         <td class="num">{% if c.reply_rate > 0 %}<span class="okk">{{ '%.1f%%' % (c.reply_rate*100) }}</span>{% else %}{{ '%.1f%%' % (c.reply_rate*100) }}{% endif %}</td>
         <td class="num">{{ '%.1f%%' % (c.secondary*100) }}</td>
-        <td class="num">{% if c.bounce_rate is none %}<span class="gapcell">&mdash;</span>{% else %}<span class="{{ 'warn' if c.bounce_rate >= 0.04 else 'okk' }}">{{ '%.1f%%' % (c.bounce_rate*100) }}</span>{% endif %}</td>
+        <td class="num">{% if c.bounce_rate is none %}<span class="gapcell">&mdash;</span>{% else %}<span class="{{ 'warn' if c.bounce_rate >= rubric.bounce_flag_threshold else 'okk' }}">{{ '%.1f%%' % (c.bounce_rate*100) }}</span>{% endif %}</td>
         <td class="num"><span class="grade g-{{ c.grade }}">{{ c.grade }}</span></td>
       </tr>
       {% endfor %}

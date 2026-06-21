@@ -44,7 +44,7 @@ def test_lead_ladder_hot_from_tracker():
 def test_compute_all_assembles_bag():
     bag = compute.compute_all(_data(), _rubric())
     assert set(bag) >= {"kpis", "scorecard", "campaigns", "content", "variants",
-                        "senders", "deliverability", "timing", "reach", "leads", "coverage"}
+                        "senders", "deliverability", "timing", "reach", "leads"}
     assert bag["kpis"]["emails_sent"] == 2
 
 

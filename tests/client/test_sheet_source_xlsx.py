@@ -54,3 +54,11 @@ def test_xlsx_reply_sentiment_untagged_when_blank():
     assert "untagged" in sentiments, f"Expected 'untagged' in {sentiments}"
     assert "neutral" in sentiments, f"Expected 'neutral' in {sentiments}"
     assert None not in sentiments and "" not in sentiments, f"Blank sentinel leaked: {sentiments}"
+
+
+def test_xlsx_opens_ts_invariant():
+    """Every OpenEvent in data.opens must have a non-None ts (source-level guard)."""
+    d = sheet_source.read_xlsx(str(FIX))
+    assert all(o.ts is not None for o in d.opens), (
+        f"Found opens with None ts: {[o for o in d.opens if o.ts is None]}"
+    )

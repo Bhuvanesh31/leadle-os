@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import math
-from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 from dashboard.client.model import ClientData
@@ -222,6 +221,8 @@ def timing_heatmap(data: ClientData, rubric: dict) -> dict:
     for e in data.opens:
         if e.channel != "email":
             continue
+        if e.ts is None:
+            continue
         local = e.ts.astimezone(tz)
         wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][local.weekday()]
         if wd not in grid:
@@ -307,22 +308,6 @@ def lead_ladder(data: ClientData, rubric: dict) -> dict:
     }
 
 
-def coverage(data: ClientData) -> dict:
-    by_segment: dict[str, dict] = defaultdict(lambda: {"targets": 0, "contacted": 0})
-    contacted_companies = {e.company for e in data.emails} | {
-        e.company for e in data.linkedin}
-    for t in data.targets:
-        seg = by_segment[t.segment]
-        seg["targets"] += 1
-        if t.name in contacted_companies:
-            seg["contacted"] += 1
-    return {
-        "by_segment": dict(by_segment),
-        "target_total": len(data.targets),
-        "contacted_total": len(contacted_companies),
-    }
-
-
 def channel_reach(data: ClientData) -> dict:
     """Unique prospects reached per channel, from the spine cadence IDs.
     Non-empty Aimfox ID = entered LinkedIn cadence; Instantly ID = entered email cadence.
@@ -350,5 +335,4 @@ def compute_all(data: ClientData, rubric: dict) -> dict:
         "timing": timing_heatmap(data, rubric),
         "reach": channel_reach(data),
         "leads": lead_ladder(data, rubric),
-        "coverage": coverage(data),
     }

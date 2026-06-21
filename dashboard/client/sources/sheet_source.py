@@ -323,7 +323,8 @@ def read_xlsx(path: str) -> ClientData:
                 if evt == "email_opened":
                     raw_ts = _get(rv, col_map, "Event Timestamp") if "Event Timestamp" in col_map else None
                     ts = _parse_ts(raw_ts)
-                    opens.append(OpenEvent(channel="email", ts=ts))
+                    if ts is not None:
+                        opens.append(OpenEvent(channel="email", ts=ts))
 
     # ── Response Tracker ─────────────────────────────────────────────────────
     if _RESP_TAB in wb.sheetnames:

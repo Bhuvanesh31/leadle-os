@@ -107,3 +107,15 @@ def test_timing_heatmap_weekend_opens_excluded():
     for wd in result["weekdays"]:
         for dp in result["dayparts"]:
             assert result["levels"][wd][dp] == 0
+
+
+def test_timing_heatmap_none_ts_does_not_crash():
+    """OpenEvent with ts=None must be silently skipped; only real opens are counted."""
+    real_open = OpenEvent(channel="email", ts=_utc(2026, 6, 17, 10))  # Wed morning
+    null_open = OpenEvent(channel="email", ts=None)
+    data = ClientData(opens=[null_open, real_open])
+    # Must not raise AttributeError
+    result = compute.timing_heatmap(data, _rubric())
+    # Only the real open is counted
+    assert result["max"] == 1
+    assert result["grid"]["Wed"]["Morning 9-12"] == 1
