@@ -56,7 +56,7 @@ _RULES_CFG = Path(__file__).parent.parent / "config" / "dashboard_rules.yaml"
 _REPORTS_DIR = Path(__file__).parent.parent / "reports"
 _DEFAULT_PERIOD = "month"
 
-_FATHOM_BASE = "https://api.fathom.video/v1"
+_FATHOM_BASE = "https://api.fathom.ai/external/v1"
 _HS_SEARCH = "https://api.hubapi.com/crm/v3/objects"
 
 
@@ -74,26 +74,29 @@ def _fetch_fathom_meetings(api_key: str, start: date, end: date) -> dict:
     if not api_key:
         return {"available": False, "reason": "FATHOM_API_KEY not set"}
 
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"X-Api-Key": api_key}
     meetings: list[dict] = []
     cursor = None
+
+    start_iso = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc).isoformat()
+    end_iso = datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc).isoformat()
 
     try:
         while True:
             params: dict = {
-                "from": start.isoformat(),
-                "to": end.isoformat(),
+                "created_after": start_iso,
+                "created_before": end_iso,
                 "limit": 100,
             }
             if cursor:
                 params["cursor"] = cursor
 
-            r = httpx.get(f"{_FATHOM_BASE}/calls", headers=headers,
+            r = httpx.get(f"{_FATHOM_BASE}/meetings", headers=headers,
                           params=params, timeout=30)
             r.raise_for_status()
             data = r.json()
-            meetings.extend(data.get("calls", data.get("meetings", [])))
-            cursor = data.get("next_cursor") or data.get("cursor")
+            meetings.extend(data.get("items", data.get("meetings", [])))
+            cursor = (data.get("pagination") or {}).get("next_cursor")
             if not cursor:
                 break
 
@@ -120,8 +123,9 @@ def _should_include(meeting: dict, rules: dict) -> bool:
     pattern = f.get("impromptu_title_pattern", "")
     if pattern and re.search(pattern, meeting.get("title") or "", re.IGNORECASE):
         allowlist = {e.lower() for e in f.get("impromptu_attendee_allowlist", [])}
-        attendees = {(a.get("email") or "").lower()
-                     for a in meeting.get("attendees", [])}
+        # Fathom API returns calendar_invitees; fall back to attendees for compat
+        invitees = meeting.get("calendar_invitees") or meeting.get("attendees") or []
+        attendees = {(a.get("email") or "").lower() for a in invitees}
         if attendees and attendees.issubset(allowlist):
             return True
 
@@ -129,19 +133,23 @@ def _should_include(meeting: dict, rules: dict) -> bool:
 
 
 def _external_attendees(meeting: dict, rules: dict) -> list[str]:
-    """Return list of external attendee emails (non-Leadle)."""
-    internal_names = {n.lower() for n in rules.get("leadle_internal_names", [])}
+    """Return list of external attendee emails (non-Leadle).
+
+    Fathom marks each invitee with is_external; fall back to domain check.
+    """
     result = []
-    for a in meeting.get("attendees", []):
+    invitees = meeting.get("calendar_invitees") or meeting.get("attendees") or []
+    for a in invitees:
         email = (a.get("email") or "").lower().strip()
-        name = (a.get("name") or "").lower().strip()
         if not email:
             continue
-        if email.endswith("@leadle.in"):
-            continue
-        if name in internal_names:
-            continue
-        result.append(email)
+        # Use Fathom's own is_external flag when present
+        if "is_external" in a:
+            if a["is_external"]:
+                result.append(email)
+        else:
+            if not email.endswith("@leadle.in"):
+                result.append(email)
     return result
 
 
@@ -273,8 +281,8 @@ def build_report(fathom_result: dict, hs_token: str, rules: dict,
         email = ext[0]  # primary external attendee
         gap_state, contact_name, company_name = _classify_gap(hs_token, email)
 
-        title = m.get("title") or "(no title)"
-        scheduled = m.get("started_at") or m.get("scheduled_at") or ""
+        title = m.get("title") or m.get("meeting_title") or "(no title)"
+        scheduled = m.get("scheduled_start_time") or m.get("created_at") or ""
         scheduled_date = scheduled[:10] if scheduled else None
 
         row = {
