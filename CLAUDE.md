@@ -4,7 +4,9 @@ This file is loaded into every Claude Code session in this repo. It establishes 
 
 ## What this project is
 
-Leadle OS is the internal RevOps operating system for Leadle (a Chennai-based B2B GTM agency transitioning into RevOps-as-a-Service). It reads from Leadle's tool stack — HubSpot, Lemlist, Aimfox, Instantly, Fathom — into Supabase, runs analyses, and delivers a daily Slack brief to Sai (Sales Head) plus a live dashboard for Bhuvanesh and Akil.
+Leadle OS is the internal RevOps operating system for Leadle (a Chennai-based B2B GTM agency transitioning into RevOps-as-a-Service). It reads from Leadle's tool stack — HubSpot, Lemlist, Aimfox, Instantly, Fathom — runs 17 repeatable analytics processes, and delivers a live dashboard for Bhuvanesh and Akil plus a daily Slack brief to Sai (Sales Head).
+
+**Supabase scope:** Storage only (dashboard hosting via signed URLs). Raw data sync to Supabase is deliberately out of scope — analytics scripts pull live from source APIs. See `docs/decisions/2026-06-22-supabase-raw-sync-deferred.md` for rationale. Do not propose or implement raw_hubspot tables, sync pipelines, or nightly sync scripts.
 
 The canonical design lives at `docs/superpowers/specs/2026-05-05-leadle-os-design.md`. **Read it before making any architectural change.** This file is the executive summary, that file is the spec.
 

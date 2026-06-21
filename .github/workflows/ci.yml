@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff format)
+        run: uv run ruff format --check .
+
+      - name: Type check (mypy)
+        run: uv run mypy analytics/ agents/ dashboard/ identity/
+        continue-on-error: true  # mypy is advisory until strict typing is complete
+
+      - name: Unit tests (pytest)
+        run: uv run pytest tests/ -v --tb=short
+        env:
+          # Tests use mocked credentials — no real API calls in CI
+          HUBSPOT_PRIVATE_TOKEN: test-token
+          SLACK_BOT_TOKEN: test-token
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_KEY: test-key
+          INSTANTLY_API_KEY: test-key
+          FATHOM_API_KEY: test-key
