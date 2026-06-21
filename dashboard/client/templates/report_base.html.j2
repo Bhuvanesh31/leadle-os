@@ -140,6 +140,10 @@
 
   {% block body %}{% endblock %}
 
+  {% if audience == "internal" %}
+  <div class="note" style="margin:14px 6px">Internal note: positive replies, leads, reply sentiment, engagement timing, and channel reach reflect all webhook and spine data in the workbook (cumulative to date), not just this period. Only the email and LinkedIn funnel tiles are windowed to {{ period_label }}.</div>
+  {% endif %}
+
   <div class="foot"><span>Generated {{ rendered_at }} &middot; {{ client }}{% if audience == "internal" %} &middot; audience: internal{% endif %}</span><span>Leadle OS</span></div>
 </div>
 </body>

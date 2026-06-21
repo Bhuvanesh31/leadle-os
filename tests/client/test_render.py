@@ -75,6 +75,20 @@ def test_internal_render_shows_sender_health():
     assert "Pause &amp; warm inbox." in html
 
 
+def test_cumulative_caveat_is_internal_only():
+    # I1: sheet-derived metrics are not windowed; the honest caveat shows for
+    # internal only, never in the client-facing report.
+    data, metrics, dbag, rubric, layout = _ctx()
+    internal = render.render(data, metrics, dbag, {"narrative": "x"}, {"actions": []},
+                             audience="internal", period_label="June 2026",
+                             client="UPSTA", layout=layout, rubric=rubric)
+    client = render.render(data, metrics, dbag, {"narrative": "x"}, {"actions": []},
+                           audience="client", period_label="June 2026",
+                           client="UPSTA", layout=layout, rubric=rubric)
+    assert "cumulative to date" in internal
+    assert "cumulative to date" not in client
+
+
 def test_reach_block_visible_to_both_audiences():
     layout = yaml.safe_load((_CFG / "client_report_layout.yaml").read_text())
     for audience in ("internal", "client"):
