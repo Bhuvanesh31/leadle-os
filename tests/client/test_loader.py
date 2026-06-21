@@ -3,12 +3,12 @@
 All API calls are mocked via httpx.MockTransport.
 The mini XLSX fixture (upsta_mini.xlsx) is used for sheet data.
 """
-import pytest
-import httpx
 from pathlib import Path
 
-from dashboard.client.sources import loader
+import httpx
+
 from dashboard.client.model import ClientData
+from dashboard.client.sources import loader
 
 FIXTURES = Path(__file__).parent / "fixtures"
 MINI_XLSX = str(FIXTURES / "upsta_mini.xlsx")

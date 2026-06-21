@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -55,9 +55,9 @@ def _load_deal_stages() -> tuple[str, list[dict]]:
 
 def _epoch_ms(d: date, *, end_of_day: bool = False) -> str:
     if end_of_day:
-        dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
+        dt = datetime.combine(d, datetime.max.time(), tzinfo=UTC)
     else:
-        dt = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+        dt = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
     return str(int(dt.timestamp() * 1000))
 
 
@@ -103,7 +103,7 @@ def fetch_deals(token: str, pipeline_id: str, stages: list[dict],
 
 def compute_leakage(raw_deals: list[dict], stages: list[dict]) -> dict:
     funnel_stages = [s for s in stages if not s["terminal"]]
-    terminal_stages = [s for s in stages if s["terminal"]]
+    [s for s in stages if s["terminal"]]
 
     stage_entered: dict[str, int] = {}
     current_stage_counts: dict[str, int] = {}

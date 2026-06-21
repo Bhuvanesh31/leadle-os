@@ -38,8 +38,8 @@ from analytics.inbound_lead_analysis import (
     _icp_summary,
     _pct_bar,
     _priority_flags,
-    _staleness_buckets,
     _stage_distribution,
+    _staleness_buckets,
 )
 
 _REPORTS_DIR = Path(__file__).parent.parent / "reports"

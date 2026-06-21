@@ -1,7 +1,7 @@
 # tests/test_compute_shared.py
 from datetime import date
-import pytest
-from dashboard.compute.shared import pct_diff, pacing_status, days_between, in_window
+
+from dashboard.compute.shared import days_between, in_window, pacing_status, pct_diff
 
 
 def test_pct_diff_normal():

@@ -21,7 +21,6 @@ Matching cascade per Fathom meeting:
 from __future__ import annotations
 
 import re
-from datetime import date
 from typing import Any
 
 from dashboard.compute.page1_revenue import _parse_iso_date
@@ -144,16 +143,16 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
 
     leads_no_source = [
         {
-            "id": l.get("id"),
-            "lead_name": l.get("lead_name"),
-            "contact_name": l.get("contact_name"),
-            "contact_email": l.get("contact_email"),
-            "company_name": l.get("company_name"),
-            "owner_id": l.get("hubspot_owner_id"),
-            "createdate": l.get("createdate"),
+            "id": ld.get("id"),
+            "lead_name": ld.get("lead_name"),
+            "contact_name": ld.get("contact_name"),
+            "contact_email": ld.get("contact_email"),
+            "company_name": ld.get("company_name"),
+            "owner_id": ld.get("hubspot_owner_id"),
+            "createdate": ld.get("createdate"),
         }
-        for l in leads
-        if not _has_source(l.get(lead_source_field))
+        for ld in leads
+        if not _has_source(ld.get(lead_source_field))
     ]
     # Open-deal source hygiene only — closed-lost/won deals are history;
     # backfilling their attribution doesn't change future channel decisions.
@@ -202,9 +201,9 @@ def _build_deal_index(deals: list[dict]) -> dict:
 def _build_lead_index(leads: list[dict]) -> dict:
     """Returns indices for email-exact and name-substring matching on leads."""
     return {
-        "by_email": {l["contact_email"].lower(): l for l in leads if l.get("contact_email")},
+        "by_email": {ld["contact_email"].lower(): ld for ld in leads if ld.get("contact_email")},
         "by_name_lower": [
-            (_lead_search_text(l), l) for l in leads
+            (_lead_search_text(ld), ld) for ld in leads
         ],
     }
 
@@ -296,9 +295,9 @@ def _classify(
     for c in candidates:
         if c["kind"] != "email":
             continue
-        l = lead_index["by_email"].get(c["value"])
-        if l:
-            found_lead = l
+        ld = lead_index["by_email"].get(c["value"])
+        if ld:
+            found_lead = ld
             break
     if not found_lead:
         for c in candidates:
@@ -307,9 +306,9 @@ def _classify(
             needle = c["value"]
             if len(needle) < 3:
                 continue
-            for lname, l in lead_index["by_name_lower"]:
+            for lname, ld in lead_index["by_name_lower"]:
                 if _matches(needle, lname):
-                    found_lead = l
+                    found_lead = ld
                     break
             if found_lead:
                 break
@@ -323,7 +322,7 @@ def _classify(
         if associated_deal_ids:
             # Resolve the first associated deal in the lookup (best-effort).
             for did in associated_deal_ids:
-                for dname, d in deal_index["by_name_lower"]:
+                for _dname, d in deal_index["by_name_lower"]:
                     if str(d.get("id")) == str(did):
                         return ("deal", d)
             # Association exists but deal isn't in our lookup window

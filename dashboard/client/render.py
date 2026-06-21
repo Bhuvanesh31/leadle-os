@@ -16,10 +16,9 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from dashboard.client import compute, snapshots
+from dashboard.client import compute, constants, snapshots
 from dashboard.client.agents import actions as actions_agent
 from dashboard.client.agents import narrative as narrative_agent
-from dashboard.client import constants
 from dashboard.client.sources import loader
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -38,10 +37,7 @@ def _window(period: str, period_end_iso: str) -> tuple[str, str]:
     weekly:  period_end minus 6 days → period_end
     """
     end = date.fromisoformat(period_end_iso)
-    if period == "monthly":
-        start = end.replace(day=1)
-    else:  # weekly
-        start = end - timedelta(days=6)
+    start = end.replace(day=1) if period == "monthly" else end - timedelta(days=6)
     return start.isoformat(), end.isoformat()
 
 
@@ -93,10 +89,7 @@ def main(argv=None) -> int:
         periods = [args.period]
 
     # Resolve audience list
-    if args.audience == "both":
-        audiences = ["internal", "client"]
-    else:
-        audiences = [args.audience]
+    audiences = ["internal", "client"] if args.audience == "both" else [args.audience]
 
     store = snapshots.LocalJsonStore(args.snapshot_store)
     out_dir = Path(args.output_dir)

@@ -454,7 +454,7 @@ def main(argv: list[str] | None = None) -> int:
     scoring_cfg = ils._load_scoring_cfg()
     stage_ids = ils._active_stage_ids(pipeline_cfg)
     stage_map = ils._stage_map(pipeline_cfg)
-    inbound_set = set(scoring_cfg["inbound_sources"])
+    set(scoring_cfg["inbound_sources"])
 
     print("Fetching active leads...", file=sys.stderr)
     raw = ils.fetch_active_leads(token, stage_ids)

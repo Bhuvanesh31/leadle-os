@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+
 from dashboard.compute.windows import WindowSpec, resolve_window
 
 
@@ -23,7 +24,7 @@ def test_resolve_window_unknown_arg_raises():
         resolve_window("nonsense", date(2026, 5, 9))
 
 
-import pytest
+import pytest  # noqa: E402
 
 
 @pytest.mark.parametrize("arg, days", [

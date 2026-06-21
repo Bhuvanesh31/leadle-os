@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
 
 from anthropic import APIError, AsyncAnthropic, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential

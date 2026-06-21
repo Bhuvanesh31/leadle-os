@@ -1,9 +1,16 @@
 from pathlib import Path
+
 import yaml
-from dashboard.client.model import (
-    ClientData, EmailCampaign, LinkedInCampaign, ReplyRecord, WarmLead, TargetCo,
-)
+
 from dashboard.client import compute, render
+from dashboard.client.model import (
+    ClientData,
+    EmailCampaign,
+    LinkedInCampaign,
+    ReplyRecord,
+    TargetCo,
+    WarmLead,
+)
 
 _CFG = Path(__file__).resolve().parents[2] / "config"
 

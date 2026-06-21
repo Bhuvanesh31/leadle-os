@@ -6,10 +6,9 @@ point-in-time for hygiene. Output is a dict mapping section keys to computed val
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
-from dashboard.compute.shared import pacing_status, pct_diff
 from dashboard.compute.windows import WindowSpec
 
 
@@ -85,7 +84,7 @@ def _monthly_control(deals: list[dict], targets: dict, today: date) -> dict:
         if d.get("dealstage") not in ("closedwon", "closedlost")
     )
     coverage = open_pipeline / monthly_target if monthly_target > 0 else 0
-    cov_target = targets["pipeline_coverage"]["ratio_target"]
+    targets["pipeline_coverage"]["ratio_target"]
     cov_warning = targets["pipeline_coverage"]["ratio_warning_below"]
     cov_critical = targets["pipeline_coverage"]["ratio_critical_below"]
     coverage_status = ("critical" if coverage < cov_critical else

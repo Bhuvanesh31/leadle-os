@@ -11,7 +11,12 @@ from datetime import datetime
 from pathlib import Path
 
 from dashboard.client.model import (
-    ClientData, Context, EmailEvent, LinkedInEvent, TargetCo, WarmLead,
+    ClientData,
+    Context,
+    EmailEvent,
+    LinkedInEvent,
+    TargetCo,
+    WarmLead,
 )
 
 # Header signatures (first few columns) that mark the start of each table.

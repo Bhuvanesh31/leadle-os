@@ -7,12 +7,11 @@ Calls:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Any
+from datetime import UTC, date, datetime
 
 import httpx
 
-from connectors.aimfox.fetch import fetch_campaign_detail, _BASE_URL, _TIMEOUT
+from connectors.aimfox.fetch import _BASE_URL, _TIMEOUT, fetch_campaign_detail
 from dashboard.client.model import LinkedInCampaign
 
 
@@ -97,6 +96,6 @@ def _extract_variant(campaign_detail: dict) -> str:
 def _iso_window_to_epoch_ms(start_iso: str, end_iso: str) -> tuple[int, int]:
     start = date.fromisoformat(start_iso)
     end = date.fromisoformat(end_iso)
-    start_dt = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
-    end_dt = datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc)
+    start_dt = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
+    end_dt = datetime.combine(end, datetime.max.time(), tzinfo=UTC)
     return int(start_dt.timestamp() * 1000), int(end_dt.timestamp() * 1000)

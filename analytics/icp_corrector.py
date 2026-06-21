@@ -30,7 +30,6 @@ import argparse
 import html as _html
 import json
 import os
-import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -469,12 +468,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  OK (no flags):       {s['ok']}")
 
     if report["hot_understaged"]:
-        print(f"\n  HOT understaged leads:")
+        print("\n  HOT understaged leads:")
         for r in report["hot_understaged"]:
             print(f"    [{r['score']:3d}] {r['name'][:35]:35} | {r['stage']:20} | {r['job_title'][:30]}")
 
     if report["cold_overstaged"]:
-        print(f"\n  COLD overstaged leads:")
+        print("\n  COLD overstaged leads:")
         for r in report["cold_overstaged"]:
             print(f"    [{r['score']:3d}] {r['name'][:35]:35} | {r['stage']:20} | {r['job_title'][:30]}")
 

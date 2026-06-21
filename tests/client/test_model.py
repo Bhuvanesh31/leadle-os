@@ -1,12 +1,18 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from dashboard.client.model import (
-    EmailEvent, LinkedInEvent, WarmLead, TargetCo, Context, ClientData,
+    ClientData,
+    Context,
+    EmailEvent,
+    LinkedInEvent,
+    TargetCo,
+    WarmLead,
 )
 
 
 def test_clientdata_holds_normalized_records():
     e = EmailEvent("Acme", "Jane", "email_opened", "Upsta_SFDI_V1",
-                   datetime(2026, 6, 4, 13, 0, tzinfo=timezone.utc), "augustine@upsta.co")
+                   datetime(2026, 6, 4, 13, 0, tzinfo=UTC), "augustine@upsta.co")
     li = LinkedInEvent("accepted", "Acme", "https://li/x", "Jane Roe", "CFO")
     wl = WarmLead("LinkedIn", "Rajesh", "5/15/2026", "Long follow up", "Hi...",
                   "https://li/x", "Jane Roe", "CFO", "Acme", "https://acme", "TX")

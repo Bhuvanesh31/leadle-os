@@ -29,11 +29,10 @@ import os
 import re
 import sys
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
-import yaml
 
 from analytics._periods import add_period_args, resolve_args, resolve_period
 
@@ -99,7 +98,7 @@ def _cluster_reason(reason: str | None) -> str:
 
 
 def _date_to_epoch_ms(d: date) -> int:
-    dt = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+    dt = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
     return int(dt.timestamp() * 1000)
 
 
@@ -146,11 +145,7 @@ def _fetch_lost_in_window(token: str, window_start: date, window_end: date) -> l
                 {"propertyName": lost_prop, "operator": "GTE", "value": start_ms},
                 {"propertyName": lost_prop, "operator": "LTE", "value": end_ms},
             ]}],
-            "properties": [
-                "dealname", "amount", "closedate",
-                "closed_lost_reason", "closed_lost_tag",
-                lost_prop,
-            ] + stage_props,
+            "properties": ["dealname", "amount", "closedate", "closed_lost_reason", "closed_lost_tag", lost_prop, *stage_props],
             "sorts": [{"propertyName": lost_prop, "direction": "DESCENDING"}],
             "limit": 100,
         }

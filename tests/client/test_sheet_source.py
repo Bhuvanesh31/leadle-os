@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from dashboard.client.sources import sheet_source
 
 _FIX = Path(__file__).parent / "fixtures" / "upsta_workbook.txt"

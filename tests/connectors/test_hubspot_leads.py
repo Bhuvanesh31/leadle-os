@@ -4,7 +4,7 @@ httpx.MockTransport for hermetic tests — same pattern as test_aimfox.py.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date
 
 import httpx
 
@@ -57,7 +57,7 @@ def test_fetch_returns_shaped_leads():
     assert result["available"] is True
     assert result["data"]["total"] == 2
     leads = result["data"]["leads"]
-    assert {l["id"] for l in leads} == {"101", "102"}
+    assert {ld["id"] for ld in leads} == {"101", "102"}
     assert leads[0]["contact_email"] == "lead1@example.com"
     assert leads[0]["contact_name"] == "First Last1"
     assert leads[0]["status"] == "NEW"
@@ -117,7 +117,7 @@ def test_fetch_filters_by_owner_allowlist():
         )
 
     assert result["data"]["total"] == 2
-    assert {l["hubspot_owner_id"] for l in result["data"]["leads"]} == {"80765353", "77758216"}
+    assert {ld["hubspot_owner_id"] for ld in result["data"]["leads"]} == {"80765353", "77758216"}
     assert result["meta"]["owner_filter"] == ["80765353", "77758216"]
 
 
@@ -152,10 +152,10 @@ def test_shape_lead_handles_missing_optional_fields():
 
 def test_to_epoch_ms_uses_utc():
     """Boundary helper must produce UTC bounds — same caveat as Aimfox."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     start = _to_epoch_ms(date(2026, 4, 1), start_of_day=True)
     end = _to_epoch_ms(date(2026, 4, 1), start_of_day=False)
-    expected_start = int(datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    expected_start = int(datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC).timestamp() * 1000)
     assert int(start) == expected_start
     # End-of-day is later than start, within the same UTC date
     assert int(end) > int(start)

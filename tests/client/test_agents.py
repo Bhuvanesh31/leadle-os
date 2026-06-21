@@ -1,10 +1,11 @@
 import asyncio
-from dashboard.client.agents import narrative, actions
+
+from dashboard.client.agents import actions, narrative
 
 
 class _BoomClient:
     """Stand-in AsyncAnthropic whose .messages.create raises -> run_agent degrades."""
-    class messages:
+    class messages:  # noqa: N801
         @staticmethod
         async def create(*a, **k):
             raise RuntimeError("no api in test")

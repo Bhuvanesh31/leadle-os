@@ -362,21 +362,21 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"\nHubSpot Dedupe Scan — {report['generated_at']}")
     print(f"  Scanned: {report['scanned']['contacts']:,} contacts  {report['scanned']['companies']:,} companies")
-    print(f"\n  Contacts:")
+    print("\n  Contacts:")
     print(f"    Email duplicates:  {s['contact_email_dup_groups']} groups  ({s['contact_email_records_affected']} records affected)")
     print(f"    Name duplicates:   {s['contact_name_dup_groups']} groups")
-    print(f"\n  Companies:")
+    print("\n  Companies:")
     print(f"    Domain duplicates: {s['company_domain_dup_groups']} groups  ({s['company_domain_records_affected']} records affected)")
     print(f"    Name duplicates:   {s['company_name_dup_groups']} groups")
 
     if report["contact_email_dupes"]:
-        print(f"\n  Top email dup groups:")
+        print("\n  Top email dup groups:")
         for g in report["contact_email_dupes"][:5]:
             ids = ", ".join(r["id"] for r in g["records"][:3])
             print(f"    {g['key']:45} x{g['count']}  [{ids}]")
 
     if report["company_domain_dupes"]:
-        print(f"\n  Top domain dup groups:")
+        print("\n  Top domain dup groups:")
         for g in report["company_domain_dupes"][:5]:
             names = " / ".join(r["name"] for r in g["records"][:3])
             print(f"    {g['key']:35} x{g['count']}  [{names}]")

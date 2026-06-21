@@ -4,11 +4,9 @@ Uses httpx.MockTransport for hermetic tests (no httpx-mock or respx dependency).
 """
 from __future__ import annotations
 
-import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import httpx
-import pytest
 
 from connectors.aimfox.fetch import _sum_buckets, _window_to_epoch_ms, fetch
 
@@ -148,8 +146,8 @@ def test_fetch_passes_window_as_epoch_ms_to_analytics_endpoint():
 def test_window_to_epoch_ms_uses_utc_not_local():
     """Boundary helper must produce UTC bounds regardless of system tz."""
     start_ms, end_ms = _window_to_epoch_ms(date(2026, 5, 1), date(2026, 5, 1))
-    expected_start = int(datetime(2026, 5, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp() * 1000)
-    expected_end_floor = int(datetime(2026, 5, 1, 23, 59, 59, tzinfo=timezone.utc).timestamp() * 1000)
+    expected_start = int(datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC).timestamp() * 1000)
+    expected_end_floor = int(datetime(2026, 5, 1, 23, 59, 59, tzinfo=UTC).timestamp() * 1000)
     assert start_ms == expected_start
     assert end_ms >= expected_end_floor
 

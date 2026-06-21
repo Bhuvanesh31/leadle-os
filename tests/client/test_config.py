@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import yaml
 
 _CFG = Path(__file__).resolve().parents[2] / "config"

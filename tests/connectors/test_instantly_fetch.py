@@ -1,5 +1,6 @@
 """Tests for connectors.instantly.fetch — mocked via httpx.MockTransport."""
 import httpx
+
 from connectors.instantly.fetch import fetch
 
 

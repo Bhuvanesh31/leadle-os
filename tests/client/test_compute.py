@@ -1,11 +1,18 @@
 # tests/client/test_compute.py
 from pathlib import Path
+
 import yaml
-from dashboard.client.sources import sheet_source
+
 from dashboard.client import compute
 from dashboard.client.model import (
-    ClientData, EmailCampaign, LinkedInCampaign, ReplyRecord, TargetCo, WarmLead,
+    ClientData,
+    EmailCampaign,
+    LinkedInCampaign,
+    ReplyRecord,
+    TargetCo,
+    WarmLead,
 )
+from dashboard.client.sources import sheet_source
 
 _FIX = Path(__file__).parent / "fixtures" / "upsta_workbook.txt"
 _CFG = Path(__file__).resolve().parents[2] / "config"
@@ -112,8 +119,8 @@ def test_channel_reach_counts_unique_per_channel_and_both():
 
 
 def test_channel_reach_dedupes_on_id_value():
-    ts = _reach_targets() + [
-        TargetCo("Dup", "US", "", "", "Mfg", "", "US_Set 1", "dup.com",
-                 aimfox_id="A1", instantly_id="I1")]  # repeats A1/I1
+    ts = [*_reach_targets(),
+          TargetCo("Dup", "US", "", "", "Mfg", "", "US_Set 1", "dup.com",
+                   aimfox_id="A1", instantly_id="I1")]  # repeats A1/I1
     r = compute.channel_reach(ClientData(targets=ts))
     assert r == {"linkedin_reached": 2, "email_reached": 2, "both_reached": 1}

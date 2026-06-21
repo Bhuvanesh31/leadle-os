@@ -7,7 +7,7 @@ on the vendor side.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -123,6 +123,6 @@ def fetch_campaign_detail(client: httpx.Client, cid: str) -> dict:
 
 
 def _window_to_epoch_ms(start: date, end: date) -> tuple[int, int]:
-    start_dt = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
-    end_dt = datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc)
+    start_dt = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
+    end_dt = datetime.combine(end, datetime.max.time(), tzinfo=UTC)
     return int(start_dt.timestamp() * 1000), int(end_dt.timestamp() * 1000)

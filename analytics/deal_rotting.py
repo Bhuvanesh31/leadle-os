@@ -31,7 +31,7 @@ import html as _html
 import json
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
@@ -69,7 +69,7 @@ def _days_since(ts_str: str | None) -> int | None:
         return None
     try:
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         return max(0, (now - dt).days)
     except ValueError:
         return None

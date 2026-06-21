@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,9 +51,9 @@ def _load_stages() -> list[dict]:
 
 def _epoch_ms(d: date, *, end_of_day: bool = False) -> str:
     if end_of_day:
-        dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
+        dt = datetime.combine(d, datetime.max.time(), tzinfo=UTC)
     else:
-        dt = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+        dt = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
     return str(int(dt.timestamp() * 1000))
 
 

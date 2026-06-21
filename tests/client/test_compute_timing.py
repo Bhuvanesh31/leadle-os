@@ -9,13 +9,14 @@ Scenario:
              Fri/Afternoon level = ceil(4*1/3) = ceil(1.33) = 2
              Mon/<any> level = 0 (untouched)
 """
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
 import yaml
 
-from dashboard.client.model import ClientData, OpenEvent
 from dashboard.client import compute
+from dashboard.client.model import ClientData, OpenEvent
 
 _CFG = Path(__file__).resolve().parents[2] / "config"
 
@@ -29,7 +30,7 @@ def _rubric():
 def _utc(year, month, day, hour_et):
     """Return a UTC-aware datetime that maps to hour_et in America/New_York."""
     local_dt = datetime(year, month, day, hour_et, 0, 0, tzinfo=ET)
-    return local_dt.astimezone(timezone.utc)
+    return local_dt.astimezone(UTC)
 
 
 def test_timing_heatmap_from_opens():

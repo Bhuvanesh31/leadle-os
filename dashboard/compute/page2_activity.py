@@ -104,9 +104,9 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
     internal_names = _config_internal_names(rules)
     meeting_proposed_stage = _config_meeting_proposed_stage(rules)
     leads = [
-        l for l in leads
-        if l.get("pipeline_stage_id") not in closed_stages
-        and _has_contact_identity(l)
+        ld for ld in leads
+        if ld.get("pipeline_stage_id") not in closed_stages
+        and _has_contact_identity(ld)
     ]
     # Build reply index keyed by lowercased email AND lowercased name (for
     # Aimfox name-only matching).
@@ -269,9 +269,8 @@ def _stalled_leads(contacts: list[dict], raw: dict, rules: dict, today: date) ->
         if not src.get("available"):
             continue
         for lead in src["data"].get("leads", []):
-            if lead.get("reply_status") in ("positive", "neutral", "replied"):
-                if hcid := lead.get("hubspot_contact_id"):
-                    replied_contact_ids.add(hcid)
+            if lead.get("reply_status") in ("positive", "neutral", "replied") and (hcid := lead.get("hubspot_contact_id")):
+                replied_contact_ids.add(hcid)
     out = []
     for c in contacts:
         if c["id"] not in replied_contact_ids:

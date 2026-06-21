@@ -32,7 +32,7 @@ import html as _html
 import json
 import os
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -63,7 +63,7 @@ def _stage_names(pipeline: dict) -> dict[str, str]:
 
 
 def _date_to_epoch_ms(d: date) -> int:
-    dt = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+    dt = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
     return int(dt.timestamp() * 1000)
 
 

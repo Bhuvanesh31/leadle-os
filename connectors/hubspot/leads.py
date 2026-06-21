@@ -12,7 +12,7 @@ sales team's actual work queue.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -73,15 +73,15 @@ def fetch(
     client = client or httpx.Client(headers=headers, timeout=_TIMEOUT)
     try:
         leads = _paginated_search(client, window_start, window_end)
-        shaped = [_shape_lead(l) for l in leads]
+        shaped = [_shape_lead(ld) for ld in leads]
         if owner_allowlist is not None:
             allow = set(owner_allowlist)
-            shaped = [l for l in shaped if l.get("hubspot_owner_id") in allow]
+            shaped = [ld for ld in shaped if ld.get("hubspot_owner_id") in allow]
         # Augment with lead → deal associations
-        lead_ids = [l["id"] for l in shaped if l.get("id")]
+        lead_ids = [ld["id"] for ld in shaped if ld.get("id")]
         associations = _fetch_lead_deal_associations(client, lead_ids)
-        for l in shaped:
-            l["associated_deal_ids"] = associations.get(l["id"], [])
+        for ld in shaped:
+            ld["associated_deal_ids"] = associations.get(ld["id"], [])
         return {
             "available": True,
             "data": {"leads": shaped, "total": len(shaped)},
@@ -109,9 +109,9 @@ def _fetch_lead_deal_associations(client: httpx.Client, lead_ids: list[str]) -> 
     out: dict[str, list[str]] = {}
     if not lead_ids:
         return out
-    BATCH_SIZE = 100
-    for i in range(0, len(lead_ids), BATCH_SIZE):
-        batch = lead_ids[i : i + BATCH_SIZE]
+    batch_size = 100
+    for i in range(0, len(lead_ids), batch_size):
+        batch = lead_ids[i : i + batch_size]
         r = client.post(
             f"{_BASE_URL}/crm/v3/associations/leads/deals/batch/read",
             json={"inputs": [{"id": str(lid)} for lid in batch]},
@@ -191,9 +191,9 @@ def _shape_lead(lead: dict) -> dict[str, Any]:
 def _to_epoch_ms(d: date, *, start_of_day: bool) -> str:
     """HubSpot search filters on datetime properties want epoch-ms strings."""
     if start_of_day:
-        dt = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+        dt = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
     else:
-        dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
+        dt = datetime.combine(d, datetime.max.time(), tzinfo=UTC)
     return str(int(dt.timestamp() * 1000))
 
 

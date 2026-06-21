@@ -1,4 +1,5 @@
 import pytest
+
 from dashboard.agents._client import validate_no_hallucinated_numbers
 
 
@@ -34,8 +35,9 @@ def test_validator_normalizes_commas():
     assert validate_no_hallucinated_numbers(input_text, output_text) is True
 
 
-from unittest.mock import AsyncMock, MagicMock
-from dashboard.agents._client import run_agent
+from unittest.mock import AsyncMock, MagicMock  # noqa: E402
+
+from dashboard.agents._client import run_agent  # noqa: E402
 
 
 @pytest.mark.asyncio

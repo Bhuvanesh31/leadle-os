@@ -1,6 +1,13 @@
 from datetime import datetime
+
 from dashboard.client.model import (
-    ClientData, EmailCampaign, LinkedInCampaign, ReplyRecord, OpenEvent)
+    ClientData,
+    EmailCampaign,
+    LinkedInCampaign,
+    OpenEvent,
+    ReplyRecord,
+)
+
 
 def test_new_dataclasses_and_clientdata_fields():
     ec = EmailCampaign(name="Upsta_SFDI_V1", sent=414, opened=140, clicked=42,

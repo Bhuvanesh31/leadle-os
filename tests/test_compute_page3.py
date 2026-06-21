@@ -2,9 +2,11 @@
 import json
 from datetime import date
 from pathlib import Path
+
 import pytest
-from dashboard.compute.windows import resolve_window
+
 from dashboard.compute.page3_actions import compute
+from dashboard.compute.windows import resolve_window
 
 
 @pytest.fixture
@@ -32,7 +34,7 @@ def test_fathom_gap_excludes_scalenut_with_existing_deal(raw, rules):
     window = resolve_window("month-april", date(2026, 5, 9))
     out = compute(raw, rules, window)
     # Scalenut has a deal (id=1001), so it should NOT be in the gap
-    assert not any("Scalenut" == g["company"] for g in out["fathom_gap"])
+    assert not any(g["company"] == "Scalenut" for g in out["fathom_gap"])
 
 
 def test_fathom_gap_window_filters_meetings(raw, rules):

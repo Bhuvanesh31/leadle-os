@@ -1,5 +1,4 @@
 """Tests for Jinja templates with strict undefined checking."""
-from pathlib import Path
 
 import pytest
 from jinja2 import Environment, FileSystemLoader, StrictUndefined

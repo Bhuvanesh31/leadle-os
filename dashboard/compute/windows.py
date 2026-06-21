@@ -124,16 +124,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         target_month = _MONTH_NAMES[name]
         # Resolve within current FY: months in [fy_start..12] live in calendar year = fy
         #                            months in [1..fy_start-1] live in calendar year = fy + 1
-        if target_month >= fy_start_month:
-            target_year = current_fy
-        else:
-            target_year = current_fy + 1
+        target_year = current_fy if target_month >= fy_start_month else current_fy + 1
         s, e = _month_bounds(target_year, target_month)
         # Prior period = same month in prior FY
-        if target_month >= fy_start_month:
-            prior_year = current_fy - 1
-        else:
-            prior_year = current_fy   # since prior FY's same-month is one year earlier in calendar
+        prior_year = current_fy - 1 if target_month >= fy_start_month else current_fy
         ps, pe = _month_bounds(prior_year, target_month)
         return WindowSpec(
             name=arg,
@@ -232,7 +226,7 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         try:
             days = int(arg[5:-1])
         except ValueError:
-            raise ValueError(f"Bad rolling-day arg: {arg!r}")
+            raise ValueError(f"Bad rolling-day arg: {arg!r}") from None
         end = today
         start = today - timedelta(days=days - 1)
         prior_end = start - timedelta(days=1)

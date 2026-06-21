@@ -2,7 +2,9 @@
 import json
 from datetime import date
 from pathlib import Path
+
 import pytest
+
 from dashboard.compute.page2_activity import compute
 
 

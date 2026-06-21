@@ -8,8 +8,8 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
 import yaml
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from dashboard.agents import fathom_gap, forward_motion, funnel_leak, hygiene
 from dashboard.compute import page1_revenue, page2_activity, page3_actions, page4_outreach

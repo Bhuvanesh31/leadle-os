@@ -12,9 +12,9 @@ from pathlib import Path
 
 import yaml
 
+from dashboard.client import compute, render
 from dashboard.client.model import EmailCampaign, LinkedInCampaign, OpenEvent, ReplyRecord
 from dashboard.client.sources import sheet_source
-from dashboard.client import compute, render
 
 _REPO = Path(__file__).resolve().parents[2]
 _CFG = _REPO / "config"

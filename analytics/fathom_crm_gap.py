@@ -44,7 +44,7 @@ import json
 import os
 import re
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
@@ -78,8 +78,8 @@ def _fetch_fathom_meetings(api_key: str, start: date, end: date) -> dict:
     meetings: list[dict] = []
     cursor = None
 
-    start_iso = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc).isoformat()
-    end_iso = datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc).isoformat()
+    start_iso = datetime.combine(start, datetime.min.time(), tzinfo=UTC).isoformat()
+    end_iso = datetime.combine(end, datetime.max.time(), tzinfo=UTC).isoformat()
 
     try:
         while True:

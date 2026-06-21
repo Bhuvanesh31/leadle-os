@@ -2,9 +2,11 @@
 import json
 from datetime import date
 from pathlib import Path
+
 import pytest
-from dashboard.compute.windows import resolve_window
+
 from dashboard.compute.page1_revenue import compute
+from dashboard.compute.windows import resolve_window
 
 
 @pytest.fixture

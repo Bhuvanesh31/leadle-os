@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from dashboard.client import render
 from dashboard.client.constants import AIMFOX_ENV, INSTANTLY_ENV
 from dashboard.client.model import LinkedInCampaign

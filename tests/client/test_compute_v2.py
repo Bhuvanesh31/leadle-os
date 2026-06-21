@@ -2,12 +2,16 @@
 
 Accumulates through Tasks 7-11. Each task section is clearly delimited.
 """
-import yaml
 from pathlib import Path
-from datetime import datetime
+
+import yaml
+
 from dashboard.client import compute
 from dashboard.client.model import (
-    ClientData, EmailCampaign, LinkedInCampaign, ReplyRecord,
+    ClientData,
+    EmailCampaign,
+    LinkedInCampaign,
+    ReplyRecord,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -75,10 +79,9 @@ def test_kpis_zero_guard_division():
     assert k["accept_rate"] == 0.0
 
 
-def test_scorecard_positive_zero_emails_grades_F():
+def test_scorecard_positive_zero_emails_grades_F():  # noqa: N802
     """With emails_sent==0 but positive_replies>0, positive rate must be 0.0 (not 1.0),
     and its grade must be 'F' — proving _rate() is used instead of max(emails_sent, 1)."""
-    from dashboard.client.model import ReplyRecord
     # No email campaigns (emails_sent=0), but inject a positive reply via the legacy path
     # by directly constructing a kpis dict to isolate scorecard's zero-guard.
     k_zeroemails = {
@@ -111,7 +114,7 @@ def test_scorecard_positive_zero_emails_grades_F():
     )
 
 
-def test_scorecard_open_grade_A():
+def test_scorecard_open_grade_A():  # noqa: N802
     k = compute.kpis(_data(), RUBRIC)
     sc = compute.scorecard(k, RUBRIC)
     # open_rate = 355 / 927 ≈ 0.383 → >=0.20 band = A
