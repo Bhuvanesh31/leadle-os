@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from collections import Counter, defaultdict
+from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 from dashboard.client.model import ClientData
