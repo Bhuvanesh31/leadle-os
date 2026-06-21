@@ -1,3 +1,11 @@
-{# dashboard/client/templates/blocks/actions.html.j2 #}
-{% if actions.actions %}<ul>{% for a in actions.actions %}<li>{{ a }}</li>{% endfor %}</ul>
-{% else %}<div class="note">No actions flagged.</div>{% endif %}
+{# dashboard/client/templates/blocks/actions.html.j2 — internal-only actions (approved design) #}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="t">Actions this period</span></div>
+{% if actions.actions %}
+  {% for a in actions.actions %}
+    <div class="tpl"><span class="ord">&#9670;</span><span class="txt">{{ a }}</span></div>
+  {% endfor %}
+{% else %}
+  <div class="note">No actions flagged.</div>
+{% endif %}
+</div>

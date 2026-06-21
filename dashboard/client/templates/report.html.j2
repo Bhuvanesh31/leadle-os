@@ -1,10 +1,8 @@
-{# dashboard/client/templates/report.html.j2 #}
+{# dashboard/client/templates/report.html.j2 — generic iterator.
+   Each partial owns its own section chrome (the approved design varies the
+   wrapper per block: kpis is a bare grid, others use .sec/.sec-h with distinct
+   icons and subtitles). Audience gating stays driven by visible_blocks(). #}
 {% extends "report_base.html.j2" %}
 {% block body %}
- {% for b in blocks %}
-   <section>
-     <h2>{{ b.title }}</h2>
-     {% include "blocks/" + b.key + ".html.j2" %}
-   </section>
- {% endfor %}
+ {% for b in blocks %}{% include "blocks/" + b.key + ".html.j2" %}{% endfor %}
 {% endblock %}

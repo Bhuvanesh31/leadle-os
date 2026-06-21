@@ -1,7 +1,28 @@
-{# dashboard/client/templates/blocks/timing.html.j2 #}
+{# dashboard/client/templates/blocks/timing.html.j2 — engagement heatmap (approved design) #}
 {% set t = metrics.timing %}
-<table class="heat"><tr><th>Day</th>{% for p in t.dayparts %}<th>{{ p }}</th>{% endfor %}</tr>
- {% for wd in t.weekdays %}<tr><td>{{ wd }}</td>
-   {% for p in t.dayparts %}<td>{{ t.grid[wd][p] or '' }}</td>{% endfor %}</tr>
- {% endfor %}</table>
-<div class="note">Best: {{ t.best.weekday }} {{ t.best.daypart }} ({{ t.timezone }}). {{ t.note }}</div>
+{# blue heatmap palette indexed by level 0..4 (exact hex from the design source) #}
+{% set palette = ["#EFF6FF", "#DBEAFE", "#93C5FD", "#3B82F6", "#1D4ED8"] %}
+<div class="sec heat">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="t">Engagement timing</span><span class="s">&middot; email opens by daypart ({{ t.timezone }})</span></div>
+  <div class="heatgrid" style="grid-template-columns:34px repeat({{ t.dayparts | length }},1fr)">
+    <div class="hh"></div>
+    {% for p in t.dayparts %}<div class="hh">{{ p }}</div>{% endfor %}
+    {% for wd in t.weekdays %}
+      <div class="row-lab">{{ wd }}</div>
+      {% for p in t.dayparts %}
+        {% set lvl = t.levels[wd][p] %}
+        {% set cnt = t.grid[wd][p] %}
+        <div class="cell" style="background:{{ palette[lvl] }}" title="{{ cnt }} open{{ '' if cnt == 1 else 's' }}"></div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="heatleg"><span>less</span>{% for c in palette %}<span class="sw" style="background:{{ c }}"></span>{% endfor %}<span>more</span></div>
+  <div class="note">
+    {% if t.best.weekday %}
+      <b>{{ t.best.weekday }} {{ t.best.daypart }} owns it</b> ({{ t.best.count }} opens). Send the next batch around then.
+    {% else %}
+      No opens recorded this period &mdash; nothing to time yet.
+    {% endif %}
+    {{ t.note }}
+  </div>
+</div>

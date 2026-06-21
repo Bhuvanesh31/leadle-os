@@ -1,2 +1,23 @@
-{# dashboard/client/templates/blocks/variants.html.j2 #}
-<div class="note">Per-step variant performance not yet available; LinkedIn message ranking requires Aimfox per-step data (Phase 2).</div>
+{# dashboard/client/templates/blocks/variants.html.j2 — LinkedIn message variants (approved design) #}
+<div class="sec" style="margin-top:16px">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8.3 18.3H5.7V9.7h2.6zM7 8.5A1.5 1.5 0 1 1 7 5.5a1.5 1.5 0 0 1 0 3zM18.3 18.3h-2.6v-4.2c0-1-.4-1.7-1.3-1.7-.7 0-1.1.5-1.3 1-.1.2-.1.5-.1.7v4.2h-2.6V9.7h2.6v1.1c.3-.5 1-1.3 2.4-1.3 1.7 0 2.9 1.1 2.9 3.5z"/></svg><span class="t">Which LinkedIn message worked</span><span class="s">&middot; by opening hook</span></div>
+{% if metrics.variants %}
+  <table>
+    <thead><tr><th>Variant &middot; opening hook</th><th class="num">Acc</th><th class="num">Reply</th></tr></thead>
+    <tbody>
+      {% for v in metrics.variants %}
+      <tr>
+        <td class="k">{{ v.name }}{% if v.winner %} <span class="best">reply winner</span>{% endif %}
+          {% if v.hook %}<div class="sub">{{ v.hook }}</div>{% endif %}
+        </td>
+        <td class="num">{{ '%.1f%%' % (v.accept_rate*100) }}</td>
+        <td class="num">{{ v.replies }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="note">Accept rate measures reach; replies measure conversation. The winning hook is the one that actually drew replies.</div>
+{% else %}
+  <div class="note">No LinkedIn variants this period.</div>
+{% endif %}
+</div>

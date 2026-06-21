@@ -1,2 +1,9 @@
-{# dashboard/client/templates/blocks/narrative.html.j2 #}
-<p>{{ narrative.narrative }}</p>
+{# dashboard/client/templates/blocks/narrative.html.j2 — narrative (approved design) #}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5V6a2 2 0 0 1 2-2h12v16H6a2 2 0 0 1-2-2.5z"/><path d="M8 7h8M8 11h8"/></svg><span class="t">Narrative</span></div>
+  {% if narrative.narrative %}
+    <div class="narr">{{ narrative.narrative }}</div>
+  {% else %}
+    <div class="note">Narrative unavailable this period.</div>
+  {% endif %}
+</div>

@@ -1,9 +1,31 @@
-{# dashboard/client/templates/blocks/campaigns.html.j2 #}
+{# dashboard/client/templates/blocks/campaigns.html.j2 — campaign performance table (approved design) #}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span class="t">Which campaign performed</span><span class="s">&middot; email reply&rarr;click&rarr;open &middot; LinkedIn reply&rarr;connect</span></div>
 {% if metrics.campaigns %}
-<table><tr><th>Campaign</th><th>Channel</th><th>Sent</th><th>Rate</th><th>Grade</th></tr>
- {% for c in metrics.campaigns %}
- <tr><td>{{ c.name }}</td><td>{{ c.channel }}</td><td>{{ c.sent }}</td>
-     <td>{{ '%.1f%%' % (c.reply_rate*100) }} {{ c.secondary_label }}</td>
-     <td><span class="grade">{{ c.grade }}</span></td></tr>
- {% endfor %}</table>
-{% else %}<div class="note">No campaign activity this period.</div>{% endif %}
+  <table>
+    <thead><tr><th>Campaign</th><th>Channel</th><th class="num">Sent</th><th class="num">Reply</th><th class="num">Acc / Click</th><th class="num">Bounce</th><th class="num">Grade</th></tr></thead>
+    <tbody>
+      {% for c in metrics.campaigns %}
+      <tr>
+        <td class="camp">{{ c.name }}</td>
+        <td>
+          {% if c.channel == "Email" %}
+          <span class="chan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Email</span>
+          {% else %}
+          <span class="chan"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8.3 18.3H5.7V9.7h2.6zM7 8.5A1.5 1.5 0 1 1 7 5.5a1.5 1.5 0 0 1 0 3zM18.3 18.3h-2.6v-4.2c0-1-.4-1.7-1.3-1.7-.7 0-1.1.5-1.3 1-.1.2-.1.5-.1.7v4.2h-2.6V9.7h2.6v1.1c.3-.5 1-1.3 2.4-1.3 1.7 0 2.9 1.1 2.9 3.5z"/></svg>LinkedIn</span>
+          {% endif %}
+        </td>
+        <td class="num">{{ c.sent }}</td>
+        <td class="num">{% if c.reply_rate > 0 %}<span class="okk">{{ '%.1f%%' % (c.reply_rate*100) }}</span>{% else %}{{ '%.1f%%' % (c.reply_rate*100) }}{% endif %}</td>
+        <td class="num">{{ '%.1f%%' % (c.secondary*100) }}</td>
+        <td class="num">{% if c.bounce_rate is none %}<span class="gapcell">&mdash;</span>{% else %}<span class="{{ 'warn' if c.bounce_rate >= 0.04 else 'okk' }}">{{ '%.1f%%' % (c.bounce_rate*100) }}</span>{% endif %}</td>
+        <td class="num"><span class="grade g-{{ c.grade }}">{{ c.grade }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="note">Reply is the ranking key (email falls to click then open). Email is the period; LinkedIn is shown to date because accepts and replies lag the invite by days.</div>
+{% else %}
+  <div class="note">No campaign activity this period.</div>
+{% endif %}
+</div>

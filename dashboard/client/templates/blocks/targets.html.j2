@@ -1,3 +1,19 @@
-{# dashboard/client/templates/blocks/targets.html.j2 #}
-{% set cov = metrics.coverage %}
-<div class="note">{{ cov.contacted_total }} of {{ cov.target_total }} target accounts contacted.</div>
+{# dashboard/client/templates/blocks/targets.html.j2 — targets next period (approved design).
+   Goals are framed against this period's actuals (from metrics), so no figure is
+   hardcoded into the markup. #}
+{% set k = metrics.kpis %}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.5" fill="currentColor"/></svg><span class="t">Targets next period</span></div>
+  <div class="targets">
+    <div class="tg"><span class="lab">Hold open rate above</span><span class="v">{{ '%.0f%%' % (k.open_rate*100) }}</span></div>
+    <div class="tg"><span class="lab">Pull bounce below</span><span class="v">{{ '%.1f%%' % (k.bounce_rate*100) }}</span></div>
+    <div class="tg"><span class="lab">Beat total replies</span><span class="v">{{ k.total_replies }}</span></div>
+    <div class="tg"><span class="lab">Beat positive replies</span><span class="v">{{ k.positive_replies }}</span></div>
+    {% if k.meetings %}
+    <div class="tg"><span class="lab">Beat meetings</span><span class="v">{{ k.meetings }}</span></div>
+    {% else %}
+    <div class="tg"><span class="lab">Meetings</span><span class="v gap">&mdash; needs CRM</span></div>
+    {% endif %}
+  </div>
+  <div class="note">Next period&rsquo;s bar is this period&rsquo;s result: hold the wins, close the gaps.</div>
+</div>
