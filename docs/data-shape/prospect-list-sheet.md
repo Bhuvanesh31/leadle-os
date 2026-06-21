@@ -181,3 +181,46 @@ Prospect Linkedin Profile | Reply Sentiment`.
 **Leads rule (operator):** any *positive* response = a lead. Current count = **0** (0 positive
 replies on either channel). **Upsta benchmarks:** open 20%, click 2%, positive replies 4/mo,
 total replies 12/mo, bounce <4%. Extractor: `/tmp/reply_metrics.py` → `/tmp/reply_metrics.json`.
+
+## Render runbook
+
+End-to-end steps to produce the 4 client dashboard HTML files from the Drive workbook and live APIs.
+The slash command `/render-client-report` automates all of this.
+
+### Required env keys
+
+| Key | Purpose |
+|---|---|
+| `AIMFOX_API_KEY` | LinkedIn campaign numbers (Aimfox REST API). Absent: LinkedIn blocks degrade to empty, render continues. |
+| `INSTANTLY_API_KEY` | Email campaign numbers (Instantly REST API). Absent: email blocks degrade to empty, render continues. |
+
+### Step 1 — Download the XLSX workbook
+
+Use Drive `download_file_content` (NOT `read_file_content` — the text flatten silently truncates rows):
+
+- File id: `1GgFeDdXpy1ZlDjH8bTWNL_c7m0ihSSO_-iYNyzadCQg` (value of `constants.SHEET_DRIVE_ID`)
+- `exportMimeType`: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- Save to e.g. `/tmp/upsta_workbook.xlsx`
+
+### Step 2 — Run the render CLI
+
+```bash
+source .venv/bin/activate && python -m dashboard.client.render \
+  --xlsx /tmp/upsta_workbook.xlsx --all-periods --audience both --period-end <YYYY-MM-DD>
+```
+
+Replace `<YYYY-MM-DD>` with the last day of the reporting period (typically today's date).
+
+### Outputs
+
+4 HTML files written to `reports/client/`:
+
+```
+reports/client/UPSTA-<period_end>-monthly-internal.html
+reports/client/UPSTA-<period_end>-monthly-client.html
+reports/client/UPSTA-<period_end>-weekly-internal.html
+reports/client/UPSTA-<period_end>-weekly-client.html
+```
+
+The CLI prints each absolute path as it writes it. The `internal` files include sender health,
+deliverability flags, and action items; the `client` files show only the audience-safe blocks.
