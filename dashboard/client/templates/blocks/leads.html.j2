@@ -1,10 +1,10 @@
 {# dashboard/client/templates/blocks/leads.html.j2 #}
 {% set L = metrics.leads %}
-{% if L.hot or L.warm %}
+{% if L.hot %}
 <table><tr><th>Name</th><th>Title</th><th>Company</th><th>Channel</th><th>Status</th></tr>
- {% for x in L.hot + L.warm %}
+ {% for x in L.hot %}
  <tr><td>{{ x.name }}</td><td>{{ x.title }}</td><td>{{ x.company }}</td>
      <td>{{ x.channel }}</td><td>{{ x.tier }} · {{ x.status }}</td></tr>
  {% endfor %}</table>
-{% else %}<div class="note">No warm leads logged yet — campaign is live.</div>{% endif %}
-<div class="note">{{ L.reached_count }} prospects reached.</div>
+{% else %}<div class="note">No positive leads yet — campaign is live.</div>{% endif %}
+<div class="note">{{ L.reached }} reached · {{ L.warm_count }} accepted (reach) · {{ L.positive_leads }} positive · {{ L.meetings }} meetings.</div>

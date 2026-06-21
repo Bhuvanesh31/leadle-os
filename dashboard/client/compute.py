@@ -18,50 +18,24 @@ def _status_hits(status: str, keywords: list[str]) -> bool:
 
 
 def kpis(data: ClientData, rubric: dict) -> dict:
-    # Aggregate from campaign-level data; fall back to event-based counts when
-    # email_campaigns is empty (supports legacy event-only ClientData shapes).
-    if data.email_campaigns:
-        sent = sum(c.sent for c in data.email_campaigns)
-        opened = sum(c.opened for c in data.email_campaigns)
-        clicked = sum(c.clicked for c in data.email_campaigns)
-        bounced = sum(c.bounced for c in data.email_campaigns)
-    else:
-        # TODO(Task-11): remove this fallback once compute_all + remaining functions are migrated
-        ec = Counter(e.event_type for e in data.emails)
-        sent = ec.get("email_sent", 0)
-        opened = ec.get("email_opened", 0)
-        clicked = ec.get("link_clicked", 0)
-        bounced = ec.get("email_bounced", 0)
+    # Aggregate from campaign-level data (empty list → 0 for each metric).
+    sent = sum(c.sent for c in data.email_campaigns)
+    opened = sum(c.opened for c in data.email_campaigns)
+    clicked = sum(c.clicked for c in data.email_campaigns)
+    bounced = sum(c.bounced for c in data.email_campaigns)
 
-    if data.linkedin_campaigns:
-        invites = sum(c.invites for c in data.linkedin_campaigns)
-        accepted = sum(c.accepted for c in data.linkedin_campaigns)
-    else:
-        # TODO(Task-11): remove this fallback once compute_all + remaining functions are migrated
-        lc = Counter(e.event_type for e in data.linkedin)
-        invites = lc.get("connect", 0)
-        accepted = lc.get("accepted", 0)
+    invites = sum(c.invites for c in data.linkedin_campaigns)
+    accepted = sum(c.accepted for c in data.linkedin_campaigns)
 
     delivered = sent - bounced
 
-    # Reply counts from ReplyRecord list (new path) or LinkedIn events (legacy)
-    if data.replies:
-        li_replies = sum(1 for r in data.replies if r.channel == "linkedin")
-        email_replies = sum(1 for r in data.replies if r.channel == "email")
-        total_replies = li_replies + email_replies
-        positive_replies = sum(1 for r in data.replies if r.sentiment == "positive")
-        neutral_replies = sum(1 for r in data.replies if r.sentiment == "neutral")
-        negative_replies = sum(1 for r in data.replies if r.sentiment == "negative")
-    else:
-        # TODO(Task-11): remove this fallback once compute_all + remaining functions are migrated
-        lc = Counter(e.event_type for e in data.linkedin)
-        li_replies = lc.get("reply", 0)
-        email_replies = 0
-        total_replies = li_replies
-        positive_replies = sum(1 for w in data.warm_leads
-                               if _status_hits(w.status, rubric["positive_statuses"]))
-        neutral_replies = 0
-        negative_replies = 0
+    # Reply counts from ReplyRecord list.
+    li_replies = sum(1 for r in data.replies if r.channel == "linkedin")
+    email_replies = sum(1 for r in data.replies if r.channel == "email")
+    total_replies = li_replies + email_replies
+    positive_replies = sum(1 for r in data.replies if r.sentiment == "positive")
+    neutral_replies = sum(1 for r in data.replies if r.sentiment == "neutral")
+    negative_replies = sum(1 for r in data.replies if r.sentiment == "negative")
 
     # Warm-lead outcomes from tracker (meeting_statuses)
     meetings = sum(1 for w in data.warm_leads
@@ -281,35 +255,56 @@ def timing_heatmap(data: ClientData, rubric: dict) -> dict:
 def lead_ladder(data: ClientData, rubric: dict) -> dict:
     hot: list[dict] = []
     seen: set[str] = set()
+
+    # Source 1: positive replies from the reply stream (replies first).
+    for r in data.replies:
+        if r.sentiment != "positive":
+            continue
+        key = (r.name or "").lower()
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        hot.append({
+            "name": r.name, "title": "", "company": "", "channel": r.channel,
+            "status": "Positive reply", "tier": "Hot", "response_text": "",
+        })
+
+    # Source 2: warm-lead tracker rows matching meeting or positive statuses.
     for w in data.warm_leads:
+        is_meeting = _status_hits(w.status, rubric["meeting_statuses"])
+        is_positive = _status_hits(w.status, rubric["positive_statuses"])
+        if not (is_meeting or is_positive):
+            continue
         key = (w.linkedin_url or w.name).lower()
         if key in seen:
             continue
         seen.add(key)
-        is_meeting = _status_hits(w.status, rubric["meeting_statuses"])
-        is_positive = _status_hits(w.status, rubric["positive_statuses"])
-        if is_meeting or is_positive:
-            hot.append({
-                "name": w.name, "title": w.title, "company": w.company,
-                "channel": w.channel, "status": w.status, "tier": "Hot",
-                "response_text": w.response_text,
-            })
-    # Warm tier = engaged on LinkedIn (accepted) not already Hot
-    warm: list[dict] = []
-    for e in data.linkedin:
-        if e.event_type != "accepted":
-            continue
-        key = (e.profile_url or e.prospect_name).lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        warm.append({
-            "name": e.prospect_name, "title": e.title, "company": e.company,
-            "channel": "LinkedIn", "status": "Accepted invite", "tier": "Warm",
-            "response_text": "",
+        hot.append({
+            "name": w.name, "title": w.title, "company": w.company,
+            "channel": w.channel, "status": w.status, "tier": "Hot",
+            "response_text": w.response_text,
         })
-    reached = len(data.emails) + len(data.linkedin) - len(hot) - len(warm)
-    return {"hot": hot, "warm": warm, "reached_count": max(reached, 0)}
+
+    reach = channel_reach(data)
+    reached = max(
+        reach["linkedin_reached"] + reach["email_reached"] - reach["both_reached"], 0
+    )
+    positive_leads = sum(1 for r in data.replies if r.sentiment == "positive")
+    meetings = sum(
+        1 for w in data.warm_leads if _status_hits(w.status, rubric["meeting_statuses"])
+    )
+    warm_count = sum(c.accepted for c in data.linkedin_campaigns)
+    engaged = warm_count + len(data.replies)
+
+    return {
+        "reached": reached,
+        "engaged": engaged,
+        "positive_leads": positive_leads,
+        "meetings": meetings,
+        "hot": hot,
+        "warm_count": warm_count,
+    }
 
 
 def coverage(data: ClientData) -> dict:
@@ -348,10 +343,12 @@ def compute_all(data: ClientData, rubric: dict) -> dict:
         "kpis": k,
         "scorecard": scorecard(k, rubric),
         "campaigns": campaign_table(data, rubric),
+        "content": content_steps(data),
+        "variants": variants(data, rubric),
         "senders": sender_wise(data, rubric),
         "deliverability": deliverability(data, rubric),
         "timing": timing_heatmap(data, rubric),
+        "reach": channel_reach(data),
         "leads": lead_ladder(data, rubric),
         "coverage": coverage(data),
-        "reach": channel_reach(data),
     }

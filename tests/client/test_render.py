@@ -1,14 +1,41 @@
 from pathlib import Path
 import yaml
-from dashboard.client.sources import sheet_source
+from dashboard.client.model import (
+    ClientData, EmailCampaign, LinkedInCampaign, ReplyRecord, WarmLead, TargetCo,
+)
 from dashboard.client import compute, render
 
-_FIX = Path(__file__).parent / "fixtures" / "upsta_workbook.txt"
 _CFG = Path(__file__).resolve().parents[2] / "config"
 
 
 def _ctx():
-    data = sheet_source.parse(_FIX.read_text(), client="UPSTA")
+    data = ClientData(
+        email_campaigns=[EmailCampaign(name="C1", sent=100, opened=25, clicked=5, bounced=4, replied=3)],
+        linkedin_campaigns=[LinkedInCampaign(name="L1", invites=50, accepted=12, replied=2, variant_message="Hi there")],
+        replies=[
+            ReplyRecord(channel="email", campaign="C1", sentiment="positive", name="Alice"),
+            ReplyRecord(channel="linkedin", campaign="L1", sentiment="neutral", name="Bob"),
+        ],
+        warm_leads=[
+            WarmLead(
+                channel="LinkedIn", account="UPSTA", response_date="2026-06-01",
+                status="Meeting booked", response_text="Let's connect.",
+                linkedin_url="https://linkedin.com/in/alice", name="Alice",
+                title="VP Sales", company="Acme", company_url="https://acme.com",
+                location="New York",
+            ),
+        ],
+        senders=[{"from_email": "outreach@leadle.in", "sent": 100, "bounced": 6}],
+        content_steps=[{"step": 1, "sent": 100, "opened": 25}],
+        targets=[
+            TargetCo(
+                name="Acme", country="US", location="New York",
+                linkedin_url="https://linkedin.com/company/acme",
+                industry="SaaS", size="51-200", segment="ICP-A",
+                domain="acme.com", aimfox_id="ax-001", instantly_id="in-001",
+            ),
+        ],
+    )
     rubric = yaml.safe_load((_CFG / "client_report_rubric.yaml").read_text())
     layout = yaml.safe_load((_CFG / "client_report_layout.yaml").read_text())
     metrics = compute.compute_all(data, rubric)
