@@ -60,6 +60,8 @@ coverage.xml
 # Generated
 reports/*
 !reports/.gitkeep
+.cache/*
+!.cache/.gitkeep
 *.log
 logs/
 
@@ -86,5 +88,5 @@ Thumbs.db
 
 # Misc tooling caches
 .firecrawl/
-.cache/
+.playwright-mcp/
 .local/

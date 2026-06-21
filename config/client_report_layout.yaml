@@ -1,0 +1,15 @@
+# Block order + per-audience visibility. render.py --audience filters on this.
+blocks:
+  - {key: kpis,          title: "Headline",                  visibility: both}
+  - {key: scorecard,     title: "Benchmark scorecard",       visibility: both}
+  - {key: campaigns,     title: "Which campaign performed",  visibility: both}
+  - {key: content,       title: "Which content performed",   visibility: both}
+  - {key: variants,      title: "Which LinkedIn message worked", visibility: both}
+  - {key: senders,       title: "Sender health",             visibility: internal}
+  - {key: timing,        title: "Engagement timing",         visibility: both}
+  - {key: deliverability, title: "Deliverability flags",     visibility: internal}
+  - {key: reach,         title: "Channel reach",             visibility: both}
+  - {key: leads,         title: "Warm & named leads",        visibility: both}
+  - {key: narrative,     title: "Narrative",                 visibility: both}
+  - {key: actions,       title: "Actions this period",       visibility: internal}
+  - {key: targets,       title: "Targets next period",       visibility: both}

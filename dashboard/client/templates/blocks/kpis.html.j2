@@ -1,0 +1,74 @@
+{# dashboard/client/templates/blocks/kpis.html.j2 — 6 KPI tiles (approved design) #}
+{% set k = metrics.kpis %}
+<div class="kpis">
+
+  {# 1. Emails sent #}
+  <div class="tile stat">
+    <div class="lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Emails sent</div>
+    <div class="num">{{ '{:,}'.format(k.emails_sent) }}</div>
+    <div class="delta flat">{{ '{:,}'.format(k.fresh_prospects) }} fresh</div>
+    <div class="tip pop"><div class="tt">Email funnel</div>
+      <div class="tr"><span>Fresh prospects</span><b>{{ '{:,}'.format(k.fresh_prospects) }}</b></div>
+      <div class="tr"><span>Opens</span><b>{{ k.opened }} &middot; {{ '%.0f%%' % (k.open_rate*100) }}</b></div>
+      <div class="tr"><span>Clicks</span><b>{{ k.clicked }} &middot; {{ '%.1f%%' % (k.click_rate*100) }}</b></div>
+      <div class="tr"><span>Bounce</span><b>{{ k.bounced }} &middot; {{ '%.1f%%' % (k.bounce_rate*100) }}</b></div></div>
+  </div>
+
+  {# 2. Reply rate (email) #}
+  <div class="tile stat">
+    <div class="lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Reply rate</div>
+    {% set reply_rate = (k.email_replies / k.delivered) if k.delivered else 0.0 %}
+    <div class="num">{{ '%.1f%%' % (reply_rate*100) }}</div>
+    <div class="delta {{ 'down' if k.email_replies == 0 else 'flat' }}">{{ k.email_replies }} email replies</div>
+    <div class="tip pop"><div class="tt">Replies</div>
+      <div class="tr"><span>Email</span><b>{{ k.email_replies }}</b></div>
+      <div class="tr"><span>LinkedIn</span><b>{{ k.li_replies }}</b></div>
+      <div class="tr bench"><span>Total replies</span><b>{{ k.total_replies }}</b></div></div>
+  </div>
+
+  {# 3. Positive replies #}
+  <div class="tile stat">
+    <div class="lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Positive replies</div>
+    <div class="num">{{ k.positive_replies }}</div>
+    <div class="delta {{ 'down' if k.positive_replies == 0 else 'up' }}">{{ k.leads }} leads</div>
+    <div class="tip pop"><div class="tt">Reply sentiment</div>
+      <div class="tr"><span>Positive</span><b>{{ k.positive_replies }}</b></div>
+      <div class="tr"><span>Neutral</span><b>{{ k.neutral_replies }}</b></div>
+      <div class="tr"><span>Negative</span><b>{{ k.negative_replies }}</b></div>
+      <div class="tr bench"><span>Any positive = lead</span><b>{{ k.leads }}</b></div></div>
+  </div>
+
+  {# 4. Meetings #}
+  <div class="tile stat">
+    <div class="lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Meetings</div>
+    {% if k.meetings %}
+      <div class="num">{{ k.meetings }}</div><div class="delta flat">booked</div>
+    {% else %}
+      <div class="num gap">&mdash;</div><div class="delta flat">needs CRM</div>
+    {% endif %}
+    <div class="tip pop"><div class="tt">Meetings booked</div>
+      <div class="tr"><span>This period</span><b{% if not k.meetings %} class="flat"{% endif %}>{{ k.meetings if k.meetings else 'no data' }}</b></div></div>
+  </div>
+
+  {# 5. Accepted (LinkedIn) #}
+  <div class="tile stat">
+    <div class="lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Accepted</div>
+    <div class="num">{{ k.accepted }}</div>
+    <div class="delta flat">{{ '%.1f%%' % (k.accept_rate*100) }} of {{ k.invites }} invites</div>
+    <div class="tip pop"><div class="tt">LinkedIn</div>
+      <div class="tr"><span>Invites</span><b>{{ k.invites }}</b></div>
+      <div class="tr"><span>Accepted</span><b>{{ k.accepted }} &middot; {{ '%.1f%%' % (k.accept_rate*100) }}</b></div>
+      <div class="tr bench"><span class="flat">Accepts are reach, not warm leads</span></div></div>
+  </div>
+
+  {# 6. LI replies #}
+  <div class="tile stat">
+    <div class="lab"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8.3 18.3H5.7V9.7h2.6zM7 8.5A1.5 1.5 0 1 1 7 5.5a1.5 1.5 0 0 1 0 3zM18.3 18.3h-2.6v-4.2c0-1-.4-1.7-1.3-1.7-.7 0-1.1.5-1.3 1-.1.2-.1.5-.1.7v4.2h-2.6V9.7h2.6v1.1c.3-.5 1-1.3 2.4-1.3 1.7 0 2.9 1.1 2.9 3.5z"/></svg>Li replies</div>
+    <div class="num">{{ k.li_replies }}</div>
+    <div class="delta flat">{{ k.positive_replies }} positive</div>
+    <div class="tip pop"><div class="tt">LinkedIn replies</div>
+      <div class="tr"><span>Replies</span><b>{{ k.li_replies }}</b></div>
+      <div class="tr bench"><span>Positive</span><b>{{ k.positive_replies }}</b></div></div>
+  </div>
+
+</div>

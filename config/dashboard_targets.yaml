@@ -1,0 +1,14 @@
+# USD per the dashboard mock. Resolve INR conversion at use-site if needed.
+annual:
+  goal_amount: 319000
+  goal_currency: USD
+  target_date: "2026-10-31"
+
+monthly:
+  target_amount: 61800
+  target_currency: USD
+
+pipeline_coverage:
+  ratio_target: 3.0
+  ratio_warning_below: 2.0
+  ratio_critical_below: 1.0

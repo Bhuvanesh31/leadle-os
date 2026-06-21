@@ -1,0 +1,19 @@
+pages:
+  page1_revenue:
+    enabled: true
+    sections:
+      goal_snapshot: true
+      monthly_control: true
+      execution: true
+      channel_performance: true
+      channel_economics: true
+      funnel: true
+      accountability: true
+      hygiene: true
+      forward_motion: true
+  page2_activity:
+    enabled: true
+  page3_actions:
+    enabled: true
+  page4_outreach:
+    enabled: true

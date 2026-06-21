@@ -1,0 +1,20 @@
+{# dashboard/client/templates/blocks/scorecard.html.j2 — benchmark scorecard (approved design) #}
+{% set s = metrics.scorecard %}
+{% set k = metrics.kpis %}
+{% set labels = {
+    "open_rate": "Open",
+    "reply_rate": "Reply",
+    "positive": "Positive",
+    "bounce_rate": "Bounce",
+    "accept_rate": "Accept",
+} %}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6"/></svg><span class="t">Benchmark scorecard</span><span class="s">&middot; vs benchmarks</span></div>
+  <div class="scorecard">
+    {% for m, g in s.grades.items() %}
+    <div class="sc"><span class="sc-lab">{{ labels[m] }}</span><span class="gradebig g-{{ g }}">{{ g }}</span></div>
+    {% endfor %}
+    <div class="sc"><span class="sc-lab">Overall</span><span class="gradebig g-{{ s.overall }}">{{ s.overall }}</span></div>
+  </div>
+  <div class="decision"><span class="dia">&#9670;</span><span>Open rate is <b>{{ '%.0f%%' % (k.open_rate*100) }}</b>, bounce is <b>{{ '%.1f%%' % (k.bounce_rate*100) }}</b>, and the period drew <b>{{ k.total_replies }}</b> replies ({{ k.positive_replies }} positive). Graded against the report rubric.</span></div>
+</div>

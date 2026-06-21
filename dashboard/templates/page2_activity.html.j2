@@ -1,0 +1,198 @@
+{% set p = analytics.page2 %}
+<header class="header">
+  <h1 class="title display">Activity &amp; Rot Monitor</h1>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Activity & Rot</div>
+    <h2 class="section-title">Deals and leads at risk</h2>
+  </div>
+  <div class="kpi-grid cols-4">
+    <div class="kpi">
+      <div class="kpi-label">Rotting Deals</div>
+      <div class="kpi-value mono">{{ p.kpi.rotting_count | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Pipeline at Risk</div>
+      <div class="kpi-value mono">${{ "{:,}".format(p.pipeline_at_risk | default(0)) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Stalled Leads</div>
+      <div class="kpi-value mono">{{ p.kpi.stalled_count | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Most Critical Deal</div>
+      <div class="kpi-value" style="font-size: 14px;">{{ (p.kpi.most_critical_deal.name if p.kpi.most_critical_deal else '—') }}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Rotting Deals</div>
+    <h2 class="section-title">Open, no recent activity</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Stage</th><th>Last Activity</th><th>Days Stale</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for d in p.rotting_deals | default([]) %}
+        <tr><td>{{ d.name }}</td><td>{{ d.stage }}</td><td>{{ d.last_activity }}</td>
+            <td>{{ d.days_stale }}</td><td>${{ "{:,}".format(d.amount or 0) }}</td></tr>
+        {% else %}
+        <tr><td colspan="5">No rotting deals.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Stalled Leads</div>
+    <h2 class="section-title">Replied, no meeting booked</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Email</th><th>Lifecycle</th><th>Last Activity</th><th>Days</th></tr></thead>
+      <tbody>
+        {% for s in p.stalled_leads | default([]) %}
+        <tr><td>{{ s.email }}</td><td>{{ s.lifecycle }}</td>
+            <td>{{ s.last_activity }}</td><td>{{ s.days_stalled }}</td></tr>
+        {% else %}
+        <tr><td colspan="4">No stalled leads.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% set f = p.lead_funnel | default({}) %}
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Lead Funnel</div>
+    <h2 class="section-title">All {{ f.total_leads | default(0) }} leads, by furthest progress</h2>
+  </div>
+  <div class="kpi-grid cols-5">
+    <div class="kpi">
+      <div class="kpi-label">No reply</div>
+      <div class="kpi-value mono">{{ f.totals.no_reply | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Replied (awaiting us)</div>
+      <div class="kpi-value mono">{{ f.totals.replied_awaiting_us | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Responded (no meeting)</div>
+      <div class="kpi-value mono">{{ f.totals.responded_no_meeting | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Meeting booked (no call)</div>
+      <div class="kpi-value mono">{{ f.totals.meeting_booked_no_call | default(0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Call completed</div>
+      <div class="kpi-value mono">{{ f.totals.call_completed | default(0) }}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Replied, awaiting our response</div>
+    <h2 class="section-title">{{ f.totals.replied_awaiting_us | default(0) }} leads owe us a reply</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lead</th><th>Contact</th><th>Company</th><th>Channel</th><th>Replied</th></tr></thead>
+      <tbody>
+        {% for r in f.replied_awaiting_us | default([]) %}
+        <tr>
+          <td>{{ r.lead_name | default('—') }}</td>
+          <td>{{ r.contact_name | default('—') }}{% if r.contact_email %} · {{ r.contact_email }}{% endif %}</td>
+          <td>{{ r.company | default('—') }}</td>
+          <td>{{ r.channel | default('—') }}</td>
+          <td>{{ r.replied_at | default('—') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No leads awaiting our response.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Responded, no meeting</div>
+    <h2 class="section-title">{{ f.totals.responded_no_meeting | default(0) }} leads where conversation stalled before booking</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lead</th><th>Contact</th><th>Company</th><th>Channel</th><th>Last reply</th></tr></thead>
+      <tbody>
+        {% for r in f.responded_no_meeting | default([]) %}
+        <tr>
+          <td>{{ r.lead_name | default('—') }}</td>
+          <td>{{ r.contact_name | default('—') }}{% if r.contact_email %} · {{ r.contact_email }}{% endif %}</td>
+          <td>{{ r.company | default('—') }}</td>
+          <td>{{ r.channel | default('—') }}</td>
+          <td>{{ r.replied_at | default('—') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No stuck conversations.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Meeting booked, no call</div>
+    <h2 class="section-title">{{ f.totals.meeting_booked_no_call | default(0) }} leads promoted to Deal but Fathom shows no call</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lead</th><th>Contact</th><th>Company</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for r in f.meeting_booked_no_call | default([]) %}
+        <tr>
+          <td>{{ r.lead_name | default('—') }}</td>
+          <td>{{ r.contact_name | default('—') }}{% if r.contact_email %} · {{ r.contact_email }}{% endif %}</td>
+          <td>{{ r.company | default('—') }}</td>
+          <td>{{ r.createdate | default('—') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No meetings without recorded calls.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Lead Rotting</div>
+    <h2 class="section-title">{{ f.rotting_count | default(0) }} leads with no reply &amp; created &gt;5 days ago</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lead</th><th>Contact</th><th>Company</th><th>Created</th><th>Days idle</th></tr></thead>
+      <tbody>
+        {% for r in f.lead_rotting | default([]) %}
+        <tr>
+          <td>{{ r.lead_name | default('—') }}</td>
+          <td>{{ r.contact_name | default('—') }}{% if r.contact_email %} · {{ r.contact_email }}{% endif %}</td>
+          <td>{{ r.company | default('—') }}</td>
+          <td>{{ r.createdate | default('—') }}</td>
+          <td>{{ r.days_since_created }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No rotting leads.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

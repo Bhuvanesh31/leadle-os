@@ -1,0 +1,133 @@
+# HubSpot pipeline stage definitions for Leadle's own CRM.
+#
+# stage_id   — actual value stored in hs_pipeline_stage (what the API returns)
+# prop       — full property name for hs_v2_date_entered_<id> (date history)
+#              Note: HubSpot uses two different ID formats — the short form in
+#              hs_pipeline_stage and the long form in date-entered property names.
+# name       — display label used in reports
+# order      — 1-indexed funnel position (1 = top)
+# terminal   — true for exit stages (archived/lost); excluded from conversion chain
+# rotting    — true for stages where inactivity is actionable (Sai is working these)
+
+leads:
+  stages:
+    - stage_id: "new-stage-id"
+      prop: "hs_v2_date_entered_new_stage_id_1318266061"
+      name: "New Lead"
+      order: 1
+      terminal: false
+      rotting: true
+
+    - stage_id: "attempting-stage-id"
+      prop: "hs_v2_date_entered_attempting_stage_id_745667965"
+      name: "Lead Validated"
+      order: 2
+      terminal: false
+      rotting: true
+
+    - stage_id: "connected-stage-id"
+      prop: "hs_v2_date_entered_connected_stage_id_2058487257"
+      name: "Lead Qualified"
+      order: 3
+      terminal: false
+      rotting: true
+
+    - stage_id: "3200435922"
+      prop: "hs_v2_date_entered_3200435922"
+      name: "Lead Engaged"
+      order: 4
+      terminal: false
+      rotting: true
+
+    - stage_id: "3200435923"
+      prop: "hs_v2_date_entered_3200435923"
+      name: "Meeting Proposed"
+      order: 5
+      terminal: false
+      rotting: true
+
+    - stage_id: "qualified-stage-id"
+      prop: "hs_v2_date_entered_qualified_stage_id_233247981"
+      name: "Advance to Deal"
+      order: 6
+      terminal: false
+      rotting: false   # converted — tracked in deal pipeline from here
+
+    - stage_id: "unqualified-stage-id"
+      prop: "hs_v2_date_entered_unqualified_stage_id_1675714327"
+      name: "Lead Archived"
+      order: 7
+      terminal: true
+      rotting: false
+
+deals:
+  pipeline_id: "1906293444"     # Sales Pipeline (active)
+  stages:
+    - stage_id: "3022488285"
+      prop: "hs_v2_date_entered_3022488285"
+      name: "Meeting Booked"
+      order: 1
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022488286"
+      prop: "hs_v2_date_entered_3022488286"
+      name: "Discovery Call"
+      order: 2
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022488287"
+      prop: "hs_v2_date_entered_3022488287"
+      name: "Prospect Qualified"
+      order: 3
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022488288"
+      prop: "hs_v2_date_entered_3022488288"
+      name: "Proposal Made"
+      order: 4
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022488289"
+      prop: "hs_v2_date_entered_3022488289"
+      name: "Proposal Walkthrough"
+      order: 5
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022488290"
+      prop: "hs_v2_date_entered_3022488290"
+      name: "Negotiation"
+      order: 6
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022488291"
+      prop: "hs_v2_date_entered_3022488291"
+      name: "Verbal Yes"
+      order: 7
+      terminal: false
+      rotting: true
+
+    - stage_id: "3022478048"
+      prop: "hs_v2_date_entered_3022478048"
+      name: "Won"
+      order: 8
+      terminal: true
+      rotting: false
+
+    - stage_id: "3022478049"
+      prop: "hs_v2_date_entered_3022478049"
+      name: "Lost"
+      order: 9
+      terminal: true
+      rotting: false
+
+# Rotting thresholds (days without activity before a lead/deal is flagged stale).
+# Edit here — no code change needed.
+rotting:
+  lead_no_activity_days: 1      # process #2 — active lead inactivity threshold
+  deal_no_activity_days: 4      # process #4 — active deal inactivity threshold

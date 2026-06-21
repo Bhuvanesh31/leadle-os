@@ -1,0 +1,145 @@
+{
+  "render_id": "test-fixture-001",
+  "window": {
+    "name": "current-month",
+    "label": "May 2026",
+    "start": "2026-05-01",
+    "end": "2026-05-31",
+    "prior_start": "2026-04-01",
+    "prior_end": "2026-04-30"
+  },
+  "rendered_at": "2026-05-09T10:00:00+05:30",
+  "sources": {
+    "hubspot": {
+      "available": true,
+      "fetched_at": "2026-05-09T09:55:00+05:30",
+      "data": {
+        "deals": [
+          {
+            "id": "1001", "dealname": "Scalenut",
+            "amount": 5000, "dealstage": "discovery",
+            "closedate": null, "createdate": "2026-03-04",
+            "last_activity_date": "2026-03-08",
+            "hubspot_owner_id": "owner-sai",
+            "hs_analytics_source": "ORGANIC_SEARCH",
+            "company_id": "comp-101"
+          },
+          {
+            "id": "1002", "dealname": "QuoDeck",
+            "amount": 8000, "dealstage": "proposal",
+            "closedate": null, "createdate": "2026-04-15",
+            "last_activity_date": "2026-04-20",
+            "hubspot_owner_id": "owner-sai",
+            "hs_analytics_source": "DIRECT_TRAFFIC",
+            "company_id": "comp-102"
+          },
+          {
+            "id": "1003", "dealname": "Acme Won",
+            "amount": 12000, "dealstage": "closedwon",
+            "closedate": "2026-04-28", "createdate": "2026-02-10",
+            "last_activity_date": "2026-04-28",
+            "hubspot_owner_id": "owner-sai",
+            "hs_analytics_source": "REFERRALS",
+            "company_id": "comp-103"
+          }
+        ],
+        "contacts": [
+          {
+            "id": "c1", "email": "alice@scalenut.com",
+            "lifecyclestage": "lead",
+            "hs_analytics_source": "ORGANIC_SEARCH",
+            "createdate": "2026-03-01",
+            "last_activity_date": "2026-04-15",
+            "hubspot_owner_id": "owner-sai"
+          },
+          {
+            "id": "c2", "email": "bob@quodeck.com",
+            "lifecyclestage": "salesqualifiedlead",
+            "hs_analytics_source": "DIRECT_TRAFFIC",
+            "createdate": "2026-04-10",
+            "last_activity_date": "2026-04-20",
+            "hubspot_owner_id": "owner-sai"
+          }
+        ],
+        "companies": [
+          {"id": "comp-101", "name": "Scalenut", "domain": "scalenut.com"},
+          {"id": "comp-102", "name": "QuoDeck", "domain": "quodeck.com"},
+          {"id": "comp-103", "name": "Acme", "domain": "acme.com"}
+        ],
+        "owners": [
+          {"id": "owner-sai", "firstName": "Sai", "lastName": "K", "email": "sai@leadle.in"}
+        ]
+      }
+    },
+    "lemlist": {
+      "available": true,
+      "fetched_at": "2026-05-09T09:55:30+05:30",
+      "data": {
+        "campaigns": [
+          {
+            "id": "lc1", "name": "RevOps Q2 Outbound",
+            "stats": {"sends": 120, "opens": 45, "replies": 8, "meetings": 2},
+            "created_at": "2026-04-01"
+          }
+        ],
+        "leads": [
+          {
+            "id": "ll-1", "email": "alice@scalenut.com",
+            "campaign_id": "lc1",
+            "hubspot_contact_id": "c1",
+            "reply_status": "positive",
+            "replied_at": "2026-04-15"
+          }
+        ]
+      }
+    },
+    "aimfox": {
+      "available": true,
+      "fetched_at": "2026-05-09T09:55:45+05:30",
+      "data": {
+        "campaigns": [
+          {
+            "id": "ac1", "name": "CTO LinkedIn",
+            "stats": {"sends": 80, "replies": 5, "meetings": 1}
+          }
+        ],
+        "leads": []
+      }
+    },
+    "instantly": {
+      "available": true,
+      "fetched_at": "2026-05-09T09:56:00+05:30",
+      "data": {
+        "campaigns": [
+          {
+            "id": "ic1", "name": "Email Drip Q2",
+            "stats": {"sends": 200, "replies": 12, "meetings": 3}
+          }
+        ],
+        "leads": []
+      }
+    },
+    "fathom": {
+      "available": true,
+      "fetched_at": "2026-05-09T09:56:15+05:30",
+      "data": {
+        "meetings": [
+          {
+            "id": "fm1", "title": "Discovery — Scalenut",
+            "scheduled_at": "2026-04-12T14:00:00+05:30",
+            "host_email": "sai@leadle.in",
+            "attendees": [{"email": "alice@scalenut.com"}],
+            "call_type": "discovery"
+          },
+          {
+            "id": "fm2", "title": "Discovery — Acme Corp",
+            "scheduled_at": "2026-04-22T15:00:00+05:30",
+            "host_email": "sai@leadle.in",
+            "attendees": [{"email": "carol@acme-corp.io"}],
+            "call_type": "discovery"
+          }
+        ]
+      }
+    }
+  }
+}

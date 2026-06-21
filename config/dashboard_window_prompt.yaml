@@ -1,0 +1,8 @@
+primary_options:
+  - last-7d
+  - current-month
+  - current-quarter
+  - last-quarter
+prompt_template: |
+  What time window for this dashboard?
+  Today: {today} · Current FY quarter: {current_quarter_label}

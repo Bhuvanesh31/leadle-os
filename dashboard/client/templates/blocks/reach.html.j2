@@ -1,0 +1,10 @@
+{# dashboard/client/templates/blocks/reach.html.j2 — channel reach (approved design) #}
+{% set r = metrics.reach %}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg><span class="t">Channel reach</span><span class="s">&middot; unique prospects per channel</span></div>
+  <div class="targets">
+    <div class="tg"><span class="lab">Reached on LinkedIn</span><span class="v">{{ r.linkedin_reached }}</span></div>
+    <div class="tg"><span class="lab">Reached on email</span><span class="v">{{ r.email_reached }}</span></div>
+    <div class="tg"><span class="lab">Both channels</span><span class="v">{{ r.both_reached }}</span></div>
+  </div>
+</div>

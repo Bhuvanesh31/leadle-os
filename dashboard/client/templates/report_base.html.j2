@@ -1,0 +1,150 @@
+{# dashboard/client/templates/report_base.html.j2 — approved design #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ client }} Analytics — campaign report</title>
+<style>
+  :root{
+    --ink:#1A1A1A; --ink2:#3F3F46; --muted:#73737A; --faint:#A1A1AA;
+    --line:#EAEAEC; --line2:#F2F2F4; --tile:#F7F7F8;
+    --green:#15803D; --green-bg:#DCFCE7; --amber:#92400E; --amber-bg:#FEF3C7;
+    --orange:#9A3412; --orange-bg:#FFEDD5; --red:#B91C1C; --red-soft:#C2554E; --redd:#991B1B;
+    --blue:#1D4ED8; --blue-bg:#EEF3FF; --blue-line:#DCE6FD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#F4F4F5;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;color:var(--ink)}
+  .page{max-width:860px;margin:28px auto;background:#fff;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.05);padding:22px 24px 24px}
+
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .head-l{display:flex;gap:11px;align-items:center}
+  .appicon{width:30px;height:30px;border-radius:8px;flex:0 0 auto;background:linear-gradient(135deg,#3B82F6,#2563EB);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(37,99,235,.4)}
+  .appicon svg{width:16px;height:16px}
+  .title{font-size:15px;font-weight:650;letter-spacing:-.01em;line-height:1.1}
+  .subtitle{font-size:12px;color:var(--muted);margin-top:2px}
+  .head-r{display:flex;gap:7px;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink2);background:#F4F4F5;
+    border:1px solid var(--line);border-radius:7px;padding:4px 8px;white-space:nowrap}
+  .pill svg{width:11px;height:11px;opacity:.7}
+  .pill.live{color:var(--green);background:var(--green-bg);border-color:#BBF7D0}
+  .pill.live .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px}
+  .tile{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--tile);padding:9px 10px 10px;cursor:default;transition:border-color .12s,background .12s}
+  .tile.stat:hover{border-color:#D8D8DC;background:#fff}
+  .tile .lab{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .lab svg{width:11px;height:11px;opacity:.6;flex:0 0 auto}
+  .tile .num{font-size:20px;font-weight:660;letter-spacing:-.02em;line-height:1}
+  .tile .num.gap{color:var(--faint);font-weight:500;font-size:18px}
+  .tile .delta{font-size:10px;margin-top:6px;color:var(--muted);display:flex;align-items:center;gap:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .delta.up{color:var(--green)} .delta.down{color:var(--red-soft)} .delta.flat{color:var(--faint)}
+
+  .pop{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 11px;box-shadow:0 10px 28px rgba(0,0,0,.14);
+    opacity:0;visibility:hidden;pointer-events:none;z-index:40;transition:opacity .13s ease,transform .13s ease}
+  .pop .tt{font-size:10px;color:var(--faint);font-weight:550;margin-bottom:7px}
+  .pop .tr{display:flex;justify-content:space-between;gap:18px;padding:2.5px 0;font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .pop .tr b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .pop .tr.delta-row{margin-top:6px;padding-top:6px;border-top:1px solid var(--line2)}
+  .pop .tr.bench{margin-top:6px;padding-top:6px;border-top:1px solid var(--line2);font-size:10.5px;color:var(--faint)}
+  .pop .up{color:var(--green)} .pop .down{color:var(--red-soft)} .pop .flat{color:var(--faint)}
+  .bm-ok{color:var(--green);font-weight:600} .bm-bad{color:var(--red-soft);font-weight:600}
+  .tip{position:absolute;left:50%;top:calc(100% + 9px);transform:translateX(-50%) translateY(-4px);min-width:172px}
+  .tile.stat:hover .tip{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+  .tip::after,.tip::before{content:"";position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent}
+  .tip::before{border-bottom-color:var(--line);margin-bottom:1px}
+  .tip::after{border-bottom-color:#fff}
+
+  .sec{margin-top:22px}
+  .sec-h{display:flex;align-items:baseline;gap:7px;margin-bottom:12px}
+  .sec-h .ic{width:13px;height:13px;color:var(--muted);position:relative;top:1px}
+  .sec-h .t{font-size:12.5px;font-weight:620;color:var(--ink2)}
+  .sec-h .s{font-size:11.5px;color:var(--faint)}
+  .divider{margin-top:26px;padding-top:6px;border-top:1px dashed var(--line);}
+
+  .scorecard{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  .sc{border:1px solid var(--line);border-radius:8px;background:var(--tile);padding:10px;display:flex;flex-direction:column;align-items:center;gap:7px}
+  .sc-lab{font-size:10.5px;color:var(--muted)}
+  .gradebig{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;font-size:14px;font-weight:680}
+  .grade{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;font-size:11px;font-weight:650}
+  .g-A{background:var(--green-bg);color:var(--green)} .g-B{background:var(--amber-bg);color:var(--amber)}
+  .g-C{background:var(--orange-bg);color:var(--orange)} .g-D{background:#FEE2E2;color:var(--red)}
+  .g-F{background:#FCDADA;color:var(--redd)} .g-NA{background:#F1F1F3;color:var(--faint);font-size:11px}
+  .decision{margin-top:11px;font-size:12px;color:var(--ink2);display:flex;gap:7px;align-items:baseline}
+  .decision .dia{color:var(--orange)} .decision b{color:var(--ink);font-weight:600}
+
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:10.5px;font-weight:550;color:var(--faint);text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--line)}
+  thead th.num,tbody td.num{text-align:right}
+  tbody td{font-size:13px;color:var(--ink2);padding:9px 8px;border-bottom:1px solid var(--line2);transition:background .12s}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:#FAFAFB}
+  .camp{font-weight:520;color:var(--ink);position:relative}
+  .chan{display:inline-flex;align-items:center;gap:6px;color:var(--ink2)}
+  .chan svg{width:13px;height:13px;opacity:.7}
+  td.gapcell{color:var(--faint)}
+  .rowtip{position:absolute;left:4px;top:calc(100% - 3px);transform:translateY(-4px);min-width:200px;white-space:nowrap;font-weight:400}
+  tbody tr:hover .rowtip{opacity:1;visibility:visible;transform:translateY(0)}
+  .rowtip::after,.rowtip::before{content:"";position:absolute;bottom:100%;left:22px;border:6px solid transparent}
+  .rowtip::before{border-bottom-color:var(--line);margin-bottom:1px}
+  .rowtip::after{border-bottom-color:#fff}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  .k{font-weight:520;color:var(--ink)}
+  .sub{color:var(--faint);font-size:11px}
+  .best{display:inline-block;font-size:9.5px;font-weight:650;color:var(--green);background:var(--green-bg);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+  .warn{color:var(--red);font-weight:600}
+  .okk{color:var(--green);font-weight:600}
+  .hdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .d-ok{background:#22C55E}.d-warm{background:#F59E0B}
+  .note{font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.4}
+  .tpl{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+  .tpl:last-child{border-bottom:none}
+  .tpl .ord{color:var(--faint);font-size:11px;min-width:74px}
+  .tpl .txt{color:var(--ink2)}
+
+  .heat{position:relative}
+  .heatgrid{display:grid;grid-template-columns:34px repeat(5,1fr);gap:3px}
+  .heatgrid .hh{font-size:9.5px;color:var(--faint);display:flex;align-items:center;justify-content:center;height:16px}
+  .heatgrid .row-lab{font-size:10px;color:var(--muted);display:flex;align-items:center}
+  .cell{height:18px;border-radius:3px;border:1px solid rgba(0,0,0,.02)}
+  .heatleg{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:8px;font-size:9.5px;color:var(--faint)}
+  .heatleg .sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.04)}
+
+  .narr{font-size:12.5px;line-height:1.62;color:var(--ink2)}
+  .narr b{color:var(--ink);font-weight:600}
+  .targets{display:flex;flex-wrap:wrap;gap:26px;font-size:12.5px;align-items:baseline}
+  .targets .tg{display:flex;flex-direction:column;gap:2px}
+  .targets .tg .lab{font-size:10.5px;color:var(--faint)}
+  .targets .tg .v{font-weight:600;color:var(--ink)}
+  .targets .tg .v.gap{color:var(--faint);font-weight:500}
+  .foot{margin-top:26px;padding-top:12px;border-top:1px solid var(--line2);font-size:10.5px;color:var(--faint);display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="head">
+    <div class="head-l">
+      <div class="appicon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+      <div><div class="title">{{ client }} Analytics</div><div class="subtitle">Campaign report &middot; {{ period_label }}{% if sample %} &middot; sample data{% endif %}</div></div>
+    </div>
+    <div class="head-r">
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>{{ period_label }}</span>
+      <span class="pill live"><span class="dot"></span>live data</span>
+    </div>
+  </div>
+
+  {% block body %}{% endblock %}
+
+  {% if audience == "internal" %}
+  <div class="note" style="margin:14px 6px">Internal note: positive replies, leads, reply sentiment, engagement timing, and channel reach reflect all webhook and spine data in the workbook (cumulative to date), not just this period. Only the email and LinkedIn funnel tiles are windowed to {{ period_label }}.</div>
+  {% endif %}
+
+  <div class="foot"><span>Generated {{ rendered_at }} &middot; {{ client }}{% if audience == "internal" %} &middot; audience: internal{% endif %}</span><span>Leadle OS</span></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{# dashboard/client/templates/blocks/content.html.j2 — email step open rates (approved design) #}
+{# compute.py sets no 'best' flag; highlight the max open_rate step in-template. #}
+<div class="sec" style="margin-top:16px">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span class="t">Which content performed</span><span class="s">&middot; email steps</span></div>
+{% if metrics.content %}
+  {% set best_rate = metrics.content | map(attribute='open_rate') | max %}
+  <table>
+    <thead><tr><th>Step / variant</th><th class="num">Open</th></tr></thead>
+    <tbody>
+      {% for s in metrics.content %}
+      <tr>
+        <td class="k">Step {{ s.step }}{% if s.open_rate == best_rate and best_rate > 0 %} <span class="best">best</span>{% endif %}</td>
+        <td class="num">{{ '%.0f%%' % (s.open_rate*100) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="note">Reply rate is 0% on most steps, so open rate is shown. The best-opening step is highlighted.</div>
+{% else %}
+  <div class="note">Per-step data not available from the export this period.</div>
+{% endif %}
+</div>

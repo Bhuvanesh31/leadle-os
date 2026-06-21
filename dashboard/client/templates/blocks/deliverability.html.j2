@@ -1,0 +1,20 @@
+{# dashboard/client/templates/blocks/deliverability.html.j2 — internal-only deliverability flags #}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5 3.5 8 9 9 5.5-1 9-4 9-9V7z"/></svg><span class="t">Deliverability flags</span><span class="s">&middot; inboxes over the bounce ceiling</span></div>
+{% if metrics.deliverability %}
+  <table>
+    <thead><tr><th>Inbox</th><th class="num">Bounce</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for f in metrics.deliverability %}
+      <tr>
+        <td class="k">{{ f.sender }}</td>
+        <td class="num"><span class="warn">{{ '%.1f%%' % (f.bounce_rate*100) }}</span></td>
+        <td>{{ f.note }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="note">No deliverability flags this period.</div>
+{% endif %}
+</div>

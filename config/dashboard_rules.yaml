@@ -1,0 +1,90 @@
+# Dashboard compute rules.
+# Edit values here rather than in code. Compute modules read these at runtime.
+
+# Days-stale thresholds
+stalled_deal_days: 7       # deal with no activity for N days → stalled (process #11)
+rotting_deal_days: 14      # deal in same stage for N days → stage-stuck (process #11)
+stalled_lead_days: 5       # lead with no activity for N days → stalled (process #10)
+lead_stage_stuck_days: 14  # lead in same stage for N days → stage-stuck (process #10)
+followup_gap_days: 5
+
+# Outreach thresholds
+outreach_min_sends: 10
+anomaly_pct_threshold: 30
+
+# Hygiene-section toggles
+hygiene:
+  require_owner: true
+  require_source: true
+  require_lifecycle: true
+
+# Fathom ↔ CRM gap matching
+fathom_gap:
+  attendee_match_strategy: email_domain_first
+  fuzzy_match_threshold: 85
+
+# Fathom call filter (applied in slash command Phase 1)
+fathom_filter:
+  # Keep meetings whose title (case-insensitive) contains any of these
+  include_title_substrings:
+    - "discovery meeting"
+    - "proposal discussion"
+  # Keep Impromptu meetings ONLY if attendees are subset of these emails
+  impromptu_title_pattern: "^Impromptu (Google Meet|Zoom) Meeting$"
+  impromptu_attendee_allowlist:
+    - sai@leadle.in
+    - revops@leadle.in
+
+# HubSpot owner allowlist (active humans only — drops Joshna-inactive +
+# unassigned leads). Used by HubSpot Leads fetch and stalled-lead filter.
+active_owner_ids:
+  - "80765353"   # Sai Ganesh (Sales)
+  - "77758216"   # Akil Mohan (Head of RevOps)
+  - "82016648"   # Suraj Seetharaman (COO)
+  - "77502812"   # RevOps Leadle (revops@leadle.in / Bhuvanesh)
+
+# HubSpot Lead pipeline stages (Lead pipeline is pipelineId='lead-pipeline-id')
+lead_pipeline:
+  # Stages where lead has LEFT the pipeline — funnel/rotting excludes these
+  closed_stage_ids:
+    - qualified-stage-id      # "Advance to Deal"  — promoted to Deal pipeline
+    - unqualified-stage-id    # "Lead Archived"    — disqualified/dead
+  # Open stage representing "meeting proposed but not yet had"
+  meeting_proposed_stage_id: "3200435923"
+
+# HubSpot Sales Pipeline (deal pipeline used by Leadle for active deals)
+deal_pipeline:
+  pipeline_id: "1906293444"
+  open_stage_ids:
+    - "3022488285"   # Meeting Booked
+    - "3022488286"   # Discovery Call
+    - "3022488287"   # Prospect Qualified
+    - "3022488288"   # Proposal Made
+    - "3022488289"   # Proposal Walkthrough
+    - "3022488290"   # Negotiation
+    - "3022488291"   # Verbal Yes
+  closed_won_stage_id: "3022478048"
+  closed_lost_stage_id: "3022478049"
+
+# Internal-team Fathom-attendee names (lowercased). Used to filter out
+# Leadle team members when matching meetings to external contacts.
+leadle_internal_names:
+  - "sai ganesh subramanian"
+  - "sai ganesh"
+  - "revops leadle"
+  - "akil mohan"
+  - "suraj seetharaman"
+  - "bhuvaneswari"
+
+# Attribution-source field names. Leadle uses custom v2 properties
+# rather than HubSpot's legacy hs_analytics_source. Page 3 Gap C/D
+# uses these field names to check whether a Lead/Deal has source set.
+attribution_fields:
+  lead_source_property: "lead_source_v2"        # Lead Source v2 (custom enum)
+  deal_source_property: "deal_source"           # Deal Source (custom string)
+  # Values that count as "no source set"
+  empty_values:
+    - null
+    - ""
+    - "UNKNOWN"
+    - "NONE"

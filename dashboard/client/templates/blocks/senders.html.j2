@@ -1,0 +1,21 @@
+{# dashboard/client/templates/blocks/senders.html.j2 — internal-only sender health (approved design) #}
+<div class="sec">
+  <div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18v14H3z"/><path d="M3 7l9 6 9-6"/></svg><span class="t">Sender health</span><span class="s">&middot; email inboxes</span></div>
+{% if metrics.senders %}
+  <table>
+    <thead><tr><th>Inbox</th><th class="num">Vol</th><th class="num">Bounce / health</th></tr></thead>
+    <tbody>
+      {% for s in metrics.senders %}
+      <tr>
+        <td class="k">{{ s.from_email }}</td>
+        <td class="num">{{ s.volume }}</td>
+        <td class="num"><span class="hdot {{ 'd-warm' if s.flag else 'd-ok' }}"></span><span class="{{ 'warn' if s.flag else 'okk' }}">{{ '%.1f%%' % (s.bounce_rate*100) }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="note">Inboxes at or above the bounce threshold are flagged amber. Rest them before adding volume.</div>
+{% else %}
+  <div class="note">No sender data this period.</div>
+{% endif %}
+</div>

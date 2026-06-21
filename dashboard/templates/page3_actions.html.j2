@@ -1,0 +1,131 @@
+{% set p = analytics.page3 %}
+<header class="header">
+  <h1 class="title display">Sales Actions</h1>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Sales Pipeline SOP</div>
+    <h2 class="section-title">How leads become opportunities</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    {% include "_sop_inbound.html.j2" %}
+    {% include "_sop_outbound.html.j2" %}
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap A — Lead → Deal not promoted</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.gap_count_lead_to_deal | default(0) }} calls happened but Lead is still in Leads pipeline</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    These had a Discovery or Proposal call recorded in Fathom, but the matching HubSpot Lead has not been promoted to a Deal in the Sales pipeline.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Matched Lead</th><th>Call</th><th>Date</th><th>Match basis</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for g in p.fathom_gap_lead_to_deal | default([]) %}
+        <tr>
+          <td>{{ g.matched_record }}</td>
+          <td>
+            {% if g.meeting_url %}<a href="{{ g.meeting_url }}" target="_blank">{{ g.meeting_title }}</a>{% else %}{{ g.meeting_title }}{% endif %}
+          </td>
+          <td>{{ g.last_call_date }}</td>
+          <td><code>{{ g.candidate }}</code></td>
+          <td>{{ g.suggested_action }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No Lead→Deal promotion gaps in window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap B — Call without CRM record</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.gap_count_no_crm | default(0) }} calls happened with someone not in HubSpot at all</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    These calls have no matching Lead, Deal, or Contact in HubSpot. Full CRM entry needed before anything else.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Meeting</th><th>Candidate</th><th>Date</th><th>Type</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for g in p.fathom_gap_no_crm | default([]) %}
+        <tr>
+          <td>
+            {% if g.meeting_url %}<a href="{{ g.meeting_url }}" target="_blank">{{ g.meeting_title }}</a>{% else %}{{ g.meeting_title }}{% endif %}
+          </td>
+          <td><code>{{ g.candidate }}</code></td>
+          <td>{{ g.last_call_date }}</td>
+          <td>{{ g.call_type }}</td>
+          <td>{{ g.suggested_action }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No missing-CRM gaps in window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap C — Leads without source attribution</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.leads_without_source_count | default(0) }} Leads have no analytics source set</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    Source attribution is required to credit channels for pipeline. Records without source can't be analyzed by channel performance.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lead</th><th>Contact</th><th>Company</th><th>Created</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for l in p.leads_without_source | default([]) %}
+        <tr>
+          <td>{{ l.lead_name | default('—') }}</td>
+          <td>{{ l.contact_name | default('—') }}{% if l.contact_email %} · {{ l.contact_email }}{% endif %}</td>
+          <td>{{ l.company_name | default('—') }}</td>
+          <td>{{ l.createdate | default('—') }}</td>
+          <td>Set "Original source" in HubSpot Lead record</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">All Leads have source set.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">Gap D — Deals without source attribution</div>
+    <h2 class="section-title">{{ window.label }} · {{ p.deals_without_source_count | default(0) }} Deals have no analytics source set</h2>
+  </div>
+  <div style="font-size: 13px; color: var(--ink-2); margin-bottom: 16px;">
+    Each Deal needs an "Original source" so channel-attributed revenue is computable. Both null and UNKNOWN count as missing.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Stage</th><th>Amount</th><th>Created</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for d in p.deals_without_source | default([]) %}
+        <tr>
+          <td>{{ d.dealname | default('—') }}</td>
+          <td>{{ d.dealstage | default('—') }}</td>
+          <td>{% if d.amount %}${{ "{:,.0f}".format(d.amount) }}{% else %}—{% endif %}</td>
+          <td>{{ d.createdate | default('—') }}</td>
+          <td>Set "Original source" in HubSpot Deal record</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">All Deals have source set.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -1,0 +1,37 @@
+# Indian fiscal year: Apr–Mar. FY label = year of fiscal start.
+fiscal_year:
+  start_month: 4
+
+quarters:
+  q1: [4, 5, 6]
+  q2: [7, 8, 9]
+  q3: [10, 11, 12]
+  q4: [1, 2, 3]
+
+supported_windows:
+  - current-week
+  - last-week
+  - last-7d
+  - current-month
+  - last-month
+  - month-april
+  - month-may
+  - month-june
+  - month-july
+  - month-august
+  - month-september
+  - month-october
+  - month-november
+  - month-december
+  - month-january
+  - month-february
+  - month-march
+  - last-30d
+  - last-60d
+  - last-90d
+  - current-quarter
+  - last-quarter
+  - q1
+  - q2
+  - q3
+  - q4
