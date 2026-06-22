@@ -47,6 +47,7 @@ dependencies = [
     "gspread>=6.0",
     "google-auth>=2.28",
     "google-auth-oauthlib>=1.2",
+    "openpyxl>=3.1",           # xlsx fallback path for client report loader
 ]
 
 [project.optional-dependencies]
