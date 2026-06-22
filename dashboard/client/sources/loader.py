@@ -13,24 +13,34 @@ from dashboard.client.sources import aimfox_source, sheet_source
 
 
 def load(
-    xlsx_path: str,
     window: tuple[str, str],
     *,
+    client: str = "UPSTA",
+    xlsx_path: str | None = None,
     aimfox_key: str,
     instantly_key: str,
     name_contains: str,
     aimfox_client: httpx.Client | None = None,
     instantly_client: httpx.Client | None = None,
+    sheets_client=None,
 ) -> ClientData:
     """Merge sheet + Aimfox + Instantly into a single ClientData.
+
+    Sheet source: live Google Sheets by default (resolved from `client` via
+    config/clients.yaml). Pass `xlsx_path` to read an offline workbook instead.
 
     Degrade contract:
     - Aimfox exception → linkedin_campaigns stays []
     - Instantly unavailable/exception → email_campaigns, senders, content_steps stay []
-    - Sheet errors propagate (XLSX is the ground truth; failures there are fatal).
+    - Sheet errors propagate (the sheet is the ground truth; failures there are fatal).
     """
     # ── Sheet (ground truth) ──────────────────────────────────────────────────
-    data = sheet_source.read_xlsx(xlsx_path)
+    if xlsx_path is not None:
+        data = sheet_source.read_xlsx(xlsx_path)
+    else:
+        from dashboard.client.sources import client_registry
+        spreadsheet_id = client_registry.spreadsheet_id_for(client)
+        data = sheet_source.read_sheets(spreadsheet_id, client=sheets_client)
 
     # ── Aimfox (LinkedIn campaigns) ───────────────────────────────────────────
     try:
