@@ -63,5 +63,5 @@ def test_spine_pages_and_cadence_ids_parsed_by_header():
     assert by["Real Alloy"].domain == "realalloy.com"
     assert by["Real Alloy"].aimfox_id == "229856678"
     assert by["Real Alloy"].instantly_id == "019e89de-both"
-    assert by["Pegasus Logistics"].aimfox_id == ""   # email-only prospect
-    assert by["Mapletree"].instantly_id == ""        # not in any cadence yet
+    assert by["Pegasus Logistics"].aimfox_id == ""  # email-only prospect
+    assert by["Mapletree"].instantly_id == ""  # not in any cadence yet

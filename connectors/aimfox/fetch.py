@@ -5,6 +5,7 @@ per-campaign stats matching the {sends, replies, meetings} shape page4_outreach
 expects. Used as a REST fallback while the Aimfox MCP OAuth flow is broken
 on the vendor side.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -87,10 +88,16 @@ def _fetch_window_metrics(
 
 def _sum_buckets(buckets: list[dict]) -> dict[str, int]:
     """Sum windowed daily buckets into total counts for the metrics we use."""
-    totals = {k: 0 for k in (
-        "sent_connections", "sent_messages", "sent_inmails",
-        "message_requests", "replies",
-    )}
+    totals = {
+        k: 0
+        for k in (
+            "sent_connections",
+            "sent_messages",
+            "sent_inmails",
+            "message_requests",
+            "replies",
+        )
+    }
     for b in buckets:
         for k in totals:
             totals[k] += b.get(k, 0)

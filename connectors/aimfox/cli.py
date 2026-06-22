@@ -4,6 +4,7 @@ Reads AIMFOX_API_KEY from env (or .env in repo root), accepts --start/--end
 ISO dates, prints the fetch() result as JSON to stdout. Exit code is always 0
 because the dashboard treats a degraded source as a normal case, not an error.
 """
+
 from __future__ import annotations
 
 import argparse

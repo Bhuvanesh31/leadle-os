@@ -10,9 +10,7 @@ from dashboard.compute.page2_activity import compute
 
 @pytest.fixture
 def raw():
-    return json.loads(
-        (Path(__file__).parent / "fixtures" / "sample_raw.json").read_text()
-    )
+    return json.loads((Path(__file__).parent / "fixtures" / "sample_raw.json").read_text())
 
 
 @pytest.fixture

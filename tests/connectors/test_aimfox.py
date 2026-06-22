@@ -2,6 +2,7 @@
 
 Uses httpx.MockTransport for hermetic tests (no httpx-mock or respx dependency).
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -27,25 +28,51 @@ def test_fetch_aggregates_buckets_into_campaign_stats():
     }
     interactions = {
         "c-alpha": {
-            "status": "ok", "count": 2,
+            "status": "ok",
+            "count": 2,
             "buckets": [
-                {"timestamp": 1, "sent_connections": 10, "sent_messages": 5,
-                 "sent_inmails": 2, "message_requests": 1, "replies": 3,
-                 "views": 9, "sent_likes": 0, "sent_endorsements": 0,
-                 "accepted_connections": 4},
-                {"timestamp": 2, "sent_connections": 8, "sent_messages": 4,
-                 "sent_inmails": 0, "message_requests": 0, "replies": 2,
-                 "views": 7, "sent_likes": 0, "sent_endorsements": 0,
-                 "accepted_connections": 3},
+                {
+                    "timestamp": 1,
+                    "sent_connections": 10,
+                    "sent_messages": 5,
+                    "sent_inmails": 2,
+                    "message_requests": 1,
+                    "replies": 3,
+                    "views": 9,
+                    "sent_likes": 0,
+                    "sent_endorsements": 0,
+                    "accepted_connections": 4,
+                },
+                {
+                    "timestamp": 2,
+                    "sent_connections": 8,
+                    "sent_messages": 4,
+                    "sent_inmails": 0,
+                    "message_requests": 0,
+                    "replies": 2,
+                    "views": 7,
+                    "sent_likes": 0,
+                    "sent_endorsements": 0,
+                    "accepted_connections": 3,
+                },
             ],
         },
         "c-beta": {
-            "status": "ok", "count": 1,
+            "status": "ok",
+            "count": 1,
             "buckets": [
-                {"timestamp": 1, "sent_connections": 0, "sent_messages": 0,
-                 "sent_inmails": 0, "message_requests": 0, "replies": 0,
-                 "views": 0, "sent_likes": 0, "sent_endorsements": 0,
-                 "accepted_connections": 0},
+                {
+                    "timestamp": 1,
+                    "sent_connections": 0,
+                    "sent_messages": 0,
+                    "sent_inmails": 0,
+                    "message_requests": 0,
+                    "replies": 0,
+                    "views": 0,
+                    "sent_likes": 0,
+                    "sent_endorsements": 0,
+                    "accepted_connections": 0,
+                },
             ],
         },
     }
@@ -123,10 +150,13 @@ def test_fetch_passes_window_as_epoch_ms_to_analytics_endpoint():
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/campaigns"):
-            return httpx.Response(200, json={
-                "status": "ok",
-                "campaigns": [{"id": "c1", "name": "Solo", "state": "ACTIVE"}],
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "campaigns": [{"id": "c1", "name": "Solo", "state": "ACTIVE"}],
+                },
+            )
         if request.url.path.endswith("/analytics/interactions"):
             captured["params"] = dict(request.url.params)
             return httpx.Response(200, json={"status": "ok", "count": 0, "buckets": []})
@@ -158,15 +188,18 @@ def test_fetch_filters_campaigns_by_name_contains_before_metrics_calls():
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/campaigns"):
-            return httpx.Response(200, json={
-                "status": "ok",
-                "campaigns": [
-                    {"id": "1", "name": "Leadle_GTM_Open_House", "state": "ACTIVE"},
-                    {"id": "2", "name": "ClientX_Outbound", "state": "ACTIVE"},
-                    {"id": "3", "name": "leadle_revops_cold", "state": "ACTIVE"},  # lowercase
-                    {"id": "4", "name": "Random Campaign", "state": "ACTIVE"},
-                ],
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "campaigns": [
+                        {"id": "1", "name": "Leadle_GTM_Open_House", "state": "ACTIVE"},
+                        {"id": "2", "name": "ClientX_Outbound", "state": "ACTIVE"},
+                        {"id": "3", "name": "leadle_revops_cold", "state": "ACTIVE"},  # lowercase
+                        {"id": "4", "name": "Random Campaign", "state": "ACTIVE"},
+                    ],
+                },
+            )
         if request.url.path.endswith("/analytics/interactions"):
             metrics_calls.append(request.url.params["campaign_id"])
             return httpx.Response(200, json={"status": "ok", "count": 0, "buckets": []})
@@ -174,8 +207,11 @@ def test_fetch_filters_campaigns_by_name_contains_before_metrics_calls():
 
     with _make_client(handler) as client:
         result = fetch(
-            "test", date(2026, 5, 1), date(2026, 5, 7),
-            name_contains="Leadle", client=client,
+            "test",
+            date(2026, 5, 1),
+            date(2026, 5, 7),
+            name_contains="Leadle",
+            client=client,
         )
 
     # Only campaigns 1 and 3 should be kept (case-insensitive substring match)
@@ -191,13 +227,16 @@ def test_fetch_without_name_contains_keeps_all_campaigns():
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/campaigns"):
-            return httpx.Response(200, json={
-                "status": "ok",
-                "campaigns": [
-                    {"id": "1", "name": "Leadle X", "state": "ACTIVE"},
-                    {"id": "2", "name": "ClientX", "state": "ACTIVE"},
-                ],
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "campaigns": [
+                        {"id": "1", "name": "Leadle X", "state": "ACTIVE"},
+                        {"id": "2", "name": "ClientX", "state": "ACTIVE"},
+                    ],
+                },
+            )
         if request.url.path.endswith("/analytics/interactions"):
             return httpx.Response(200, json={"status": "ok", "count": 0, "buckets": []})
         return httpx.Response(404)
@@ -217,6 +256,9 @@ def test_sum_buckets_ignores_unused_fields():
     ]
     totals = _sum_buckets(buckets)
     assert totals == {
-        "sent_connections": 5, "sent_messages": 3, "sent_inmails": 0,
-        "message_requests": 0, "replies": 3,
+        "sent_connections": 5,
+        "sent_messages": 3,
+        "sent_inmails": 0,
+        "message_requests": 0,
+        "replies": 3,
     }

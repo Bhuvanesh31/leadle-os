@@ -24,6 +24,7 @@ Usage:
     python -m analytics.deal_rotting
     python -m analytics.deal_rotting --json /tmp/deal_rotting.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -75,13 +76,20 @@ def _days_since(ts_str: str | None) -> int | None:
         return None
 
 
-def _fetch_active_deals(token: str, pipeline_id: str, active_ids: set[str], stage_props: dict[str, str]) -> list[dict]:
+def _fetch_active_deals(
+    token: str, pipeline_id: str, active_ids: set[str], stage_props: dict[str, str]
+) -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     base_props = [
-        "dealname", "pipeline", "dealstage",
-        "notes_last_activity_date", "hs_lastmodifieddate",
-        "amount", "closedate", "hubspot_owner_id",
+        "dealname",
+        "pipeline",
+        "dealstage",
+        "notes_last_activity_date",
+        "hs_lastmodifieddate",
+        "amount",
+        "closedate",
+        "hubspot_owner_id",
         "hs_associated_company_name",
     ]
     stage_date_props = [p for p in stage_props.values() if p]
@@ -91,10 +99,14 @@ def _fetch_active_deals(token: str, pipeline_id: str, active_ids: set[str], stag
     after = None
     while True:
         body: dict = {
-            "filterGroups": [{"filters": [
-                {"propertyName": "pipeline", "operator": "EQ", "value": pipeline_id},
-                {"propertyName": "dealstage", "operator": "IN", "values": list(active_ids)},
-            ]}],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {"propertyName": "pipeline", "operator": "EQ", "value": pipeline_id},
+                        {"propertyName": "dealstage", "operator": "IN", "values": list(active_ids)},
+                    ]
+                }
+            ],
             "properties": all_props,
             "limit": 100,
         }
@@ -102,7 +114,9 @@ def _fetch_active_deals(token: str, pipeline_id: str, active_ids: set[str], stag
             body["after"] = after
         r = httpx.post(
             "https://api.hubapi.com/crm/v3/objects/deals/search",
-            headers=headers, json=body, timeout=30,
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         data = r.json()
         results.extend(data.get("results", []))
@@ -158,19 +172,21 @@ def build_report(leads: list[dict], pipeline: dict, rules: dict) -> dict:
         close_raw = p.get("closedate")
         close_fmt = close_raw[:10] if close_raw else "—"
 
-        rows.append({
-            "deal_name": p.get("dealname") or "(unnamed)",
-            "company": p.get("hs_associated_company_name") or "—",
-            "stage_name": stage_name,
-            "amount": amount_fmt,
-            "close_date": close_fmt,
-            "days_since_activity": days_activity,
-            "days_in_stage": days_in_stage,
-            "activity_source": "logged" if p.get("notes_last_activity_date") else "modified",
-            "is_stalled": stalled,
-            "is_stuck": stuck,
-            "severity": sev,
-        })
+        rows.append(
+            {
+                "deal_name": p.get("dealname") or "(unnamed)",
+                "company": p.get("hs_associated_company_name") or "—",
+                "stage_name": stage_name,
+                "amount": amount_fmt,
+                "close_date": close_fmt,
+                "days_since_activity": days_activity,
+                "days_in_stage": days_in_stage,
+                "activity_source": "logged" if p.get("notes_last_activity_date") else "modified",
+                "is_stalled": stalled,
+                "is_stuck": stuck,
+                "severity": sev,
+            }
+        )
 
     rows.sort(key=lambda r: (_SEV_ORDER[r["severity"]], -(r["days_in_stage"] or 0)))
 
@@ -188,12 +204,13 @@ def build_report(leads: list[dict], pipeline: dict, rules: dict) -> dict:
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _sev_badge(sev: str) -> str:
     colors = {
         "CRITICAL": ("background:#fef2f2;color:#9b2226", "CRITICAL"),
-        "STALLED":  ("background:#fffbeb;color:#b45309", "STALLED"),
-        "STUCK":    ("background:#eff6ff;color:#1e40af", "STUCK"),
-        "OK":       ("background:#f0fdf4;color:#2d6a4f", "OK"),
+        "STALLED": ("background:#fffbeb;color:#b45309", "STALLED"),
+        "STUCK": ("background:#eff6ff;color:#1e40af", "STUCK"),
+        "OK": ("background:#f0fdf4;color:#2d6a4f", "OK"),
     }
     style, label = colors.get(sev, ("", sev))
     return f'<span style="{style};border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600">{label}</span>'
@@ -204,7 +221,7 @@ def _days_cell(days: int | None, threshold: int, bad_color: str, source: str = "
         return '<span style="color:#9ca3af">—</span>'
     color = bad_color if days >= threshold else "#374151"
     suffix = "" if source == "logged" else ' <span style="font-size:10px;color:#9ca3af">~</span>'
-    return f'<span style="color:{color};font-family:\'JetBrains Mono\',monospace;font-size:12px">{days}d{suffix}</span>'
+    return f"<span style=\"color:{color};font-family:'JetBrains Mono',monospace;font-size:12px\">{days}d{suffix}</span>"
 
 
 def render_html(report: dict) -> str:
@@ -223,19 +240,20 @@ def render_html(report: dict) -> str:
             <div style="font-weight:500;font-size:13px">{deal_name}</div>
             <div style="font-size:12px;color:#6b7280">{company}</div>
           </td>
-          <td style="padding:10px 14px">{_sev_badge(r['severity'])}</td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
-          <td style="padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#374151">{r['amount']}</td>
-          <td style="padding:10px 14px;font-size:12px;color:#6b7280">{r['close_date']}</td>
-          <td style="padding:10px 14px">{_days_cell(r['days_since_activity'], thresh['stalled_deal_days'], '#9b2226', r['activity_source'])}</td>
-          <td style="padding:10px 14px">{_days_cell(r['days_in_stage'], thresh['deal_stage_stuck_days'], '#1e40af')}</td>
+          <td style="padding:10px 14px">{_sev_badge(r["severity"])}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{r["stage_name"]}</td>
+          <td style="padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#374151">{r["amount"]}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#6b7280">{r["close_date"]}</td>
+          <td style="padding:10px 14px">{_days_cell(r["days_since_activity"], thresh["stalled_deal_days"], "#9b2226", r["activity_source"])}</td>
+          <td style="padding:10px 14px">{_days_cell(r["days_in_stage"], thresh["deal_stage_stuck_days"], "#1e40af")}</td>
         </tr>"""
 
     ok_count = sc.get("OK", 0)
     no_rot = (
         f'<tr><td colspan="7" style="padding:20px;text-align:center;color:#6b7280;font-size:12px">'
-        f'All {ok_count} active deals are fresh. No rot detected.</td></tr>'
-        if not rows_html else ""
+        f"All {ok_count} active deals are fresh. No rot detected.</td></tr>"
+        if not rows_html
+        else ""
     )
 
     return f"""<!DOCTYPE html>
@@ -268,27 +286,27 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Deal Rotting</h1>
-  <div class="meta">Leadle RevOps &bull; Active deals — Sales Pipeline &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; Active deals — Sales Pipeline &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total_active']}</div>
+      <div class="stat-n">{report["total_active"]}</div>
       <div class="stat-l">Active Deals</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{sc.get('CRITICAL', 0)}</div>
+      <div class="stat-n" style="color:var(--red)">{sc.get("CRITICAL", 0)}</div>
       <div class="stat-l">Critical (both signals)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{sc.get('STALLED', 0)}</div>
-      <div class="stat-l">Stalled (no activity ≥{thresh['stalled_deal_days']}d)</div>
+      <div class="stat-n" style="color:var(--amber)">{sc.get("STALLED", 0)}</div>
+      <div class="stat-l">Stalled (no activity ≥{thresh["stalled_deal_days"]}d)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--blue)">{sc.get('STUCK', 0)}</div>
-      <div class="stat-l">Stuck (same stage ≥{thresh['deal_stage_stuck_days']}d)</div>
+      <div class="stat-n" style="color:var(--blue)">{sc.get("STUCK", 0)}</div>
+      <div class="stat-l">Stuck (same stage ≥{thresh["deal_stage_stuck_days"]}d)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{sc.get('OK', 0)}</div>
+      <div class="stat-n" style="color:var(--green)">{sc.get("OK", 0)}</div>
       <div class="stat-l">OK (fresh)</div>
     </div>
   </div>
@@ -296,7 +314,7 @@ def render_html(report: dict) -> str:
   <div class="card">
     <div class="card-title">Rotting Deals — Ranked by Severity</div>
     <div class="legend">
-      <strong>CRITICAL</strong> = no activity ≥{thresh['stalled_deal_days']}d AND same stage ≥{thresh['deal_stage_stuck_days']}d &bull;
+      <strong>CRITICAL</strong> = no activity ≥{thresh["stalled_deal_days"]}d AND same stage ≥{thresh["deal_stage_stuck_days"]}d &bull;
       <strong>STALLED</strong> = only no-activity &bull;
       <strong>STUCK</strong> = only stage-progression &bull;
       Activity marked <span style="color:#9ca3af">~</span> uses last-modified as proxy (no logged activity on record). OK deals hidden.
@@ -323,6 +341,7 @@ def render_html(report: dict) -> str:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.deal_rotting")
     parser.add_argument("--json", metavar="FILE", help="Dump report JSON to this path")
@@ -347,27 +366,35 @@ def main(argv: list[str] | None = None) -> int:
     thresh = report["thresholds"]
 
     print(f"\nDeal Rotting — {report['generated_at']}")
-    print(f"  Active: {report['total_active']}  |  "
-          f"Critical: {sc['CRITICAL']}  Stalled: {sc['STALLED']}  "
-          f"Stuck: {sc['STUCK']}  OK: {sc['OK']}")
-    print(f"  Thresholds: stalled>={thresh['stalled_deal_days']}d activity  "
-          f"stuck>={thresh['deal_stage_stuck_days']}d in stage")
+    print(
+        f"  Active: {report['total_active']}  |  "
+        f"Critical: {sc['CRITICAL']}  Stalled: {sc['STALLED']}  "
+        f"Stuck: {sc['STUCK']}  OK: {sc['OK']}"
+    )
+    print(
+        f"  Thresholds: stalled>={thresh['stalled_deal_days']}d activity  "
+        f"stuck>={thresh['deal_stage_stuck_days']}d in stage"
+    )
 
     critical = [r for r in report["deals"] if r["severity"] == "CRITICAL"]
     if critical:
         print(f"  Critical deals ({len(critical)}):")
         for r in critical:
-            print(f"    → {r['deal_name']} / {r['company']}  "
-                  f"[{r['stage_name']}]  {r['amount']}  "
-                  f"activity={r['days_since_activity']}d{'~' if r['activity_source']=='modified' else ''}  "
-                  f"in_stage={r['days_in_stage']}d  close={r['close_date']}")
+            print(
+                f"    → {r['deal_name']} / {r['company']}  "
+                f"[{r['stage_name']}]  {r['amount']}  "
+                f"activity={r['days_since_activity']}d{'~' if r['activity_source'] == 'modified' else ''}  "
+                f"in_stage={r['days_in_stage']}d  close={r['close_date']}"
+            )
 
     stalled = [r for r in report["deals"] if r["severity"] == "STALLED"]
     if stalled:
         print(f"  Stalled (activity only, {len(stalled)}):")
         for r in stalled:
-            print(f"    → {r['deal_name']} / {r['company']}  "
-                  f"activity={r['days_since_activity']}d  close={r['close_date']}")
+            print(
+                f"    → {r['deal_name']} / {r['company']}  "
+                f"activity={r['days_since_activity']}d  close={r['close_date']}"
+            )
 
     if args.json:
         Path(args.json).write_text(json.dumps(report, indent=2), encoding="utf-8")

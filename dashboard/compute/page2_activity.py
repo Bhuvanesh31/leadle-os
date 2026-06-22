@@ -1,4 +1,5 @@
 """Page 2 — Activity & Rot. Point-in-time current state. Not window-aware."""
+
 from __future__ import annotations
 
 import re
@@ -45,12 +46,16 @@ def _rotting_deals(deals: list[dict], rules: dict, today: date) -> list[dict]:
             continue
         days_stale = (today - la).days
         if days_stale > rules["rotting_deal_days"]:
-            out.append({
-                "id": d.get("id"), "name": d.get("dealname"),
-                "amount": d.get("amount"), "stage": d.get("dealstage"),
-                "last_activity": d.get("last_activity_date"),
-                "days_stale": days_stale,
-            })
+            out.append(
+                {
+                    "id": d.get("id"),
+                    "name": d.get("dealname"),
+                    "amount": d.get("amount"),
+                    "stage": d.get("dealstage"),
+                    "last_activity": d.get("last_activity_date"),
+                    "days_stale": days_stale,
+                }
+            )
     return sorted(out, key=lambda x: x["days_stale"], reverse=True)
 
 
@@ -58,8 +63,12 @@ def _rotting_deals(deals: list[dict], rules: dict, today: date) -> list[dict]:
 # the module-level defaults below only kick in when rules doesn't carry the
 # key (which happens in tests that pass a minimal rules dict).
 _LEADLE_INTERNAL_NAMES_DEFAULT = {
-    "sai ganesh subramanian", "sai ganesh", "revops leadle",
-    "akil mohan", "suraj seetharaman", "bhuvaneswari",
+    "sai ganesh subramanian",
+    "sai ganesh",
+    "revops leadle",
+    "akil mohan",
+    "suraj seetharaman",
+    "bhuvaneswari",
 }
 _CLOSED_LEAD_STAGES_DEFAULT = {"qualified-stage-id", "unqualified-stage-id"}
 _MEETING_PROPOSED_STAGE_DEFAULT = "3200435923"
@@ -104,9 +113,9 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
     internal_names = _config_internal_names(rules)
     meeting_proposed_stage = _config_meeting_proposed_stage(rules)
     leads = [
-        ld for ld in leads
-        if ld.get("pipeline_stage_id") not in closed_stages
-        and _has_contact_identity(ld)
+        ld
+        for ld in leads
+        if ld.get("pipeline_stage_id") not in closed_stages and _has_contact_identity(ld)
     ]
     # Build reply index keyed by lowercased email AND lowercased name (for
     # Aimfox name-only matching).
@@ -176,8 +185,9 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
             continue
 
         # State 3-5: reply state
-        reply = (replies_by_email.get(email) if email else None) \
-                or (replies_by_name.get(name) if name else None)
+        reply = (replies_by_email.get(email) if email else None) or (
+            replies_by_name.get(name) if name else None
+        )
         if not reply:
             buckets["no_reply"].append(row)
             cd = _parse_iso_date(lead.get("createdate"))
@@ -186,13 +196,15 @@ def _lead_funnel(leads: list[dict], raw: dict, rules: dict, today: date) -> dict
             continue
 
         if not reply["we_responded"]:
-            buckets["replied_awaiting_us"].append({**row, "replied_at": reply["replied_at"],
-                                                    "channel": reply["channel"]})
+            buckets["replied_awaiting_us"].append(
+                {**row, "replied_at": reply["replied_at"], "channel": reply["channel"]}
+            )
             continue
 
         # We responded back, no meeting yet
-        buckets["responded_no_meeting"].append({**row, "replied_at": reply["replied_at"],
-                                                 "channel": reply["channel"]})
+        buckets["responded_no_meeting"].append(
+            {**row, "replied_at": reply["replied_at"], "channel": reply["channel"]}
+        )
 
     return {
         "totals": {k: len(v) for k, v in buckets.items()},
@@ -269,7 +281,9 @@ def _stalled_leads(contacts: list[dict], raw: dict, rules: dict, today: date) ->
         if not src.get("available"):
             continue
         for lead in src["data"].get("leads", []):
-            if lead.get("reply_status") in ("positive", "neutral", "replied") and (hcid := lead.get("hubspot_contact_id")):
+            if lead.get("reply_status") in ("positive", "neutral", "replied") and (
+                hcid := lead.get("hubspot_contact_id")
+            ):
                 replied_contact_ids.add(hcid)
     out = []
     for c in contacts:
@@ -282,8 +296,13 @@ def _stalled_leads(contacts: list[dict], raw: dict, rules: dict, today: date) ->
             continue
         days = (today - la).days
         if days > rules["stalled_lead_days"]:
-            out.append({"id": c["id"], "email": c.get("email"),
-                        "lifecycle": c.get("lifecyclestage"),
-                        "last_activity": c.get("last_activity_date"),
-                        "days_stalled": days})
+            out.append(
+                {
+                    "id": c["id"],
+                    "email": c.get("email"),
+                    "lifecycle": c.get("lifecyclestage"),
+                    "last_activity": c.get("last_activity_date"),
+                    "days_stalled": days,
+                }
+            )
     return sorted(out, key=lambda x: x["days_stalled"], reverse=True)

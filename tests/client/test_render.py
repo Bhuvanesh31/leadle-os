@@ -17,18 +17,30 @@ _CFG = Path(__file__).resolve().parents[2] / "config"
 
 def _ctx():
     data = ClientData(
-        email_campaigns=[EmailCampaign(name="C1", sent=100, opened=25, clicked=5, bounced=4, replied=3)],
-        linkedin_campaigns=[LinkedInCampaign(name="L1", invites=50, accepted=12, replied=2, variant_message="Hi there")],
+        email_campaigns=[
+            EmailCampaign(name="C1", sent=100, opened=25, clicked=5, bounced=4, replied=3)
+        ],
+        linkedin_campaigns=[
+            LinkedInCampaign(
+                name="L1", invites=50, accepted=12, replied=2, variant_message="Hi there"
+            )
+        ],
         replies=[
             ReplyRecord(channel="email", campaign="C1", sentiment="positive", name="Alice"),
             ReplyRecord(channel="linkedin", campaign="L1", sentiment="neutral", name="Bob"),
         ],
         warm_leads=[
             WarmLead(
-                channel="LinkedIn", account="UPSTA", response_date="2026-06-01",
-                status="Meeting booked", response_text="Let's connect.",
-                linkedin_url="https://linkedin.com/in/alice", name="Alice",
-                title="VP Sales", company="Acme", company_url="https://acme.com",
+                channel="LinkedIn",
+                account="UPSTA",
+                response_date="2026-06-01",
+                status="Meeting booked",
+                response_text="Let's connect.",
+                linkedin_url="https://linkedin.com/in/alice",
+                name="Alice",
+                title="VP Sales",
+                company="Acme",
+                company_url="https://acme.com",
                 location="New York",
             ),
         ],
@@ -36,10 +48,16 @@ def _ctx():
         content_steps=[{"step": 1, "sent": 100, "opened": 25}],
         targets=[
             TargetCo(
-                name="Acme", country="US", location="New York",
+                name="Acme",
+                country="US",
+                location="New York",
                 linkedin_url="https://linkedin.com/company/acme",
-                industry="SaaS", size="51-200", segment="ICP-A",
-                domain="acme.com", aimfox_id="ax-001", instantly_id="in-001",
+                industry="SaaS",
+                size="51-200",
+                segment="ICP-A",
+                domain="acme.com",
+                aimfox_id="ax-001",
+                instantly_id="in-001",
             ),
         ],
     )
@@ -63,21 +81,37 @@ def test_visible_blocks_respect_audience():
 
 def test_client_render_hides_internal_blocks():
     data, metrics, dbag, rubric, layout = _ctx()
-    html = render.render(data, metrics, dbag,
-                         {"narrative": "Two meetings booked."}, {"actions": []},
-                         audience="client", period_label="June 2026",
-                         client="UPSTA", layout=layout, rubric=rubric)
-    assert "Sender health" not in html        # internal block title absent
+    html = render.render(
+        data,
+        metrics,
+        dbag,
+        {"narrative": "Two meetings booked."},
+        {"actions": []},
+        audience="client",
+        period_label="June 2026",
+        client="UPSTA",
+        layout=layout,
+        rubric=rubric,
+    )
+    assert "Sender health" not in html  # internal block title absent
     assert "UPSTA" in html
-    assert "Engagement" in html               # timing block present + relabelled
+    assert "Engagement" in html  # timing block present + relabelled
 
 
 def test_internal_render_shows_sender_health():
     data, metrics, dbag, rubric, layout = _ctx()
-    html = render.render(data, metrics, dbag,
-                         {"narrative": "x"}, {"actions": ["Pause & warm inbox."]},
-                         audience="internal", period_label="June 2026",
-                         client="UPSTA", layout=layout, rubric=rubric)
+    html = render.render(
+        data,
+        metrics,
+        dbag,
+        {"narrative": "x"},
+        {"actions": ["Pause & warm inbox."]},
+        audience="internal",
+        period_label="June 2026",
+        client="UPSTA",
+        layout=layout,
+        rubric=rubric,
+    )
     assert "Sender health" in html
     assert "Pause &amp; warm inbox." in html
 
@@ -86,12 +120,30 @@ def test_cumulative_caveat_is_internal_only():
     # I1: sheet-derived metrics are not windowed; the honest caveat shows for
     # internal only, never in the client-facing report.
     data, metrics, dbag, rubric, layout = _ctx()
-    internal = render.render(data, metrics, dbag, {"narrative": "x"}, {"actions": []},
-                             audience="internal", period_label="June 2026",
-                             client="UPSTA", layout=layout, rubric=rubric)
-    client = render.render(data, metrics, dbag, {"narrative": "x"}, {"actions": []},
-                           audience="client", period_label="June 2026",
-                           client="UPSTA", layout=layout, rubric=rubric)
+    internal = render.render(
+        data,
+        metrics,
+        dbag,
+        {"narrative": "x"},
+        {"actions": []},
+        audience="internal",
+        period_label="June 2026",
+        client="UPSTA",
+        layout=layout,
+        rubric=rubric,
+    )
+    client = render.render(
+        data,
+        metrics,
+        dbag,
+        {"narrative": "x"},
+        {"actions": []},
+        audience="client",
+        period_label="June 2026",
+        client="UPSTA",
+        layout=layout,
+        rubric=rubric,
+    )
     assert "cumulative to date" in internal
     assert "cumulative to date" not in client
 

@@ -5,6 +5,7 @@ then attaches representative campaign-model data so every block renders.
 Asserts section titles, audience gating, heatmap palette, headline KPI, and
 autoescape integrity (no internal sender email leaking to client output).
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -27,14 +28,14 @@ _BLUE_PALETTE = ["#EFF6FF", "#DBEAFE", "#93C5FD", "#3B82F6", "#1D4ED8"]
 # "Emails sent" (the KPI tile label) rather than the block title string. The remaining
 # titles are emitted by each partial as <span class="t">…</span>.
 _BOTH_TITLES = [
-    "Emails sent",              # kpis partial: KPI tile label (no .sec-h title for this block)
+    "Emails sent",  # kpis partial: KPI tile label (no .sec-h title for this block)
     "Benchmark scorecard",
     "Which campaign performed",
     "Which content performed",
     "Which LinkedIn message worked",
     "Engagement timing",
     "Channel reach",
-    "Warm &amp; named leads",   # Jinja autoescape encodes & → &amp;
+    "Warm &amp; named leads",  # Jinja autoescape encodes & → &amp;
     "Targets next period",
 ]
 
@@ -61,7 +62,10 @@ def _build():
     ]
     data.linkedin_campaigns = [
         LinkedInCampaign(
-            name="PMP·US", invites=400, accepted=120, replied=6,
+            name="PMP·US",
+            invites=400,
+            accepted=120,
+            replied=6,
             variant_message="personal founder intro",
         )
     ]
@@ -88,7 +92,9 @@ def _render_both():
     """Return (client_html, internal_html) pair."""
     data, metrics, dbag, rubric, layout = _build()
     client_html = render.render(
-        data, metrics, dbag,
+        data,
+        metrics,
+        dbag,
         {"narrative": "Strong LinkedIn accept rate.", "degraded": False},
         {"actions": [], "degraded": True},
         audience="client",
@@ -99,7 +105,9 @@ def _render_both():
         rendered_at=_FIXED_TS,
     )
     internal_html = render.render(
-        data, metrics, dbag,
+        data,
+        metrics,
+        dbag,
         {"narrative": "Strong LinkedIn accept rate.", "degraded": False},
         {"actions": ["Pause & warm inbox."], "degraded": False},
         audience="internal",
@@ -115,6 +123,7 @@ def _render_both():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_client_contains_all_both_audience_titles():
     """Every block visible to 'both' audiences must appear in client output."""
@@ -134,7 +143,9 @@ def test_internal_contains_sender_health_and_deliverability():
     """Internal output must include sender health and deliverability titles."""
     _, internal_html = _render_both()
     assert "Sender health" in internal_html, "Sender health block missing from internal output"
-    assert "Deliverability flags" in internal_html, "Deliverability flags block missing from internal output"
+    assert "Deliverability flags" in internal_html, (
+        "Deliverability flags block missing from internal output"
+    )
 
 
 def test_blue_heatmap_palette_in_client_output():

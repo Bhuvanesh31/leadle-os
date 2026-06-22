@@ -1,4 +1,5 @@
 """Tests for the provider-agnostic _parse_tabs core."""
+
 from dashboard.client.sources import sheet_source
 
 
@@ -19,10 +20,32 @@ def test_parse_tabs_builds_clientdata_from_string_rows():
             ["email_sent", "2026-06-02 09:00:00"],  # not an open
         ],
         "Response Tracker": [
-            ["Channel", "Account", "Response Date", "Status", "Response", "LinkedIn",
-             "Name", "Job Title", "Company", "Company Url", "Loc"],
-            ["LinkedIn", "UPSTA", "2026-06-01", "Meeting", "yes", "u/bob",
-             "Bob", "VP", "Acme", "acme.com", "NY"],
+            [
+                "Channel",
+                "Account",
+                "Response Date",
+                "Status",
+                "Response",
+                "LinkedIn",
+                "Name",
+                "Job Title",
+                "Company",
+                "Company Url",
+                "Loc",
+            ],
+            [
+                "LinkedIn",
+                "UPSTA",
+                "2026-06-01",
+                "Meeting",
+                "yes",
+                "u/bob",
+                "Bob",
+                "VP",
+                "Acme",
+                "acme.com",
+                "NY",
+            ],
         ],
     }
     d = sheet_source._parse_tabs(tabs)

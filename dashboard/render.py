@@ -1,4 +1,5 @@
 """Dashboard render CLI: python -m dashboard.render --input <raw.json>."""
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,8 @@ def _load_yaml(name: str) -> dict:
 def _window_from_raw(raw: dict) -> WindowSpec:
     w = raw["window"]
     return WindowSpec(
-        name=w["name"], label=w["label"],
+        name=w["name"],
+        label=w["label"],
         start=date.fromisoformat(w["start"]),
         end=date.fromisoformat(w["end"]),
         prior_start=date.fromisoformat(w["prior_start"]),
@@ -68,8 +70,10 @@ def render(raw: dict, *, skip_agents: bool = False) -> str:
     }
 
     if skip_agents:
-        narratives = {k: {"degraded": True} for k in
-                      ["forward_motion", "funnel_leak", "hygiene", "fathom_gap"]}
+        narratives = {
+            k: {"degraded": True}
+            for k in ["forward_motion", "funnel_leak", "hygiene", "fathom_gap"]
+        }
     else:
         narratives = asyncio.run(_narrate(analytics))
 
@@ -81,8 +85,12 @@ def render(raw: dict, *, skip_agents: bool = False) -> str:
     html = template.render(
         analytics=analytics,
         narratives=narratives,
-        window={"label": window.label, "name": window.name,
-                "start": window.start.isoformat(), "end": window.end.isoformat()},
+        window={
+            "label": window.label,
+            "name": window.name,
+            "start": window.start.isoformat(),
+            "end": window.end.isoformat(),
+        },
         rendered_at=datetime.now().isoformat(timespec="seconds"),
         degraded_sections=_degraded_sections(narratives),
         layout=layout,
@@ -93,8 +101,9 @@ def render(raw: dict, *, skip_agents: bool = False) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Path to dashboard_raw_*.json")
-    parser.add_argument("--skip-agents", action="store_true",
-                        help="Skip Anthropic SDK calls (CI/test mode)")
+    parser.add_argument(
+        "--skip-agents", action="store_true", help="Skip Anthropic SDK calls (CI/test mode)"
+    )
     parser.add_argument("--output-dir", default=str(_ROOT / "reports"))
     args = parser.parse_args()
 

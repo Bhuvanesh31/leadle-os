@@ -31,6 +31,7 @@ def test_layout_blocks_have_visibility():
 
 # ---------- Task 6: new assertions ----------
 
+
 def test_rubric_has_benchmarks_and_f_floor():
     r = yaml.safe_load((_CFG / "client_report_rubric.yaml").read_text())
     assert r["benchmarks"]["open_rate"] == 0.20
@@ -45,5 +46,6 @@ def test_layout_has_variants_block():
 
 def test_constants_present():
     from dashboard.client import constants
+
     assert constants.CAMPAIGN_FILTER == "upsta"
     assert constants.TIMEZONE == "America/New_York"

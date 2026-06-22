@@ -1,4 +1,5 @@
 """Tests for connectors.google_sheets.fetch — injected fake client, no network/auth."""
+
 import pytest
 
 from connectors.google_sheets import fetch
@@ -34,13 +35,15 @@ class _FakeClient:
 
 
 def test_fetch_returns_requested_tabs_and_omits_absent():
-    fake = _FakeClient({
-        "Prospect Data-US": [["Company Name"], ["Acme"]],
-        "Webhook - Email": [["Event Type"], ["email_opened"]],
-    })
-    out = fetch.fetch("sheet-123",
-                      ["Prospect Data-US", "Webhook - Email", "Response Tracker"],
-                      client=fake)
+    fake = _FakeClient(
+        {
+            "Prospect Data-US": [["Company Name"], ["Acme"]],
+            "Webhook - Email": [["Event Type"], ["email_opened"]],
+        }
+    )
+    out = fetch.fetch(
+        "sheet-123", ["Prospect Data-US", "Webhook - Email", "Response Tracker"], client=fake
+    )
     assert set(out) == {"Prospect Data-US", "Webhook - Email"}  # absent tab omitted
     assert out["Prospect Data-US"] == [["Company Name"], ["Acme"]]
 

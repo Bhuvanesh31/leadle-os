@@ -20,6 +20,7 @@ Usage:
     python -m analytics.outbound_lead_analysis --json /tmp/outbound_analysis.json
     python -m analytics.outbound_lead_analysis --enrich-from /tmp/outbound_enrichment.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,6 +47,7 @@ _REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
 
 # ── outbound-specific aggregation ─────────────────────────────────────────────
+
 
 def _campaign_breakdown(raw_leads: list[dict], outbound_set: set[str]) -> list[dict]:
     counts: Counter = Counter()
@@ -99,6 +101,7 @@ def build_analysis(
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def render_html(analysis: dict) -> str:
     s = analysis["summary"]
     icp = analysis["icp_summary"]
@@ -110,13 +113,13 @@ def render_html(analysis: dict) -> str:
 
     stage_rows = "".join(
         f'<tr><td style="padding:8px 14px">{item["stage"]}</td>'
-        f'<td style="padding:8px 14px;font-family:\'JetBrains Mono\',monospace;font-size:13px">{item["count"]}</td></tr>'
+        f"<td style=\"padding:8px 14px;font-family:'JetBrains Mono',monospace;font-size:13px\">{item['count']}</td></tr>"
         for item in stages
     )
 
     campaign_rows = "".join(
         f'<tr><td style="padding:6px 14px">{x["source"]}</td>'
-        f'<td style="padding:6px 14px;font-family:\'JetBrains Mono\',monospace">{x["count"]}</td></tr>'
+        f"<td style=\"padding:6px 14px;font-family:'JetBrains Mono',monospace\">{x['count']}</td></tr>"
         for x in campaigns
     )
 
@@ -134,25 +137,27 @@ def render_html(analysis: dict) -> str:
             <div style="font-size:12px;color:#6b7280">{company_esc}</div>
           </td>
           <td style="padding:10px 14px">
-            <span style="color:{tier_color};font-weight:600;font-size:12px">{f['tier']}</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b7280"> {f['score']}</span>
+            <span style="color:{tier_color};font-weight:600;font-size:12px">{f["tier"]}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b7280"> {f["score"]}</span>
           </td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{f['stage']}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{f["stage"]}</td>
           <td style="padding:10px 14px;font-size:12px;color:#6b7280">{days_label}</td>
           <td style="padding:10px 14px;font-size:11px;color:#374151">{reasons_esc}</td>
         </tr>"""
 
     no_flags = (
         '<tr><td colspan="5" style="padding:20px;text-align:center;color:#6b7280;font-size:12px">'
-        'No priority flags — all warm/hot leads are active.</td></tr>'
-        if not flags else ""
+        "No priority flags — all warm/hot leads are active.</td></tr>"
+        if not flags
+        else ""
     )
 
     dq_blocker = (
         f'<div style="margin-top:10px;font-size:12px;color:#78350f">'
-        f'<strong>Top scoring gap:</strong> {icp["top_blocker"]} — affects '
-        f'{icp["top_blocker_count"]} of {dq["total"]} leads</div>'
-        if icp.get("top_blocker") else ""
+        f"<strong>Top scoring gap:</strong> {icp['top_blocker']} — affects "
+        f"{icp['top_blocker_count']} of {dq['total']} leads</div>"
+        if icp.get("top_blocker")
+        else ""
     )
 
     return f"""<!DOCTYPE html>
@@ -188,31 +193,31 @@ def render_html(analysis: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Outbound Lead Analysis</h1>
-  <div class="meta">Leadle RevOps &bull; LinkedIn Outbound &bull; Generated {analysis['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; LinkedIn Outbound &bull; Generated {analysis["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{s['total_active_leads']}</div>
+      <div class="stat-n">{s["total_active_leads"]}</div>
       <div class="stat-l">Total Active Leads</div>
     </div>
     <div class="stat">
-      <div class="stat-n">{s['outbound_scored']}</div>
+      <div class="stat-n">{s["outbound_scored"]}</div>
       <div class="stat-l">Outbound (Scored)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{s['excluded_inbound']}</div>
+      <div class="stat-n" style="color:var(--amber)">{s["excluded_inbound"]}</div>
       <div class="stat-l">Inbound (Excluded)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{icp['hot']}</div>
+      <div class="stat-n" style="color:var(--red)">{icp["hot"]}</div>
       <div class="stat-l">Hot (≥65)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{icp['warm']}</div>
+      <div class="stat-n" style="color:var(--amber)">{icp["warm"]}</div>
       <div class="stat-l">Warm (35–64)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--muted)">{icp['cold']}</div>
+      <div class="stat-n" style="color:var(--muted)">{icp["cold"]}</div>
       <div class="stat-l">Cold (&lt;35)</div>
     </div>
   </div>
@@ -239,8 +244,8 @@ def render_html(analysis: dict) -> str:
         <div class="card-title">ICP Fit Summary</div>
         <div style="padding:16px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Average score</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;margin-bottom:12px">{icp['avg_score']}<span style="font-size:14px;color:var(--muted)">/100</span></div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Median: {icp['median_score']}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;margin-bottom:12px">{icp["avg_score"]}<span style="font-size:14px;color:var(--muted)">/100</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Median: {icp["median_score"]}</div>
           {dq_blocker}
         </div>
       </div>
@@ -249,48 +254,48 @@ def render_html(analysis: dict) -> str:
         <div style="padding:14px 16px">
           <div class="dq-row">
             <span class="dq-label">Missing job title</span>
-            {_pct_bar(dq.get('missing_title_pct', 0))}
-            <span class="dq-count">{dq.get('missing_title', 0)}</span>
+            {_pct_bar(dq.get("missing_title_pct", 0))}
+            <span class="dq-count">{dq.get("missing_title", 0)}</span>
           </div>
           <div class="dq-row">
             <span class="dq-label">Missing revenue</span>
-            {_pct_bar(dq.get('missing_revenue_pct', 0))}
-            <span class="dq-count">{dq.get('missing_revenue', 0)}</span>
+            {_pct_bar(dq.get("missing_revenue_pct", 0))}
+            <span class="dq-count">{dq.get("missing_revenue", 0)}</span>
           </div>
           <div class="dq-row">
             <span class="dq-label">Missing funding</span>
-            {_pct_bar(dq.get('missing_funding_pct', 0))}
-            <span class="dq-count">{dq.get('missing_funding', 0)}</span>
+            {_pct_bar(dq.get("missing_funding_pct", 0))}
+            <span class="dq-count">{dq.get("missing_funding", 0)}</span>
           </div>
           <div class="dq-row" style="border:none">
             <span class="dq-label">No company record</span>
-            {_pct_bar(round(dq.get('missing_company', 0) / dq.get('total', 1) * 100) if dq.get('total') else 0)}
-            <span class="dq-count">{dq.get('missing_company', 0)}</span>
+            {_pct_bar(round(dq.get("missing_company", 0) / dq.get("total", 1) * 100) if dq.get("total") else 0)}
+            <span class="dq-count">{dq.get("missing_company", 0)}</span>
           </div>
-          {'<div style="margin-top:10px;font-size:11px;color:#1e40af">★ ' + str(dq.get("web_enriched", 0)) + ' companies enriched via web search this run</div>' if dq.get('web_enriched') else ''}
+          {'<div style="margin-top:10px;font-size:11px;color:#1e40af">★ ' + str(dq.get("web_enriched", 0)) + " companies enriched via web search this run</div>" if dq.get("web_enriched") else ""}
         </div>
       </div>
       <div class="card">
         <div class="card-title">Staleness</div>
         <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#2d6a4f">{st.get('fresh_0_3d', 0)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#2d6a4f">{st.get("fresh_0_3d", 0)}</div>
             <div style="font-size:11px;color:var(--muted)">Fresh (≤3d)</div>
           </div>
           <div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#b45309">{st.get('aging_4_7d', 0)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#b45309">{st.get("aging_4_7d", 0)}</div>
             <div style="font-size:11px;color:var(--muted)">Aging (4–7d)</div>
           </div>
           <div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#9b2226">{st.get('stale_over_7d', 0)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#9b2226">{st.get("stale_over_7d", 0)}</div>
             <div style="font-size:11px;color:var(--muted)">Stale (>7d)</div>
           </div>
           <div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#6b7280">{st.get('never_contacted', 0)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#6b7280">{st.get("never_contacted", 0)}</div>
             <div style="font-size:11px;color:var(--muted)">Never contacted</div>
           </div>
         </div>
-        {f'<div style="padding:0 16px 14px;font-size:12px;color:var(--muted)">Avg {st["avg_days_since"]}d since last activity &bull; Worst {st["max_days_since"]}d</div>' if st.get("avg_days_since") is not None else ''}
+        {f'<div style="padding:0 16px 14px;font-size:12px;color:var(--muted)">Avg {st["avg_days_since"]}d since last activity &bull; Worst {st["max_days_since"]}d</div>' if st.get("avg_days_since") is not None else ""}
       </div>
     </div>
   </div>
@@ -310,10 +315,14 @@ def render_html(analysis: dict) -> str:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.outbound_lead_analysis")
-    parser.add_argument("--enrich-from", metavar="FILE",
-                        help="Pre-computed enrichment JSON from /outbound-lead-scoring flow")
+    parser.add_argument(
+        "--enrich-from",
+        metavar="FILE",
+        help="Pre-computed enrichment JSON from /outbound-lead-scoring flow",
+    )
     parser.add_argument("--json", metavar="FILE", help="Dump analysis JSON to this path")
     parser.add_argument("--out", metavar="FILE", help="Output HTML path")
     args = parser.parse_args(argv)
@@ -367,21 +376,29 @@ def main(argv: list[str] | None = None) -> int:
     dq = analysis["data_quality"]
     st = analysis["staleness"]
     print(f"\nOutbound Lead Analysis — {analysis['generated_at']}")
-    print(f"  {analysis['summary']['outbound_scored']} outbound  |  "
-          f"Hot:{icp['hot']}  Warm:{icp['warm']}  Cold:{icp['cold']}  "
-          f"|  Avg score: {icp['avg_score']}")
-    print(f"  Staleness: {st['fresh_0_3d']} fresh / {st['aging_4_7d']} aging / "
-          f"{st['stale_over_7d']} stale / {st['never_contacted']} never contacted")
-    print(f"  Data gaps: {dq.get('missing_title',0)} no title  "
-          f"{dq.get('missing_revenue',0)} no revenue  "
-          f"{dq.get('missing_funding',0)} no funding")
+    print(
+        f"  {analysis['summary']['outbound_scored']} outbound  |  "
+        f"Hot:{icp['hot']}  Warm:{icp['warm']}  Cold:{icp['cold']}  "
+        f"|  Avg score: {icp['avg_score']}"
+    )
+    print(
+        f"  Staleness: {st['fresh_0_3d']} fresh / {st['aging_4_7d']} aging / "
+        f"{st['stale_over_7d']} stale / {st['never_contacted']} never contacted"
+    )
+    print(
+        f"  Data gaps: {dq.get('missing_title', 0)} no title  "
+        f"{dq.get('missing_revenue', 0)} no revenue  "
+        f"{dq.get('missing_funding', 0)} no funding"
+    )
     if icp.get("top_blocker"):
         print(f"  Top score blocker: {icp['top_blocker']} ({icp['top_blocker_count']} leads)")
     if analysis["priority_flags"]:
         print(f"  {len(analysis['priority_flags'])} leads flagged for attention:")
         for f in analysis["priority_flags"]:
-            print(f"    → {f['lead']} / {f['company']} [{f['tier']} {f['score']}]  "
-                  + " | ".join(f["reasons"]))
+            print(
+                f"    → {f['lead']} / {f['company']} [{f['tier']} {f['score']}]  "
+                + " | ".join(f["reasons"])
+            )
     return 0
 
 

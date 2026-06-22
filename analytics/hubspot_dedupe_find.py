@@ -22,6 +22,7 @@ Usage:
     python -m analytics.hubspot_dedupe_find
     python -m analytics.hubspot_dedupe_find --json /tmp/dedupe.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,8 +39,9 @@ import httpx
 _REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
 
-def _paginate_search(token: str, object_type: str, properties: list[str],
-                     filters: list[dict] | None = None) -> list[dict]:
+def _paginate_search(
+    token: str, object_type: str, properties: list[str], filters: list[dict] | None = None
+) -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     results = []
     after = None
@@ -53,7 +55,9 @@ def _paginate_search(token: str, object_type: str, properties: list[str],
             body["after"] = after
         r = httpx.post(
             f"https://api.hubapi.com/crm/v3/objects/{object_type}/search",
-            headers=headers, json=body, timeout=30,
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         data = r.json()
         results.extend(data.get("results", []))
@@ -201,6 +205,7 @@ def build_report(contacts: list[dict], companies: list[dict]) -> dict:
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _stat(n: int, label: str, color: str = "") -> str:
     style = f"color:{color}" if color else ""
     return f"""<div class="stat">
@@ -209,8 +214,9 @@ def _stat(n: int, label: str, color: str = "") -> str:
     </div>"""
 
 
-def _dup_table(groups: list[dict], key_label: str, show_email: bool = False,
-               max_groups: int = 20) -> str:
+def _dup_table(
+    groups: list[dict], key_label: str, show_email: bool = False, max_groups: int = 20
+) -> str:
     if not groups:
         return '<tr><td colspan="4" style="padding:16px;text-align:center;color:#9ca3af;font-size:12px">No duplicates found.</td></tr>'
 
@@ -226,8 +232,7 @@ def _dup_table(groups: list[dict], key_label: str, show_email: bool = False,
             )
         else:
             sample = " &bull; ".join(
-                _html.escape(f"{r['name']} [{r['domain'] or '—'}]")
-                for r in g["records"][:3]
+                _html.escape(f"{r['name']} [{r['domain'] or '—'}]") for r in g["records"][:3]
             )
         badge = f'<span style="background:#fef2f2;color:#9b2226;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600">{count}</span>'
         rows += f"""<tr>
@@ -276,22 +281,22 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>HubSpot Duplicate Finder</h1>
-  <div class="meta">Leadle RevOps &bull; {sc['contacts']:,} contacts + {sc['companies']:,} companies scanned &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; {sc["contacts"]:,} contacts + {sc["companies"]:,} companies scanned &bull; Generated {report["generated_at"]}</div>
 
   <div class="note">Read-only report. Use /hubspot-dedupe-fix (process #15) to merge records after confirming which to keep.</div>
 
   <h2 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:12px">Contacts</h2>
   <div class="stat-row">
-    {_stat(s['contact_email_dup_groups'], 'Email dup groups', '#9b2226')}
-    {_stat(s['contact_email_records_affected'], 'Contact records affected')}
-    {_stat(s['contact_name_dup_groups'], 'Same-name dup groups', '#b45309')}
+    {_stat(s["contact_email_dup_groups"], "Email dup groups", "#9b2226")}
+    {_stat(s["contact_email_records_affected"], "Contact records affected")}
+    {_stat(s["contact_name_dup_groups"], "Same-name dup groups", "#b45309")}
   </div>
 
   <div class="card">
     <div class="card-title">Duplicate Emails — same email address on multiple contact records</div>
     <table>
       <thead><tr><th>Email</th><th>Records</th><th>HubSpot IDs</th><th>Names / Companies</th></tr></thead>
-      <tbody>{_dup_table(report['contact_email_dupes'], 'Email', show_email=True)}</tbody>
+      <tbody>{_dup_table(report["contact_email_dupes"], "Email", show_email=True)}</tbody>
     </table>
   </div>
 
@@ -299,22 +304,22 @@ def render_html(report: dict) -> str:
     <div class="card-title">Duplicate Names — same first+last, different emails</div>
     <table>
       <thead><tr><th>Name</th><th>Records</th><th>HubSpot IDs</th><th>Emails / Companies</th></tr></thead>
-      <tbody>{_dup_table(report['contact_name_dupes'], 'Name', show_email=True)}</tbody>
+      <tbody>{_dup_table(report["contact_name_dupes"], "Name", show_email=True)}</tbody>
     </table>
   </div>
 
   <h2 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:24px 0 12px">Companies</h2>
   <div class="stat-row">
-    {_stat(s['company_domain_dup_groups'], 'Domain dup groups', '#9b2226')}
-    {_stat(s['company_domain_records_affected'], 'Company records affected')}
-    {_stat(s['company_name_dup_groups'], 'Same-name dup groups', '#b45309')}
+    {_stat(s["company_domain_dup_groups"], "Domain dup groups", "#9b2226")}
+    {_stat(s["company_domain_records_affected"], "Company records affected")}
+    {_stat(s["company_name_dup_groups"], "Same-name dup groups", "#b45309")}
   </div>
 
   <div class="card">
     <div class="card-title">Duplicate Domains — same website domain on multiple company records</div>
     <table>
       <thead><tr><th>Domain</th><th>Records</th><th>HubSpot IDs</th><th>Company Names</th></tr></thead>
-      <tbody>{_dup_table(report['company_domain_dupes'], 'Domain', show_email=False)}</tbody>
+      <tbody>{_dup_table(report["company_domain_dupes"], "Domain", show_email=False)}</tbody>
     </table>
   </div>
 
@@ -322,7 +327,7 @@ def render_html(report: dict) -> str:
     <div class="card-title">Duplicate Company Names — identical name on multiple records</div>
     <table>
       <thead><tr><th>Name</th><th>Records</th><th>HubSpot IDs</th><th>Domains</th></tr></thead>
-      <tbody>{_dup_table(report['company_name_dupes'], 'Name', show_email=False)}</tbody>
+      <tbody>{_dup_table(report["company_name_dupes"], "Name", show_email=False)}</tbody>
     </table>
   </div>
 </div>
@@ -331,6 +336,7 @@ def render_html(report: dict) -> str:
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.hubspot_dedupe_find")
@@ -345,14 +351,16 @@ def main(argv: list[str] | None = None) -> int:
 
     print("Fetching all contacts...", file=sys.stderr)
     contacts = _paginate_search(
-        token, "contacts",
+        token,
+        "contacts",
         ["email", "firstname", "lastname", "company", "createdate", "lifecyclestage"],
     )
     print(f"  {len(contacts)} contacts", file=sys.stderr)
 
     print("Fetching all companies...", file=sys.stderr)
     companies = _paginate_search(
-        token, "companies",
+        token,
+        "companies",
         ["name", "domain", "createdate"],
     )
     print(f"  {len(companies)} companies", file=sys.stderr)
@@ -361,12 +369,18 @@ def main(argv: list[str] | None = None) -> int:
     s = report["summary"]
 
     print(f"\nHubSpot Dedupe Scan — {report['generated_at']}")
-    print(f"  Scanned: {report['scanned']['contacts']:,} contacts  {report['scanned']['companies']:,} companies")
+    print(
+        f"  Scanned: {report['scanned']['contacts']:,} contacts  {report['scanned']['companies']:,} companies"
+    )
     print("\n  Contacts:")
-    print(f"    Email duplicates:  {s['contact_email_dup_groups']} groups  ({s['contact_email_records_affected']} records affected)")
+    print(
+        f"    Email duplicates:  {s['contact_email_dup_groups']} groups  ({s['contact_email_records_affected']} records affected)"
+    )
     print(f"    Name duplicates:   {s['contact_name_dup_groups']} groups")
     print("\n  Companies:")
-    print(f"    Domain duplicates: {s['company_domain_dup_groups']} groups  ({s['company_domain_records_affected']} records affected)")
+    print(
+        f"    Domain duplicates: {s['company_domain_dup_groups']} groups  ({s['company_domain_records_affected']} records affected)"
+    )
     print(f"    Name duplicates:   {s['company_name_dup_groups']} groups")
 
     if report["contact_email_dupes"]:

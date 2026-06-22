@@ -4,6 +4,7 @@ Run once: `python -m connectors.google_sheets.authorize`. Opens the browser to
 sign in as revops@leadle.in, grants spreadsheets.readonly, and writes the token
 JSON to GOOGLE_SHEETS_TOKEN. Not on the render hot path.
 """
+
 from __future__ import annotations
 
 import os

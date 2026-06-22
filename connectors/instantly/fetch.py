@@ -3,6 +3,7 @@
 Per-campaign authoritative analytics (NOT the daily endpoint, which double-counts).
 senders and steps arrays are returned empty here; Task 9 populates them.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -84,11 +85,13 @@ def _account_senders(client: httpx.Client) -> list[dict]:
         email = row.get("from_email")
         if not email:
             continue
-        result.append({
-            "from_email": email,
-            "sent": int(row.get("sent", 0) or 0),
-            "bounced": int(row.get("bounced", 0) or 0),
-        })
+        result.append(
+            {
+                "from_email": email,
+                "sent": int(row.get("sent", 0) or 0),
+                "bounced": int(row.get("bounced", 0) or 0),
+            }
+        )
     return result
 
 
@@ -108,12 +111,14 @@ def _campaign_steps(client: httpx.Client, camps: list[dict]) -> list[dict]:
         if not isinstance(rows, list):
             continue
         for row in rows:
-            all_steps.append({
-                "step": row.get("step"),
-                "sent": int(row.get("sent", 0) or 0),
-                "opened": int(row.get("opened", 0) or 0),
-                "clicked": int(row.get("clicked", 0) or 0),
-            })
+            all_steps.append(
+                {
+                    "step": row.get("step"),
+                    "sent": int(row.get("sent", 0) or 0),
+                    "opened": int(row.get("opened", 0) or 0),
+                    "clicked": int(row.get("clicked", 0) or 0),
+                }
+            )
     return all_steps
 
 

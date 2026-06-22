@@ -1,4 +1,5 @@
 """Deterministic compute over ClientData. Pure functions, no I/O, no agents."""
+
 from __future__ import annotations
 
 import math
@@ -37,8 +38,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
     negative_replies = sum(1 for r in data.replies if r.sentiment == "negative")
 
     # Warm-lead outcomes from tracker (meeting_statuses)
-    meetings = sum(1 for w in data.warm_leads
-                   if _status_hits(w.status, rubric["meeting_statuses"]))
+    meetings = sum(1 for w in data.warm_leads if _status_hits(w.status, rubric["meeting_statuses"]))
 
     return {
         "emails_sent": sent,
@@ -49,7 +49,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
         "delivered": delivered,
         "open_rate": _rate(opened, delivered),
         "click_rate": _rate(clicked, delivered),
-        "bounce_rate": _rate(bounced, sent),        # event-based: bounced/sent
+        "bounce_rate": _rate(bounced, sent),  # event-based: bounced/sent
         "invites": invites,
         "accepted": accepted,
         "accept_rate": _rate(accepted, invites),
@@ -59,7 +59,7 @@ def kpis(data: ClientData, rubric: dict) -> dict:
         "positive_replies": positive_replies,
         "neutral_replies": neutral_replies,
         "negative_replies": negative_replies,
-        "leads": positive_replies,                  # leads == positive_replies
+        "leads": positive_replies,  # leads == positive_replies
         "meetings": meetings,
     }
 
@@ -104,34 +104,38 @@ def campaign_table(data: ClientData, rubric: dict) -> list[dict]:
         click_rate = _rate(c.clicked, delivered)
         open_rate = _rate(c.opened, delivered)
         bounce_rate = _rate(c.bounced, c.sent)
-        email_rows.append({
-            "name": c.name,
-            "channel": "Email",
-            "sent": c.sent,
-            "reply_rate": reply_rate,
-            "secondary": click_rate,
-            "secondary_label": "click",
-            "open_rate": open_rate,
-            "bounce_rate": bounce_rate,
-            "grade": grade("open_rate", open_rate, rubric),
-        })
+        email_rows.append(
+            {
+                "name": c.name,
+                "channel": "Email",
+                "sent": c.sent,
+                "reply_rate": reply_rate,
+                "secondary": click_rate,
+                "secondary_label": "click",
+                "open_rate": open_rate,
+                "bounce_rate": bounce_rate,
+                "grade": grade("open_rate", open_rate, rubric),
+            }
+        )
     email_rows.sort(key=lambda r: (-r["reply_rate"], -r["secondary"], -r["open_rate"]))
 
     li_rows = []
     for c in data.linkedin_campaigns:
         reply_rate = _rate(c.replied, c.invites)
         accept_rate = _rate(c.accepted, c.invites)
-        li_rows.append({
-            "name": c.name,
-            "channel": "LinkedIn",
-            "sent": c.invites,
-            "reply_rate": reply_rate,
-            "secondary": accept_rate,
-            "secondary_label": "accept",
-            "open_rate": None,
-            "bounce_rate": None,
-            "grade": grade("accept_rate", accept_rate, rubric),
-        })
+        li_rows.append(
+            {
+                "name": c.name,
+                "channel": "LinkedIn",
+                "sent": c.invites,
+                "reply_rate": reply_rate,
+                "secondary": accept_rate,
+                "secondary_label": "accept",
+                "open_rate": None,
+                "bounce_rate": None,
+                "grade": grade("accept_rate", accept_rate, rubric),
+            }
+        )
     li_rows.sort(key=lambda r: (-r["reply_rate"], -r["secondary"]))
 
     return email_rows + li_rows
@@ -144,14 +148,16 @@ def variants(data: ClientData, rubric: dict) -> list[dict]:
     for c in data.linkedin_campaigns:
         accept_rate = _rate(c.accepted, c.invites)
         reply_rate = _rate(c.replied, c.invites)
-        rows.append({
-            "name": c.name,
-            "accept_rate": accept_rate,
-            "replies": c.replied,
-            "reply_rate": reply_rate,
-            "hook": (c.variant_message or "")[:80],
-            "winner": False,
-        })
+        rows.append(
+            {
+                "name": c.name,
+                "accept_rate": accept_rate,
+                "replies": c.replied,
+                "reply_rate": reply_rate,
+                "hook": (c.variant_message or "")[:80],
+                "winner": False,
+            }
+        )
     rows.sort(key=lambda r: (-r["reply_rate"], -r["accept_rate"]))
     # Flag first row with replies > 0 as winner
     for r in rows:
@@ -167,10 +173,12 @@ def content_steps(data: ClientData) -> list[dict]:
     for s in data.content_steps:
         opened = int(s.get("opened", 0) or 0)
         sent = int(s.get("sent", 0) or 0)
-        rows.append({
-            "step": s.get("step"),
-            "open_rate": _rate(opened, sent),
-        })
+        rows.append(
+            {
+                "step": s.get("step"),
+                "open_rate": _rate(opened, sent),
+            }
+        )
     return rows
 
 
@@ -182,13 +190,15 @@ def sender_wise(data: ClientData, rubric: dict) -> list[dict]:
         sent = int(s.get("sent", 0) or 0)
         bounced = int(s.get("bounced", 0) or 0)
         bounce_rate = _rate(bounced, sent)
-        rows.append({
-            "from_email": s.get("from_email"),
-            "volume": sent,
-            "bounced": bounced,
-            "bounce_rate": bounce_rate,
-            "flag": bounce_rate >= threshold,
-        })
+        rows.append(
+            {
+                "from_email": s.get("from_email"),
+                "volume": sent,
+                "bounced": bounced,
+                "bounce_rate": bounce_rate,
+                "flag": bounce_rate >= threshold,
+            }
+        )
     return rows
 
 
@@ -196,11 +206,13 @@ def deliverability(data: ClientData, rubric: dict) -> list[dict]:
     flags = []
     for s in sender_wise(data, rubric):
         if s["flag"]:
-            flags.append({
-                "sender": s["from_email"],
-                "bounce_rate": s["bounce_rate"],
-                "note": "pause & warm",
-            })
+            flags.append(
+                {
+                    "sender": s["from_email"],
+                    "bounce_rate": s["bounce_rate"],
+                    "note": "pause & warm",
+                }
+            )
     return flags
 
 
@@ -234,13 +246,17 @@ def timing_heatmap(data: ClientData, rubric: dict) -> dict:
         if grid[wd][part] > best["count"]:
             best = {"weekday": wd, "daypart": part, "count": grid[wd][part]}
     mx = max(grid[wd][lbl] for wd in weekdays for lbl in labels)
-    levels = {
-        wd: {
-            lbl: (0 if grid[wd][lbl] == 0 else math.ceil(4 * grid[wd][lbl] / mx))
-            for lbl in labels
+    levels = (
+        {
+            wd: {
+                lbl: (0 if grid[wd][lbl] == 0 else math.ceil(4 * grid[wd][lbl] / mx))
+                for lbl in labels
+            }
+            for wd in weekdays
         }
-        for wd in weekdays
-    } if mx > 0 else {wd: {lbl: 0 for lbl in labels} for wd in weekdays}
+        if mx > 0
+        else {wd: {lbl: 0 for lbl in labels} for wd in weekdays}
+    )
     return {
         "weekdays": weekdays,
         "dayparts": labels,
@@ -266,10 +282,17 @@ def lead_ladder(data: ClientData, rubric: dict) -> dict:
             continue
         if key:
             seen.add(key)
-        hot.append({
-            "name": r.name, "title": "", "company": "", "channel": r.channel,
-            "status": "Positive reply", "tier": "Hot", "response_text": "",
-        })
+        hot.append(
+            {
+                "name": r.name,
+                "title": "",
+                "company": "",
+                "channel": r.channel,
+                "status": "Positive reply",
+                "tier": "Hot",
+                "response_text": "",
+            }
+        )
 
     # Source 2: warm-lead tracker rows matching meeting or positive statuses.
     for w in data.warm_leads:
@@ -281,20 +304,22 @@ def lead_ladder(data: ClientData, rubric: dict) -> dict:
         if key in seen:
             continue
         seen.add(key)
-        hot.append({
-            "name": w.name, "title": w.title, "company": w.company,
-            "channel": w.channel, "status": w.status, "tier": "Hot",
-            "response_text": w.response_text,
-        })
+        hot.append(
+            {
+                "name": w.name,
+                "title": w.title,
+                "company": w.company,
+                "channel": w.channel,
+                "status": w.status,
+                "tier": "Hot",
+                "response_text": w.response_text,
+            }
+        )
 
     reach = channel_reach(data)
-    reached = max(
-        reach["linkedin_reached"] + reach["email_reached"] - reach["both_reached"], 0
-    )
+    reached = max(reach["linkedin_reached"] + reach["email_reached"] - reach["both_reached"], 0)
     positive_leads = sum(1 for r in data.replies if r.sentiment == "positive")
-    meetings = sum(
-        1 for w in data.warm_leads if _status_hits(w.status, rubric["meeting_statuses"])
-    )
+    meetings = sum(1 for w in data.warm_leads if _status_hits(w.status, rubric["meeting_statuses"]))
     warm_count = sum(c.accepted for c in data.linkedin_campaigns)
     engaged = warm_count + len(data.replies)
 

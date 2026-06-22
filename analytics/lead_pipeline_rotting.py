@@ -13,6 +13,7 @@ Usage:
     python -m analytics.lead_pipeline_rotting --out /tmp/rotting.html
     python -m analytics.lead_pipeline_rotting --threshold 2   # override days
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,6 +49,7 @@ _LEAD_PROPS = [
 
 # ── config ────────────────────────────────────────────────────────────────────
 
+
 def _load_config() -> dict:
     with open(_CONFIG_PATH) as f:
         return yaml.safe_load(f)
@@ -65,6 +67,7 @@ def _non_rotting_stage_ids(cfg: dict) -> set[str]:
 
 # ── HubSpot fetch ─────────────────────────────────────────────────────────────
 
+
 def fetch_active_leads(token: str, rotting_stage_ids: set[str]) -> list[dict]:
     """Return Lead records that are in rotting-eligible stages (being actively worked)."""
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
@@ -74,15 +77,21 @@ def fetch_active_leads(token: str, rotting_stage_ids: set[str]) -> list[dict]:
     with httpx.Client(headers=headers, timeout=30.0) as client:
         while True:
             body: dict[str, Any] = {
-                "filterGroups": [{
-                    "filters": [{
-                        "propertyName": "hs_pipeline_stage",
-                        "operator": "IN",
-                        "values": list(rotting_stage_ids),
-                    }]
-                }],
+                "filterGroups": [
+                    {
+                        "filters": [
+                            {
+                                "propertyName": "hs_pipeline_stage",
+                                "operator": "IN",
+                                "values": list(rotting_stage_ids),
+                            }
+                        ]
+                    }
+                ],
                 "properties": _LEAD_PROPS,
-                "sorts": [{"propertyName": "hs_contact_last_activity_date", "direction": "ASCENDING"}],
+                "sorts": [
+                    {"propertyName": "hs_contact_last_activity_date", "direction": "ASCENDING"}
+                ],
                 "limit": _PAGE_LIMIT,
             }
             if after:
@@ -99,6 +108,7 @@ def fetch_active_leads(token: str, rotting_stage_ids: set[str]) -> list[dict]:
 
 
 # ── compute ───────────────────────────────────────────────────────────────────
+
 
 def _parse_date(s: str | None) -> date | None:
     if not s:
@@ -122,9 +132,8 @@ def compute_rotting(raw_leads: list[dict], threshold_days: int, stage_map: dict[
         stage_name = stage_map.get(stage_id, stage_id or "Unknown")
 
         # Best available activity date: prefer contact-level activity, fall back to last-modified.
-        last_activity = (
-            _parse_date(p.get("hs_contact_last_activity_date"))
-            or _parse_date(p.get("hs_lastmodifieddate"))
+        last_activity = _parse_date(p.get("hs_contact_last_activity_date")) or _parse_date(
+            p.get("hs_lastmodifieddate")
         )
         next_activity = _parse_date(p.get("hs_next_activity_date"))
 
@@ -176,6 +185,7 @@ def compute_rotting(raw_leads: list[dict], threshold_days: int, stage_map: dict[
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _days_badge(days: int | None) -> str:
     if days is None:
         return '<span style="color:#9b2226;font-weight:600">Never</span>'
@@ -216,16 +226,20 @@ def render_html(report: dict, generated_at: str) -> str:
         rows_html += f"""
         <tr>
           <td style="padding:10px 14px">
-            <div style="font-weight:500">{r['lead_name']}</div>
-            <div style="font-size:12px;color:#6b7280">{r['company']}</div>
+            <div style="font-weight:500">{r["lead_name"]}</div>
+            <div style="font-size:12px;color:#6b7280">{r["company"]}</div>
           </td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
-          <td style="padding:10px 14px">{_days_badge(r['days_since'])}</td>
-          <td style="padding:10px 14px">{_task_badge(r['has_future_task'], r['next_activity'])}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{r["stage_name"]}</td>
+          <td style="padding:10px 14px">{_days_badge(r["days_since"])}</td>
+          <td style="padding:10px 14px">{_task_badge(r["has_future_task"], r["next_activity"])}</td>
           <td style="padding:10px 14px">{reason_html}</td>
         </tr>"""
 
-    empty = "" if rotting else '<tr><td colspan="5" style="padding:24px;text-align:center;color:#6b7280">No rotting leads. Pipeline is healthy.</td></tr>'
+    empty = (
+        ""
+        if rotting
+        else '<tr><td colspan="5" style="padding:24px;text-align:center;color:#6b7280">No rotting leads. Pipeline is healthy.</td></tr>'
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -260,19 +274,19 @@ def render_html(report: dict, generated_at: str) -> str:
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total_active']}</div>
+      <div class="stat-n">{report["total_active"]}</div>
       <div class="stat-l">Active Leads</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'red' if len(rotting) > 0 else 'green'})">{len(rotting)}</div>
+      <div class="stat-n" style="color:var(--{"red" if len(rotting) > 0 else "green"})">{len(rotting)}</div>
       <div class="stat-l">Rotting</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'red' if rot_pct > 50 else 'amber' if rot_pct > 20 else 'green'})">{rot_pct}%</div>
+      <div class="stat-n" style="color:var(--{"red" if rot_pct > 50 else "amber" if rot_pct > 20 else "green"})">{rot_pct}%</div>
       <div class="stat-l">Rotting Rate</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{report['healthy']}</div>
+      <div class="stat-n" style="color:var(--green)">{report["healthy"]}</div>
       <div class="stat-l">Healthy</div>
     </div>
   </div>
@@ -310,13 +324,19 @@ def render_html(report: dict, generated_at: str) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(prog="analytics.lead_pipeline_rotting")
-    parser.add_argument("--threshold", type=int, help="Override days-without-activity threshold from config")
-    parser.add_argument("--out", help="Output HTML path. Defaults to reports/lead-pipeline-rotting-<date>.html")
+    parser.add_argument(
+        "--threshold", type=int, help="Override days-without-activity threshold from config"
+    )
+    parser.add_argument(
+        "--out", help="Output HTML path. Defaults to reports/lead-pipeline-rotting-<date>.html"
+    )
     args = parser.parse_args(argv)
 
     token = os.environ.get("HUBSPOT_PRIVATE_TOKEN")
@@ -325,7 +345,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     cfg = _load_config()
-    threshold = args.threshold if args.threshold is not None else cfg["rotting"]["lead_no_activity_days"]
+    threshold = (
+        args.threshold if args.threshold is not None else cfg["rotting"]["lead_no_activity_days"]
+    )
     non_rotting = _non_rotting_stage_ids(cfg)
     rotting_stage_ids = {s["stage_id"] for s in cfg["leads"]["stages"]} - non_rotting
     stage_map = _stage_map(cfg)
@@ -351,10 +373,14 @@ def main(argv: list[str] | None = None) -> int:
 
     rotting = report["rotting"]
     print(f"\nLead Pipeline Rotting ({date.today()})")
-    print(f"  Active: {report['total_active']}  Rotting: {len(rotting)}  Healthy: {report['healthy']}")
+    print(
+        f"  Active: {report['total_active']}  Rotting: {len(rotting)}  Healthy: {report['healthy']}"
+    )
     if rotting:
         print(f"  By stage: {dict(sorted(report['stage_breakdown'].items(), key=lambda x: -x[1]))}")
-        print(f"  Worst: {rotting[0]['lead_name']} — {rotting[0]['company']} ({rotting[0]['days_since'] or 'Never'}d since activity)")
+        print(
+            f"  Worst: {rotting[0]['lead_name']} — {rotting[0]['company']} ({rotting[0]['days_since'] or 'Never'}d since activity)"
+        )
     return 0
 
 

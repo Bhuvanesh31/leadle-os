@@ -3,6 +3,7 @@
 load() is the single entry point. All three sources are independent; API sources
 degrade silently (empty lists) on any exception rather than crashing the caller.
 """
+
 from __future__ import annotations
 
 import httpx
@@ -39,6 +40,7 @@ def load(
         data = sheet_source.read_xlsx(xlsx_path)
     else:
         from dashboard.client.sources import client_registry
+
         spreadsheet_id = client_registry.spreadsheet_id_for(client)
         data = sheet_source.read_sheets(spreadsheet_id, client=sheets_client)
 

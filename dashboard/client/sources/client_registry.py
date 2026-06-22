@@ -1,4 +1,5 @@
 """Resolve a client name to its Google Sheets spreadsheet id (config/clients.yaml)."""
+
 from __future__ import annotations
 
 from pathlib import Path

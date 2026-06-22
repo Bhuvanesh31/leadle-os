@@ -10,6 +10,7 @@ Usage:
     python -m analytics.lead_pipeline_leakage --start 2026-01-01 --end 2026-06-30
     python -m analytics.lead_pipeline_leakage --out /tmp/leak.html
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,6 +42,7 @@ _BASE_PROPS = [
 
 # ── config ────────────────────────────────────────────────────────────────────
 
+
 def _load_stages() -> list[dict]:
     with open(_CONFIG_PATH) as f:
         cfg = yaml.safe_load(f)
@@ -48,6 +50,7 @@ def _load_stages() -> list[dict]:
 
 
 # ── HubSpot fetch ─────────────────────────────────────────────────────────────
+
 
 def _epoch_ms(d: date, *, end_of_day: bool = False) -> str:
     if end_of_day:
@@ -65,9 +68,17 @@ def fetch_leads(token: str, start: date | None, end: date | None) -> list[dict]:
 
     filters: list[dict] = []
     if start:
-        filters.append({"propertyName": "hs_createdate", "operator": "GTE", "value": _epoch_ms(start)})
+        filters.append(
+            {"propertyName": "hs_createdate", "operator": "GTE", "value": _epoch_ms(start)}
+        )
     if end:
-        filters.append({"propertyName": "hs_createdate", "operator": "LTE", "value": _epoch_ms(end, end_of_day=True)})
+        filters.append(
+            {
+                "propertyName": "hs_createdate",
+                "operator": "LTE",
+                "value": _epoch_ms(end, end_of_day=True),
+            }
+        )
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     out: list[dict] = []
@@ -96,6 +107,7 @@ def fetch_leads(token: str, start: date | None, end: date | None) -> list[dict]:
 
 
 # ── compute ───────────────────────────────────────────────────────────────────
+
 
 def compute_leakage(raw_leads: list[dict]) -> dict:
     """Build funnel counts + conversion rates from raw Lead records."""
@@ -141,15 +153,17 @@ def compute_leakage(raw_leads: list[dict]) -> dict:
             raw_drop = prev_entered - entered
             dropped = raw_drop if raw_drop >= 0 else 0
             skipped_in = raw_drop < 0  # leads jumped in from earlier/later stages
-        funnel_rows.append({
-            "stage_id": s["stage_id"],
-            "name": s["name"],
-            "entered": entered,
-            "current": current,
-            "reach_pct": reach_pct,
-            "dropped": dropped,
-            "skipped_in": skipped_in,
-        })
+        funnel_rows.append(
+            {
+                "stage_id": s["stage_id"],
+                "name": s["name"],
+                "entered": entered,
+                "current": current,
+                "reach_pct": reach_pct,
+                "dropped": dropped,
+                "skipped_in": skipped_in,
+            }
+        )
 
     # Archived (terminal exit) count.
     archived = sum(stage_entered.get(s["stage_id"], 0) for s in terminal_stages)
@@ -169,6 +183,7 @@ def compute_leakage(raw_leads: list[dict]) -> dict:
 
 
 # ── HTML render ───────────────────────────────────────────────────────────────
+
 
 def render_html(report: dict, generated_at: str, window_label: str) -> str:
     top = report["funnel"][0]["entered"] if report["funnel"] else 1
@@ -204,13 +219,13 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
               <div style="flex:1;background:#e5e7eb;border-radius:4px;height:8px;max-width:180px">
                 <div style="background:#2d6a4f;height:8px;border-radius:4px;width:{bar}%"></div>
               </div>
-              <span style="font-weight:500">{row['name']}</span>{leak_marker}
+              <span style="font-weight:500">{row["name"]}</span>{leak_marker}
             </div>
           </td>
-          <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums">{row['entered']}</td>
+          <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums">{row["entered"]}</td>
           <td style="padding:10px 14px;text-align:right">{reach_badge}</td>
           <td style="padding:10px 14px;text-align:right">{dropped_cell}</td>
-          <td style="padding:10px 14px;text-align:right;color:#6b7280">{row['current']}</td>
+          <td style="padding:10px 14px;text-align:right;color:#6b7280">{row["current"]}</td>
         </tr>"""
 
     leak_box = ""
@@ -219,11 +234,11 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
         leak_box = f"""
       <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:16px 20px;margin-bottom:24px">
         <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:#9b2226;margin-bottom:4px">
-          Biggest leak: {w['name']}
+          Biggest leak: {w["name"]}
         </div>
         <div style="font-size:13px;color:#7f1d1d">
-          {w['dropped']} leads entered the prior stage but never reached {w['name']}
-          ({w['reach_pct']}% of all leads ever touched this stage).
+          {w["dropped"]} leads entered the prior stage but never reached {w["name"]}
+          ({w["reach_pct"]}% of all leads ever touched this stage).
         </div>
       </div>"""
 
@@ -278,20 +293,20 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total']}</div>
+      <div class="stat-n">{report["total"]}</div>
       <div class="stat-l">Total Leads</div>
     </div>
     <div class="stat">
-      <div class="stat-n">{report['funnel'][-1]['entered'] if report['funnel'] else 0}</div>
+      <div class="stat-n">{report["funnel"][-1]["entered"] if report["funnel"] else 0}</div>
       <div class="stat-l">Advanced to Deal</div>
     </div>
     <div class="stat">
-      <div class="stat-n">{report['archived']}</div>
+      <div class="stat-n">{report["archived"]}</div>
       <div class="stat-l">Archived (Lost)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'green' if (report['funnel'][-1]['reach_pct'] or 0) >= 25 else 'red'})">
-        {report['funnel'][-1]['reach_pct'] or '—'}{'%' if report['funnel'][-1]['reach_pct'] else ''}
+      <div class="stat-n" style="color:var(--{"green" if (report["funnel"][-1]["reach_pct"] or 0) >= 25 else "red"})">
+        {report["funnel"][-1]["reach_pct"] or "—"}{"%" if report["funnel"][-1]["reach_pct"] else ""}
       </div>
       <div class="stat-l">End-to-End Rate</div>
     </div>
@@ -326,14 +341,19 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
+
     load_dotenv()
 
     from analytics._periods import add_period_args, resolve_args
+
     parser = argparse.ArgumentParser(prog="analytics.lead_pipeline_leakage")
     add_period_args(parser)
-    parser.add_argument("--out", help="Output HTML path. Defaults to reports/lead-pipeline-leakage-<date>.html")
+    parser.add_argument(
+        "--out", help="Output HTML path. Defaults to reports/lead-pipeline-leakage-<date>.html"
+    )
     args = parser.parse_args(argv)
 
     token = os.environ.get("HUBSPOT_PRIVATE_TOKEN")
@@ -367,8 +387,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Total leads: {report['total']}")
     for row in report["funnel"]:
         skip = "  (jumps in)" if row["skipped_in"] else ""
-        leak = " ← LEAK" if (report["worst_leak"] and row["stage_id"] == report["worst_leak"]["stage_id"]) else ""
-        print(f"  {row['name']:25s}  entered={row['entered']:4d}  reach={row['reach_pct']:5.1f}%  drop={row['dropped']:3d}{skip}{leak}")
+        leak = (
+            " ← LEAK"
+            if (report["worst_leak"] and row["stage_id"] == report["worst_leak"]["stage_id"])
+            else ""
+        )
+        print(
+            f"  {row['name']:25s}  entered={row['entered']:4d}  reach={row['reach_pct']:5.1f}%  drop={row['dropped']:3d}{skip}{leak}"
+        )
     print(f"  Archived: {report['archived']}")
     return 0
 

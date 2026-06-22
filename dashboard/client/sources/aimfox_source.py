@@ -5,6 +5,7 @@ Calls:
   GET /campaigns/{id}                      → campaign detail (flows → variant_message)
   GET /analytics/interactions?...          → daily buckets → summed metrics
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -42,13 +43,15 @@ def read(
             metrics = _fetch_interactions(client, cid, start_ms, end_ms)
             detail = fetch_campaign_detail(client, cid)
             variant = _extract_variant(detail)
-            result.append(LinkedInCampaign(
-                name=c.get("name", ""),
-                invites=metrics["invites"],
-                accepted=metrics["accepted"],
-                replied=metrics["replied"],
-                variant_message=variant,
-            ))
+            result.append(
+                LinkedInCampaign(
+                    name=c.get("name", ""),
+                    invites=metrics["invites"],
+                    accepted=metrics["accepted"],
+                    replied=metrics["replied"],
+                    variant_message=variant,
+                )
+            )
         return result
     finally:
         if owns_client:

@@ -11,15 +11,14 @@ from dashboard.compute.windows import resolve_window
 
 @pytest.fixture
 def raw():
-    return json.loads(
-        (Path(__file__).parent / "fixtures" / "sample_raw.json").read_text()
-    )
+    return json.loads((Path(__file__).parent / "fixtures" / "sample_raw.json").read_text())
 
 
 @pytest.fixture
 def rules():
-    return {"fathom_gap": {"attendee_match_strategy": "email_domain_first",
-                           "fuzzy_match_threshold": 85}}
+    return {
+        "fathom_gap": {"attendee_match_strategy": "email_domain_first", "fuzzy_match_threshold": 85}
+    }
 
 
 def test_fathom_gap_finds_acme_corp_with_no_deal(raw, rules):

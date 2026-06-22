@@ -24,6 +24,7 @@ Usage:
     python -m analytics.icp_corrector
     python -m analytics.icp_corrector --json /tmp/icp_corrector.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,12 +77,16 @@ def _score_title(title: str | None, emp_count: int | None, cfg: dict) -> tuple[i
     if not title:
         return 0, "unknown"
     t = title.lower()
-    is_small = (emp_count is not None and emp_count <= cfg["decision_maker"]["small_company_max_employees"])
+    is_small = (
+        emp_count is not None and emp_count <= cfg["decision_maker"]["small_company_max_employees"]
+    )
     for tier in cfg["decision_maker"]["title_tiers"]:
         for kw in tier.get("keywords", []):
             if kw.lower() in t:
                 if tier["tier"] == "manager":
-                    return (tier.get("score_small", 22) if is_small else tier.get("score_large", 6)), "manager"
+                    return (
+                        tier.get("score_small", 22) if is_small else tier.get("score_large", 6)
+                    ), "manager"
                 elif tier["tier"] == "other":
                     return 0, "other"
                 else:
@@ -141,12 +146,23 @@ def _fetch_active_leads(token: str, active_ids: set[str]) -> list[dict]:
     after = None
     while True:
         body: dict = {
-            "filterGroups": [{"filters": [
-                {"propertyName": "hs_pipeline_stage", "operator": "IN", "values": list(active_ids)},
-            ]}],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {
+                            "propertyName": "hs_pipeline_stage",
+                            "operator": "IN",
+                            "values": list(active_ids),
+                        },
+                    ]
+                }
+            ],
             "properties": [
-                "hs_lead_name", "lead_source_v2", "hs_pipeline_stage",
-                "hs_contact_job_title", "hs_associated_contact_email",
+                "hs_lead_name",
+                "lead_source_v2",
+                "hs_pipeline_stage",
+                "hs_contact_job_title",
+                "hs_associated_contact_email",
             ],
             "limit": 100,
         }
@@ -154,7 +170,9 @@ def _fetch_active_leads(token: str, active_ids: set[str]) -> list[dict]:
             body["after"] = after
         r = httpx.post(
             "https://api.hubapi.com/crm/v3/objects/leads/search",
-            headers=headers, json=body, timeout=30,
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         data = r.json()
         results.extend(data.get("results", []))
@@ -169,7 +187,8 @@ def _fetch_company_for_lead(token: str, lead_id: str) -> dict | None:
     headers = {"Authorization": f"Bearer {token}"}
     r = httpx.get(
         f"https://api.hubapi.com/crm/v3/objects/leads/{lead_id}/associations/companies",
-        headers=headers, timeout=15,
+        headers=headers,
+        timeout=15,
     )
     assoc = r.json().get("results", [])
     if not assoc:
@@ -184,8 +203,9 @@ def _fetch_company_for_lead(token: str, lead_id: str) -> dict | None:
     return r2.json().get("properties") or {}
 
 
-def build_report(token: str, leads: list[dict], pipeline: dict,
-                 inbound_cfg: dict, outbound_cfg: dict) -> dict:
+def build_report(
+    token: str, leads: list[dict], pipeline: dict, inbound_cfg: dict, outbound_cfg: dict
+) -> dict:
     stage_names, stage_orders, _, rotting_ids = _stage_meta(pipeline)
     inbound_sources = {s.lower() for s in inbound_cfg.get("inbound_sources", [])}
 
@@ -236,49 +256,62 @@ def build_report(token: str, leads: list[dict], pipeline: dict,
         if total_score >= hot_threshold and stage_order <= 2:
             flags.append("HOT_UNDERSTAGED")
         # COLD_OVERSTAGED only fires for actively-worked stages with trustworthy scores
-        if total_score < warm_threshold and stage_order >= 5 and in_rotting_stage and has_enough_data:
+        if (
+            total_score < warm_threshold
+            and stage_order >= 5
+            and in_rotting_stage
+            and has_enough_data
+        ):
             flags.append("COLD_OVERSTAGED")
         if gaps:
             flags.append("ENRICHMENT_GAP")
 
-        rows.append({
-            "lead_id": lead_id,
-            "name": name,
-            "company": company_name,
-            "source": source_raw or "(none)",
-            "stage": stage_name,
-            "stage_order": stage_order,
-            "job_title": job_title or "(missing)",
-            "score": total_score,
-            "tier": tier,
-            "score_breakdown": {
-                "decision_maker": dm_score,
-                "dm_tier": dm_tier,
-                "revenue": rev_score,
-                "funding": fund_score,
-                "spend_capacity": spend_score,
-            },
-            "enrichment": {
-                "revenue": revenue,
-                "funding": funding,
-                "employees": emp_count,
-            },
-            "gaps": gaps,
-            "flags": flags,
-        })
+        rows.append(
+            {
+                "lead_id": lead_id,
+                "name": name,
+                "company": company_name,
+                "source": source_raw or "(none)",
+                "stage": stage_name,
+                "stage_order": stage_order,
+                "job_title": job_title or "(missing)",
+                "score": total_score,
+                "tier": tier,
+                "score_breakdown": {
+                    "decision_maker": dm_score,
+                    "dm_tier": dm_tier,
+                    "revenue": rev_score,
+                    "funding": fund_score,
+                    "spend_capacity": spend_score,
+                },
+                "enrichment": {
+                    "revenue": revenue,
+                    "funding": funding,
+                    "employees": emp_count,
+                },
+                "gaps": gaps,
+                "flags": flags,
+            }
+        )
 
     # Sort: flagged first, then by score desc
     flag_priority = {"HOT_UNDERSTAGED": 0, "COLD_OVERSTAGED": 1, "ENRICHMENT_GAP": 2}
-    rows.sort(key=lambda r: (
-        min((flag_priority.get(f, 9) for f in r["flags"]), default=9),
-        -r["score"],
-    ))
+    rows.sort(
+        key=lambda r: (
+            min((flag_priority.get(f, 9) for f in r["flags"]), default=9),
+            -r["score"],
+        )
+    )
 
     hot_us = [r for r in rows if "HOT_UNDERSTAGED" in r["flags"]]
     cold_os = [r for r in rows if "COLD_OVERSTAGED" in r["flags"]]
-    enrich_gaps = [r for r in rows if "ENRICHMENT_GAP" in r["flags"]
-                   and "HOT_UNDERSTAGED" not in r["flags"]
-                   and "COLD_OVERSTAGED" not in r["flags"]]
+    enrich_gaps = [
+        r
+        for r in rows
+        if "ENRICHMENT_GAP" in r["flags"]
+        and "HOT_UNDERSTAGED" not in r["flags"]
+        and "COLD_OVERSTAGED" not in r["flags"]
+    ]
     ok = [r for r in rows if not r["flags"]]
 
     return {
@@ -301,7 +334,7 @@ def build_report(token: str, leads: list[dict], pipeline: dict,
 # ── HTML render ───────────────────────────────────────────────────────────────
 
 _TIER_STYLE = {
-    "HOT":  "background:#fef2f2;color:#9b2226",
+    "HOT": "background:#fef2f2;color:#9b2226",
     "WARM": "background:#fffbeb;color:#b45309",
     "COLD": "background:#eff6ff;color:#1e40af",
 }
@@ -309,7 +342,7 @@ _TIER_STYLE = {
 _FLAG_STYLE = {
     "HOT_UNDERSTAGED": "background:#fef2f2;color:#9b2226",
     "COLD_OVERSTAGED": "background:#eff6ff;color:#1e40af",
-    "ENRICHMENT_GAP":  "background:#fffbeb;color:#b45309",
+    "ENRICHMENT_GAP": "background:#fffbeb;color:#b45309",
 }
 
 
@@ -337,12 +370,12 @@ def _lead_rows(rows: list[dict]) -> str:
           </td>
           <td style="padding:9px 14px;font-size:12px">{jt}</td>
           <td style="padding:9px 14px">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">{r['score']}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">{r["score"]}</span>
             {tier_badge}
             <div style="font-size:10px;color:#9ca3af;margin-top:3px">{breakdown}</div>
           </td>
-          <td style="padding:9px 14px;font-size:12px;color:#374151">{r['stage']}</td>
-          <td style="padding:9px 14px">{flags_html if flags_html else '—'}</td>
+          <td style="padding:9px 14px;font-size:12px;color:#374151">{r["stage"]}</td>
+          <td style="padding:9px 14px">{flags_html if flags_html else "—"}</td>
           <td style="padding:9px 14px;font-size:11px;color:#b45309">{gaps}</td>
         </tr>"""
     return out
@@ -379,23 +412,23 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>ICP Corrector</h1>
-  <div class="meta">Leadle RevOps &bull; {report['total_active']} active leads scored &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; {report["total_active"]} active leads scored &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{s['hot_understaged']}</div>
+      <div class="stat-n" style="color:var(--red)">{s["hot_understaged"]}</div>
       <div class="stat-l">HOT understaged</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--blue)">{s['cold_overstaged']}</div>
+      <div class="stat-n" style="color:var(--blue)">{s["cold_overstaged"]}</div>
       <div class="stat-l">COLD overstaged</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{s['enrichment_gap_only']}</div>
+      <div class="stat-n" style="color:var(--amber)">{s["enrichment_gap_only"]}</div>
       <div class="stat-l">Enrichment gap only</div>
     </div>
     <div class="stat">
-      <div class="stat-n">{s['ok']}</div>
+      <div class="stat-n">{s["ok"]}</div>
       <div class="stat-l">OK (no flags)</div>
     </div>
   </div>
@@ -404,7 +437,7 @@ def render_html(report: dict) -> str:
     <div class="card-title">HOT Understaged — high ICP fit stuck in early stages (action now)</div>
     <table>
       <thead><tr><th>Lead / Company</th><th>Title</th><th>Score</th><th>Stage</th><th>Flags</th><th>Data Gaps</th></tr></thead>
-      <tbody>{_lead_rows(report['hot_understaged'])}</tbody>
+      <tbody>{_lead_rows(report["hot_understaged"])}</tbody>
     </table>
   </div>
 
@@ -412,7 +445,7 @@ def render_html(report: dict) -> str:
     <div class="card-title">COLD Overstaged — low ICP fit at Meeting Proposed (review fit)</div>
     <table>
       <thead><tr><th>Lead / Company</th><th>Title</th><th>Score</th><th>Stage</th><th>Flags</th><th>Data Gaps</th></tr></thead>
-      <tbody>{_lead_rows(report['cold_overstaged'])}</tbody>
+      <tbody>{_lead_rows(report["cold_overstaged"])}</tbody>
     </table>
   </div>
 
@@ -420,7 +453,7 @@ def render_html(report: dict) -> str:
     <div class="card-title">Enrichment Gap — score may be deflated by missing data</div>
     <table>
       <thead><tr><th>Lead / Company</th><th>Title</th><th>Score</th><th>Stage</th><th>Flags</th><th>Data Gaps</th></tr></thead>
-      <tbody>{_lead_rows(report['enrichment_gap'])}</tbody>
+      <tbody>{_lead_rows(report["enrichment_gap"])}</tbody>
     </table>
   </div>
 
@@ -428,7 +461,7 @@ def render_html(report: dict) -> str:
     <div class="card-title">All Active Leads — scored</div>
     <table>
       <thead><tr><th>Lead / Company</th><th>Title</th><th>Score</th><th>Stage</th><th>Flags</th><th>Data Gaps</th></tr></thead>
-      <tbody>{_lead_rows(report['all_leads'])}</tbody>
+      <tbody>{_lead_rows(report["all_leads"])}</tbody>
     </table>
   </div>
 </div>
@@ -437,6 +470,7 @@ def render_html(report: dict) -> str:
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.icp_corrector")
@@ -470,12 +504,16 @@ def main(argv: list[str] | None = None) -> int:
     if report["hot_understaged"]:
         print("\n  HOT understaged leads:")
         for r in report["hot_understaged"]:
-            print(f"    [{r['score']:3d}] {r['name'][:35]:35} | {r['stage']:20} | {r['job_title'][:30]}")
+            print(
+                f"    [{r['score']:3d}] {r['name'][:35]:35} | {r['stage']:20} | {r['job_title'][:30]}"
+            )
 
     if report["cold_overstaged"]:
         print("\n  COLD overstaged leads:")
         for r in report["cold_overstaged"]:
-            print(f"    [{r['score']:3d}] {r['name'][:35]:35} | {r['stage']:20} | {r['job_title'][:30]}")
+            print(
+                f"    [{r['score']:3d}] {r['name'][:35]:35} | {r['stage']:20} | {r['job_title'][:30]}"
+            )
 
     if args.json:
         Path(args.json).write_text(json.dumps(report, indent=2), encoding="utf-8")

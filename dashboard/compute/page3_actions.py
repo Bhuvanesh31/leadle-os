@@ -18,6 +18,7 @@ Matching cascade per Fathom meeting:
   3. Title-derived entity — parse "X <> Leadle" or "X and Sai Ganesh" patterns,
      match substring against Deal.dealname and Lead.lead_name
 """
+
 from __future__ import annotations
 
 import re
@@ -63,8 +64,17 @@ _TITLE_PATTERNS = [
 # Words common in titles that are NEVER an entity name. Stops "Discovery" or
 # "Catchup" from polluting the candidate set.
 _TITLE_STOPWORDS = {
-    "discovery", "proposal", "catchup", "review", "sync", "weekly",
-    "impromptu", "google", "meet", "meeting", "zoom",
+    "discovery",
+    "proposal",
+    "catchup",
+    "review",
+    "sync",
+    "weekly",
+    "impromptu",
+    "google",
+    "meet",
+    "meeting",
+    "zoom",
 }
 
 
@@ -73,8 +83,12 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
     hubspot = raw["sources"].get("hubspot", {})
     if not fathom.get("available") or not hubspot.get("available"):
         return {
-            "fathom_gap": [], "fathom_gap_lead_to_deal": [], "fathom_gap_no_crm": [],
-            "gap_count": 0, "gap_count_lead_to_deal": 0, "gap_count_no_crm": 0,
+            "fathom_gap": [],
+            "fathom_gap_lead_to_deal": [],
+            "fathom_gap_no_crm": [],
+            "gap_count": 0,
+            "gap_count_lead_to_deal": 0,
+            "gap_count_no_crm": 0,
             "unavailable": True,
         }
 
@@ -118,17 +132,21 @@ def compute(raw: dict, rules: dict, window: WindowSpec) -> dict[str, Any]:
         }
 
         if match_type in ("lead", "contact"):
-            gap_l2d.append({
-                **row_base,
-                "matched_record_type": match_type,
-                "matched_record": _summarize_match(match_type, matched),
-                "suggested_action": "Promote Lead → Deal (stage: Discovery)",
-            })
+            gap_l2d.append(
+                {
+                    **row_base,
+                    "matched_record_type": match_type,
+                    "matched_record": _summarize_match(match_type, matched),
+                    "suggested_action": "Promote Lead → Deal (stage: Discovery)",
+                }
+            )
         else:  # "none"
-            gap_no_crm.append({
-                **row_base,
-                "suggested_action": "Create Lead + Deal in HubSpot",
-            })
+            gap_no_crm.append(
+                {
+                    **row_base,
+                    "suggested_action": "Create Lead + Deal in HubSpot",
+                }
+            )
 
     # Backward-compat fields for the existing template/agents
     combined = [_to_legacy_row(r) for r in gap_l2d + gap_no_crm]
@@ -194,7 +212,9 @@ def _has_source(value: str | None) -> bool:
 def _build_deal_index(deals: list[dict]) -> dict:
     """Returns indices for substring/word matching on dealname."""
     return {
-        "by_name_lower": [(d.get("dealname", "").strip().lower(), d) for d in deals if d.get("dealname")],
+        "by_name_lower": [
+            (d.get("dealname", "").strip().lower(), d) for d in deals if d.get("dealname")
+        ],
     }
 
 
@@ -202,9 +222,7 @@ def _build_lead_index(leads: list[dict]) -> dict:
     """Returns indices for email-exact and name-substring matching on leads."""
     return {
         "by_email": {ld["contact_email"].lower(): ld for ld in leads if ld.get("contact_email")},
-        "by_name_lower": [
-            (_lead_search_text(ld), ld) for ld in leads
-        ],
+        "by_name_lower": [(_lead_search_text(ld), ld) for ld in leads],
     }
 
 
@@ -251,11 +269,13 @@ def _extract_candidates(meeting: dict) -> list[dict]:
         entity = m.group(1).strip()
         # Reject if it's clearly internal/leadle, a stopword, or too short
         entity_lower = entity.lower()
-        if (entity_lower in _LEADLE_INTERNAL_NAMES
+        if (
+            entity_lower in _LEADLE_INTERNAL_NAMES
             or entity_lower.startswith("leadle")
             or all(w in _TITLE_STOPWORDS for w in entity_lower.split())
             or len(entity) < 3
-            or entity_lower in seen_values):
+            or entity_lower in seen_values
+        ):
             continue
         out.append({"kind": "title", "value": entity_lower})
         seen_values.add(entity_lower)
@@ -328,7 +348,10 @@ def _classify(
             # Association exists but deal isn't in our lookup window
             # (could be in a different pipeline). Still classify as Deal —
             # the hygiene check is satisfied; we just don't have the row.
-            return ("deal", {"id": associated_deal_ids[0], "dealname": "(associated deal, outside lookup)"})
+            return (
+                "deal",
+                {"id": associated_deal_ids[0], "dealname": "(associated deal, outside lookup)"},
+            )
 
         # Fallback: try name-based heuristics when no explicit association
         # exists. This covers the case where Sai created a Deal but didn't
@@ -401,7 +424,9 @@ def _format_candidate_summary(candidates: list[dict]) -> str:
     """Compact human-readable summary of what we tried to match."""
     parts = []
     for c in candidates:
-        kind = {"email": "email", "name": "person", "title": "title", "domain_root": "domain"}[c["kind"]]
+        kind = {"email": "email", "name": "person", "title": "title", "domain_root": "domain"}[
+            c["kind"]
+        ]
         parts.append(f"{kind}={c['value']}")
     return " · ".join(parts)
 
@@ -428,8 +453,10 @@ def _to_legacy_row(row: dict) -> dict:
             contact_email = tag.removeprefix("email=")
             break
     state = (
-        "lead exists, no deal" if row.get("matched_record_type") == "lead"
-        else "contact only, no lead/deal" if row.get("matched_record_type") == "contact"
+        "lead exists, no deal"
+        if row.get("matched_record_type") == "lead"
+        else "contact only, no lead/deal"
+        if row.get("matched_record_type") == "contact"
         else "no CRM record"
     )
     return {

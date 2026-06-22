@@ -1,4 +1,5 @@
 """Normalized model: the contract every ClientSource returns and compute consumes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

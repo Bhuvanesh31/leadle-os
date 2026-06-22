@@ -26,6 +26,7 @@ Usage:
     python -m analytics.outbound_campaign_perf --start 2026-06-01 --end 2026-06-21
     python -m analytics.outbound_campaign_perf --json /tmp/outbound_perf.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,6 +47,7 @@ def _fetch_aimfox(key: str, start: date, end: date) -> dict:
     if not key:
         return {"available": False, "reason": "AIMFOX_API_KEY not set"}
     from connectors.aimfox.fetch import fetch
+
     return fetch(key, start, end)
 
 
@@ -53,6 +55,7 @@ def _fetch_instantly(key: str, start: date, end: date) -> dict:
     if not key:
         return {"available": False, "reason": "INSTANTLY_API_KEY not set"}
     from connectors.instantly.fetch import fetch
+
     return fetch(key, start, end)
 
 
@@ -64,17 +67,19 @@ def _shape_aimfox_campaigns(result: dict) -> list[dict]:
         stats = c.get("stats", {})
         sends = stats.get("sends", 0)
         replies = stats.get("replies", 0)
-        out.append({
-            "source": "linkedin",
-            "name": c.get("name") or "(unnamed)",
-            "sends": sends,
-            "replies": replies,
-            "reply_rate_pct": round(replies / sends * 100, 1) if sends > 0 else 0.0,
-            "opened": None,
-            "clicked": None,
-            "bounced": None,
-            "open_rate_pct": None,
-        })
+        out.append(
+            {
+                "source": "linkedin",
+                "name": c.get("name") or "(unnamed)",
+                "sends": sends,
+                "replies": replies,
+                "reply_rate_pct": round(replies / sends * 100, 1) if sends > 0 else 0.0,
+                "opened": None,
+                "clicked": None,
+                "bounced": None,
+                "open_rate_pct": None,
+            }
+        )
     return sorted(out, key=lambda x: x["reply_rate_pct"], reverse=True)
 
 
@@ -88,22 +93,29 @@ def _shape_instantly_campaigns(result: dict) -> list[dict]:
         clicked = c.get("clicked", 0)
         bounced = c.get("bounced", 0)
         replied = c.get("replied", 0)
-        out.append({
-            "source": "email",
-            "name": c.get("name") or "(unnamed)",
-            "sends": sends,
-            "replies": replied,
-            "reply_rate_pct": round(replied / sends * 100, 1) if sends > 0 else 0.0,
-            "opened": opened,
-            "clicked": clicked,
-            "bounced": bounced,
-            "open_rate_pct": round(opened / sends * 100, 1) if sends > 0 else 0.0,
-        })
+        out.append(
+            {
+                "source": "email",
+                "name": c.get("name") or "(unnamed)",
+                "sends": sends,
+                "replies": replied,
+                "reply_rate_pct": round(replied / sends * 100, 1) if sends > 0 else 0.0,
+                "opened": opened,
+                "clicked": clicked,
+                "bounced": bounced,
+                "open_rate_pct": round(opened / sends * 100, 1) if sends > 0 else 0.0,
+            }
+        )
     return sorted(out, key=lambda x: x["reply_rate_pct"], reverse=True)
 
 
-def build_report(aimfox_result: dict, instantly_result: dict,
-                 window_start: date, window_end: date, window_label: str) -> dict:
+def build_report(
+    aimfox_result: dict,
+    instantly_result: dict,
+    window_start: date,
+    window_end: date,
+    window_label: str,
+) -> dict:
     li_campaigns = _shape_aimfox_campaigns(aimfox_result)
     em_campaigns = _shape_instantly_campaigns(instantly_result)
 
@@ -145,17 +157,18 @@ def build_report(aimfox_result: dict, instantly_result: dict,
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _pct_cell(val: float | None, warn_below: float = 5.0) -> str:
     if val is None:
         return '<span style="color:#9ca3af">—</span>'
     color = "#9b2226" if val < warn_below else "#374151"
-    return f'<span style="color:{color};font-family:\'JetBrains Mono\',monospace;font-size:12px">{val:.1f}%</span>'
+    return f"<span style=\"color:{color};font-family:'JetBrains Mono',monospace;font-size:12px\">{val:.1f}%</span>"
 
 
 def _num_cell(val: int | None) -> str:
     if val is None:
         return '<span style="color:#9ca3af">—</span>'
-    return f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px">{val:,}</span>'
+    return f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:12px\">{val:,}</span>"
 
 
 def _source_status_badge(info: dict) -> str:
@@ -175,9 +188,9 @@ def _li_table(campaigns: list[dict]) -> str:
         rows += f"""
         <tr>
           <td style="padding:10px 14px;font-size:13px;font-weight:500">{name}</td>
-          <td style="padding:10px 14px">{_num_cell(c['sends'])}</td>
-          <td style="padding:10px 14px">{_num_cell(c['replies'])}</td>
-          <td style="padding:10px 14px">{_pct_cell(c['reply_rate_pct'])}</td>
+          <td style="padding:10px 14px">{_num_cell(c["sends"])}</td>
+          <td style="padding:10px 14px">{_num_cell(c["replies"])}</td>
+          <td style="padding:10px 14px">{_pct_cell(c["reply_rate_pct"])}</td>
         </tr>"""
     return rows
 
@@ -191,12 +204,12 @@ def _em_table(campaigns: list[dict]) -> str:
         rows += f"""
         <tr>
           <td style="padding:10px 14px;font-size:13px;font-weight:500">{name}</td>
-          <td style="padding:10px 14px">{_num_cell(c['sends'])}</td>
-          <td style="padding:10px 14px">{_num_cell(c['opened'])}</td>
-          <td style="padding:10px 14px">{_pct_cell(c['open_rate_pct'], warn_below=20.0)}</td>
-          <td style="padding:10px 14px">{_num_cell(c['clicked'])}</td>
-          <td style="padding:10px 14px">{_num_cell(c['replies'])}</td>
-          <td style="padding:10px 14px">{_pct_cell(c['reply_rate_pct'])}</td>
+          <td style="padding:10px 14px">{_num_cell(c["sends"])}</td>
+          <td style="padding:10px 14px">{_num_cell(c["opened"])}</td>
+          <td style="padding:10px 14px">{_pct_cell(c["open_rate_pct"], warn_below=20.0)}</td>
+          <td style="padding:10px 14px">{_num_cell(c["clicked"])}</td>
+          <td style="padding:10px 14px">{_num_cell(c["replies"])}</td>
+          <td style="padding:10px 14px">{_pct_cell(c["reply_rate_pct"])}</td>
         </tr>"""
     return rows
 
@@ -244,7 +257,7 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Outbound Campaign Performance</h1>
-  <div class="meta">Leadle RevOps &bull; {_html.escape(window['label'])} &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; {_html.escape(window["label"])} &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
@@ -252,7 +265,7 @@ def render_html(report: dict) -> str:
       <div class="stat-l">LinkedIn Sends</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:{'var(--red)' if li_reply_pct < 5 and li_total_sends > 0 else 'var(--ink)'}">{li_reply_pct:.1f}%</div>
+      <div class="stat-n" style="color:{"var(--red)" if li_reply_pct < 5 and li_total_sends > 0 else "var(--ink)"}">{li_reply_pct:.1f}%</div>
       <div class="stat-l">LinkedIn Reply Rate</div>
     </div>
     <div class="stat">
@@ -260,11 +273,11 @@ def render_html(report: dict) -> str:
       <div class="stat-l">Email Sends</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:{'var(--red)' if em_open_pct < 20 and em_total_sends > 0 else 'var(--ink)'}">{em_open_pct:.1f}%</div>
+      <div class="stat-n" style="color:{"var(--red)" if em_open_pct < 20 and em_total_sends > 0 else "var(--ink)"}">{em_open_pct:.1f}%</div>
       <div class="stat-l">Email Open Rate</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:{'var(--red)' if em_reply_pct < 5 and em_total_sends > 0 else 'var(--ink)'}">{em_reply_pct:.1f}%</div>
+      <div class="stat-n" style="color:{"var(--red)" if em_reply_pct < 5 and em_total_sends > 0 else "var(--ink)"}">{em_reply_pct:.1f}%</div>
       <div class="stat-l">Email Reply Rate</div>
     </div>
   </div>
@@ -272,7 +285,7 @@ def render_html(report: dict) -> str:
   <div class="card">
     <div class="card-header">
       <span>LinkedIn Campaigns (Aimfox)</span>
-      {_source_status_badge(src['aimfox'])}
+      {_source_status_badge(src["aimfox"])}
     </div>
     <table>
       <thead>
@@ -280,14 +293,14 @@ def render_html(report: dict) -> str:
           <th>Campaign</th><th>Sends</th><th>Replies</th><th>Reply Rate</th>
         </tr>
       </thead>
-      <tbody>{_li_table(report['linkedin_campaigns'])}</tbody>
+      <tbody>{_li_table(report["linkedin_campaigns"])}</tbody>
     </table>
   </div>
 
   <div class="card">
     <div class="card-header">
       <span>Email Campaigns (Instantly)</span>
-      {_source_status_badge(src['instantly'])}
+      {_source_status_badge(src["instantly"])}
     </div>
     <table>
       <thead>
@@ -296,7 +309,7 @@ def render_html(report: dict) -> str:
           <th>Clicked</th><th>Replied</th><th>Reply Rate</th>
         </tr>
       </thead>
-      <tbody>{_em_table(report['email_campaigns'])}</tbody>
+      <tbody>{_em_table(report["email_campaigns"])}</tbody>
     </table>
   </div>
 </div>
@@ -305,6 +318,7 @@ def render_html(report: dict) -> str:
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.outbound_campaign_perf")
@@ -323,15 +337,19 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Window: {label}", file=sys.stderr)
     print("Fetching Aimfox (LinkedIn)...", file=sys.stderr)
     aimfox_result = _fetch_aimfox(aimfox_key, start, end)
-    print(f"  available={aimfox_result.get('available')} "
-          f"{'(' + aimfox_result.get('reason','') + ')' if not aimfox_result.get('available') else ''}",
-          file=sys.stderr)
+    print(
+        f"  available={aimfox_result.get('available')} "
+        f"{'(' + aimfox_result.get('reason', '') + ')' if not aimfox_result.get('available') else ''}",
+        file=sys.stderr,
+    )
 
     print("Fetching Instantly (email)...", file=sys.stderr)
     instantly_result = _fetch_instantly(instantly_key, start, end)
-    print(f"  available={instantly_result.get('available')} "
-          f"{'(' + instantly_result.get('reason','') + ')' if not instantly_result.get('available') else ''}",
-          file=sys.stderr)
+    print(
+        f"  available={instantly_result.get('available')} "
+        f"{'(' + instantly_result.get('reason', '') + ')' if not instantly_result.get('available') else ''}",
+        file=sys.stderr,
+    )
 
     report = build_report(aimfox_result, instantly_result, start, end, label)
     src = report["sources"]
@@ -340,19 +358,23 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nOutbound Campaign Performance — {label}")
     if src["aimfox"]["available"]:
         li = tot["linkedin"]
-        rr = round(li['replies'] / li['sends'] * 100, 1) if li['sends'] else 0
-        print(f"  LinkedIn: {li['sends']:,} sends  {li['replies']} replies  {rr:.1f}% reply rate"
-              f"  ({src['aimfox']['campaign_count']} campaigns)")
+        rr = round(li["replies"] / li["sends"] * 100, 1) if li["sends"] else 0
+        print(
+            f"  LinkedIn: {li['sends']:,} sends  {li['replies']} replies  {rr:.1f}% reply rate"
+            f"  ({src['aimfox']['campaign_count']} campaigns)"
+        )
     else:
         print(f"  LinkedIn: UNAVAILABLE — {src['aimfox']['reason']}")
 
     if src["instantly"]["available"]:
         em = tot["email"]
-        rr = round(em['replies'] / em['sends'] * 100, 1) if em['sends'] else 0
-        op = round(em['opened'] / em['sends'] * 100, 1) if em['sends'] else 0
-        print(f"  Email:    {em['sends']:,} sends  {em['opened']} opened ({op:.1f}%)  "
-              f"{em['replies']} replied ({rr:.1f}%)"
-              f"  ({src['instantly']['campaign_count']} campaigns)")
+        rr = round(em["replies"] / em["sends"] * 100, 1) if em["sends"] else 0
+        op = round(em["opened"] / em["sends"] * 100, 1) if em["sends"] else 0
+        print(
+            f"  Email:    {em['sends']:,} sends  {em['opened']} opened ({op:.1f}%)  "
+            f"{em['replies']} replied ({rr:.1f}%)"
+            f"  ({src['instantly']['campaign_count']} campaigns)"
+        )
     else:
         print(f"  Email:    UNAVAILABLE — {src['instantly']['reason']}")
 

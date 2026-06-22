@@ -1,4 +1,5 @@
 """authorize.main must fail clearly (before any browser) when env is unset."""
+
 import pytest
 
 from connectors.google_sheets import authorize

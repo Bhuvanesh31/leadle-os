@@ -5,6 +5,7 @@ read_file_content tool (the session dumps it to a file; this module reads that
 file). Tables are delimited by their header row; underscores may be backslash-
 escaped in the dump, so we strip backslashes from every cell.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -25,8 +26,7 @@ _H_TARGET = "| Company Name | Company Country | Company Location"
 _H_LI = "| Event Type | Company Name | Profile Url"
 _H_EMAIL = "| Company Name | To Name | Event Type | Campaign Name"
 _H_ICP = "| Column 1 | Offering to the market"
-_ALL_HEADERS = (_H_RESP, _H_TARGET, _H_LI, _H_EMAIL, _H_ICP,
-                "| Item | Status | Responsibility")
+_ALL_HEADERS = (_H_RESP, _H_TARGET, _H_LI, _H_EMAIL, _H_ICP, "| Item | Status | Responsibility")
 
 
 def _cells(line: str) -> list[str]:
@@ -131,11 +131,21 @@ def parse(workbook_text: str, client: str) -> ClientData:
             name = _g(r, c_name)
             if name in ("", "Company Name"):
                 continue
-            targets.append(TargetCo(
-                name, _g(r, c_country), _g(r, c_loc), _g(r, c_li), _g(r, c_ind),
-                _g(r, c_size), _g(r, c_seg), _g(r, c_dom),
-                aimfox_id=_g(r, c_af), aimfox_urn=_g(r, c_urn),
-                instantly_id=_g(r, c_inst)))
+            targets.append(
+                TargetCo(
+                    name,
+                    _g(r, c_country),
+                    _g(r, c_loc),
+                    _g(r, c_li),
+                    _g(r, c_ind),
+                    _g(r, c_size),
+                    _g(r, c_seg),
+                    _g(r, c_dom),
+                    aimfox_id=_g(r, c_af),
+                    aimfox_urn=_g(r, c_urn),
+                    instantly_id=_g(r, c_inst),
+                )
+            )
 
     channels: list[str] = []
     for r in _rows_under(lines, _H_ICP):
@@ -266,19 +276,21 @@ def _parse_tabs(tabs: dict[str, list]) -> ClientData:
             if not name:
                 continue
             raw_af = _get(rv, col_map, "Aimfox ID")
-            targets.append(TargetCo(
-                name=name,
-                country=_get(rv, col_map, "Company Country"),
-                location=_get(rv, col_map, "Company Location"),
-                linkedin_url=_get(rv, col_map, "Company Linked In URL", "Company LinkedIn URL"),
-                industry=_get(rv, col_map, "Primary Industry"),
-                size=_get(rv, col_map, "Size (Text)", "Size"),
-                segment=_get(rv, col_map, "Account Process"),
-                domain=_get(rv, col_map, "Company Domain"),
-                aimfox_id=_coerce_aimfox_id(raw_af),
-                aimfox_urn=_get(rv, col_map, "Aimfox URN"),
-                instantly_id=_get(rv, col_map, "Instantly ID"),
-            ))
+            targets.append(
+                TargetCo(
+                    name=name,
+                    country=_get(rv, col_map, "Company Country"),
+                    location=_get(rv, col_map, "Company Location"),
+                    linkedin_url=_get(rv, col_map, "Company Linked In URL", "Company LinkedIn URL"),
+                    industry=_get(rv, col_map, "Primary Industry"),
+                    size=_get(rv, col_map, "Size (Text)", "Size"),
+                    segment=_get(rv, col_map, "Account Process"),
+                    domain=_get(rv, col_map, "Company Domain"),
+                    aimfox_id=_coerce_aimfox_id(raw_af),
+                    aimfox_urn=_get(rv, col_map, "Aimfox URN"),
+                    instantly_id=_get(rv, col_map, "Instantly ID"),
+                )
+            )
 
     # ── Webhook - LinkedIn ────────────────────────────────────────────────────
     rows = tabs.get(_WH_LINKEDIN)
@@ -299,13 +311,15 @@ def _parse_tabs(tabs: dict[str, list]) -> ClientData:
             name = _get(rv, col_map, "Prospect Name")
             raw_ts = _get(rv, col_map, "Timestamp") if "Timestamp" in col_map else None
             ts = _parse_ts(raw_ts)
-            replies.append(ReplyRecord(
-                channel="linkedin",
-                campaign=campaign,
-                sentiment=sentiment,
-                name=name,
-                ts=ts,
-            ))
+            replies.append(
+                ReplyRecord(
+                    channel="linkedin",
+                    campaign=campaign,
+                    sentiment=sentiment,
+                    name=name,
+                    ts=ts,
+                )
+            )
 
     # ── Webhook - Email ───────────────────────────────────────────────────────
     rows = tabs.get(_WH_EMAIL)
@@ -320,7 +334,9 @@ def _parse_tabs(tabs: dict[str, list]) -> ClientData:
             rv = list(row)
             evt = _get(rv, col_map, "Event Type").lower()
             if evt == "email_opened":
-                raw_ts = _get(rv, col_map, "Event Timestamp") if "Event Timestamp" in col_map else None
+                raw_ts = (
+                    _get(rv, col_map, "Event Timestamp") if "Event Timestamp" in col_map else None
+                )
                 ts = _parse_ts(raw_ts)
                 if ts is not None:
                     opens.append(OpenEvent(channel="email", ts=ts))
@@ -339,19 +355,21 @@ def _parse_tabs(tabs: dict[str, list]) -> ClientData:
             channel = _get(rv, col_map, "Channel")
             if not channel:
                 continue
-            warm_leads.append(WarmLead(
-                channel=channel,
-                account=_get(rv, col_map, "Account"),
-                response_date=_get(rv, col_map, "Response Date"),
-                status=_get(rv, col_map, "Status"),
-                response_text=_get(rv, col_map, "Response"),
-                linkedin_url=_get(rv, col_map, "LinkedIn"),
-                name=_get(rv, col_map, "Name"),
-                title=_get(rv, col_map, "Job Title"),
-                company=_get(rv, col_map, "Company"),
-                company_url=_get(rv, col_map, "Company Url"),
-                location=_get(rv, col_map, "Loc"),
-            ))
+            warm_leads.append(
+                WarmLead(
+                    channel=channel,
+                    account=_get(rv, col_map, "Account"),
+                    response_date=_get(rv, col_map, "Response Date"),
+                    status=_get(rv, col_map, "Status"),
+                    response_text=_get(rv, col_map, "Response"),
+                    linkedin_url=_get(rv, col_map, "LinkedIn"),
+                    name=_get(rv, col_map, "Name"),
+                    title=_get(rv, col_map, "Job Title"),
+                    company=_get(rv, col_map, "Company"),
+                    company_url=_get(rv, col_map, "Company Url"),
+                    location=_get(rv, col_map, "Loc"),
+                )
+            )
 
     return ClientData(targets=targets, replies=replies, opens=opens, warm_leads=warm_leads)
 

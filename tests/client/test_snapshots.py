@@ -19,4 +19,4 @@ def test_store_roundtrip(tmp_path):
     store.save("UPSTA", "monthly", "2026-05-31", {"kpis": {"emails_sent": 100}})
     store.save("UPSTA", "monthly", "2026-06-30", {"kpis": {"emails_sent": 220}})
     prior = store.prior("UPSTA", "monthly", before="2026-06-30")
-    assert prior["kpis"]["emails_sent"] == 100   # most recent before current period
+    assert prior["kpis"]["emails_sent"] == 100  # most recent before current period

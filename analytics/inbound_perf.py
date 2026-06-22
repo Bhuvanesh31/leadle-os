@@ -25,6 +25,7 @@ Usage:
     python -m analytics.inbound_perf --start 2026-05-01 --end 2026-05-31
     python -m analytics.inbound_perf --json /tmp/inbound_perf.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -82,9 +83,13 @@ def _fetch_leads_in_lookback(token: str, lookback_start: date) -> list[dict]:
     cutoff_ms = str(_date_to_epoch_ms(lookback_start))
 
     props = [
-        "hs_lead_name", "hs_pipeline_stage", "lead_source_v2",
-        "hs_createdate", "hs_contact_company",
-        _ADV_PROP, _ARCH_PROP,
+        "hs_lead_name",
+        "hs_pipeline_stage",
+        "lead_source_v2",
+        "hs_createdate",
+        "hs_contact_company",
+        _ADV_PROP,
+        _ARCH_PROP,
     ]
 
     # Two passes: leads created in lookback AND leads with decisions in lookback
@@ -103,7 +108,9 @@ def _fetch_leads_in_lookback(token: str, lookback_start: date) -> list[dict]:
                 body["after"] = after
             r = httpx.post(
                 "https://api.hubapi.com/crm/v3/objects/leads/search",
-                headers=headers, json=body, timeout=30,
+                headers=headers,
+                json=body,
+                timeout=30,
             )
             data = r.json()
             for lead in data.get("results", []):
@@ -130,8 +137,14 @@ def _source_bucket(raw_source: str | None, inbound_sources: list[str]) -> str:
     return "Other / Outbound"
 
 
-def build_report(leads: list[dict], pipeline: dict, inbound_sources: list[str],
-                 window_start: date, window_end: date, window_label: str) -> dict:
+def build_report(
+    leads: list[dict],
+    pipeline: dict,
+    inbound_sources: list[str],
+    window_start: date,
+    window_end: date,
+    window_label: str,
+) -> dict:
     stage_names = _stage_names(pipeline)
 
     # Classify each lead against the window
@@ -193,13 +206,15 @@ def build_report(leads: list[dict], pipeline: dict, inbound_sources: list[str],
         arch = source_arch.get(src, 0)
         total = adv + arch
         rate = round(adv / total * 100, 1) if total > 0 else None
-        source_conversion.append({
-            "source": src,
-            "advanced": adv,
-            "archived": arch,
-            "total_decided": total,
-            "conversion_rate_pct": rate,
-        })
+        source_conversion.append(
+            {
+                "source": src,
+                "advanced": adv,
+                "archived": arch,
+                "total_decided": total,
+                "conversion_rate_pct": rate,
+            }
+        )
     source_conversion.sort(key=lambda x: x["conversion_rate_pct"] or -1, reverse=True)
 
     total_adv = len(advanced_this_window)
@@ -223,33 +238,41 @@ def build_report(leads: list[dict], pipeline: dict, inbound_sources: list[str],
             "overall_conversion_rate_pct": overall_rate,
         },
         "source_new_leads": [
-            {"source": k, "count": v}
-            for k, v in sorted(source_new.items(), key=lambda x: -x[1])
+            {"source": k, "count": v} for k, v in sorted(source_new.items(), key=lambda x: -x[1])
         ],
         "source_conversion": source_conversion,
-        "advanced_leads": sorted(advanced_this_window, key=lambda r: r["adv_date"] or "", reverse=True),
-        "archived_leads": sorted(archived_this_window, key=lambda r: r["arch_date"] or "", reverse=True),
+        "advanced_leads": sorted(
+            advanced_this_window, key=lambda r: r["adv_date"] or "", reverse=True
+        ),
+        "archived_leads": sorted(
+            archived_this_window, key=lambda r: r["arch_date"] or "", reverse=True
+        ),
         "active_from_window": active_from_window,
     }
 
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _rate_cell(rate: float | None, warn_below: float = 30.0) -> str:
     if rate is None:
         return '<span style="color:#9ca3af">—</span>'
     color = "#9b2226" if rate < warn_below else "#2d6a4f" if rate >= 50 else "#374151"
-    return f'<span style="color:{color};font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:500">{rate:.1f}%</span>'
+    return f"<span style=\"color:{color};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500\">{rate:.1f}%</span>"
 
 
 def _n(val: int) -> str:
-    return f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px">{val:,}</span>'
+    return f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:12px\">{val:,}</span>"
 
 
 def render_html(report: dict) -> str:
     s = report["summary"]
     window = report["window"]
-    rate_display = f"{s['overall_conversion_rate_pct']:.1f}%" if s["overall_conversion_rate_pct"] is not None else "—"
+    rate_display = (
+        f"{s['overall_conversion_rate_pct']:.1f}%"
+        if s["overall_conversion_rate_pct"] is not None
+        else "—"
+    )
     rate_color = "#9b2226" if (s["overall_conversion_rate_pct"] or 0) < 30 else "#2d6a4f"
 
     # Source new-leads table
@@ -266,10 +289,10 @@ def render_html(report: dict) -> str:
         src = _html.escape(row["source"])
         conv_rows += f"""<tr>
           <td style="padding:9px 14px;font-size:13px">{src}</td>
-          <td style="padding:9px 14px">{_n(row['advanced'])}</td>
-          <td style="padding:9px 14px">{_n(row['archived'])}</td>
-          <td style="padding:9px 14px">{_n(row['total_decided'])}</td>
-          <td style="padding:9px 14px">{_rate_cell(row['conversion_rate_pct'])}</td>
+          <td style="padding:9px 14px">{_n(row["advanced"])}</td>
+          <td style="padding:9px 14px">{_n(row["archived"])}</td>
+          <td style="padding:9px 14px">{_n(row["total_decided"])}</td>
+          <td style="padding:9px 14px">{_rate_cell(row["conversion_rate_pct"])}</td>
         </tr>"""
     if not conv_rows:
         conv_rows = '<tr><td colspan="5" style="padding:16px;text-align:center;color:#9ca3af;font-size:12px">No decisions in window.</td></tr>'
@@ -286,8 +309,8 @@ def render_html(report: dict) -> str:
             <div style="font-size:11px;color:#6b7280">{company}</div>
           </td>
           <td style="padding:9px 14px;font-size:12px;color:#6b7280">{src}</td>
-          <td style="padding:9px 14px;font-size:12px;font-family:'JetBrains Mono',monospace">{r['adv_date'] or '—'}</td>
-          <td style="padding:9px 14px;font-size:12px;color:#6b7280">{r['created'] or '—'}</td>
+          <td style="padding:9px 14px;font-size:12px;font-family:'JetBrains Mono',monospace">{r["adv_date"] or "—"}</td>
+          <td style="padding:9px 14px;font-size:12px;color:#6b7280">{r["created"] or "—"}</td>
         </tr>"""
     if not adv_rows:
         adv_rows = '<tr><td colspan="4" style="padding:16px;text-align:center;color:#9ca3af;font-size:12px">No advances to deal in window.</td></tr>'
@@ -323,19 +346,19 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Inbound Lead Performance</h1>
-  <div class="meta">Leadle RevOps &bull; {_html.escape(window['label'])} &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; {_html.escape(window["label"])} &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{s['new_leads']}</div>
+      <div class="stat-n">{s["new_leads"]}</div>
       <div class="stat-l">New Leads (window)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{s['advanced_to_deal']}</div>
+      <div class="stat-n" style="color:var(--green)">{s["advanced_to_deal"]}</div>
       <div class="stat-l">Advanced to Deal</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--muted)">{s['archived']}</div>
+      <div class="stat-n" style="color:var(--muted)">{s["archived"]}</div>
       <div class="stat-l">Archived (unqualified)</div>
     </div>
     <div class="stat">
@@ -343,7 +366,7 @@ def render_html(report: dict) -> str:
       <div class="stat-l">Conversion Rate (decided)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{s['still_active_from_window']}</div>
+      <div class="stat-n" style="color:var(--amber)">{s["still_active_from_window"]}</div>
       <div class="stat-l">Still Active (from window)</div>
     </div>
   </div>
@@ -379,6 +402,7 @@ def render_html(report: dict) -> str:
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.inbound_perf")
@@ -419,7 +443,11 @@ def main(argv: list[str] | None = None) -> int:
     if report["source_conversion"]:
         print("  By source (decided):")
         for row in report["source_conversion"]:
-            r = f"{row['conversion_rate_pct']:.1f}%" if row["conversion_rate_pct"] is not None else "n/a"
+            r = (
+                f"{row['conversion_rate_pct']:.1f}%"
+                if row["conversion_rate_pct"] is not None
+                else "n/a"
+            )
             print(f"    {row['source']:30} adv={row['advanced']}  arch={row['archived']}  rate={r}")
 
     if args.json:

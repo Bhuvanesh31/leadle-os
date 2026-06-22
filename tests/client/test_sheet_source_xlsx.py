@@ -1,4 +1,5 @@
 """TDD tests for sheet_source.read_xlsx."""
+
 from __future__ import annotations
 
 from pathlib import Path

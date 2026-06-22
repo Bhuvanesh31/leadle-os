@@ -2,6 +2,7 @@
 
 Accumulates through Tasks 7-11. Each task section is clearly delimited.
 """
+
 from pathlib import Path
 
 import yaml
@@ -22,15 +23,15 @@ def _data():
     return ClientData(
         email_campaigns=[
             EmailCampaign("Upsta_SFDI_V1", 414, 140, 42, 41, 0),
-            EmailCampaign("Upsta_PMP_V1",  598, 215,  0, 44, 0),
+            EmailCampaign("Upsta_PMP_V1", 598, 215, 0, 44, 0),
         ],
         linkedin_campaigns=[
             LinkedInCampaign("Upsta_US_PMP_V1", 188, 9, 3, "Hi founder"),
-            LinkedInCampaign("Upsta_Recon_V3",   46, 0, 0, "Hi recon"),
+            LinkedInCampaign("Upsta_Recon_V3", 46, 0, 0, "Hi recon"),
         ],
         replies=[
-            ReplyRecord("linkedin", "Upsta_US_PMP_V1", "neutral",   "Donna", None),
-            ReplyRecord("linkedin", "Upsta_US_PMP_V1", "untagged",  "",      None),
+            ReplyRecord("linkedin", "Upsta_US_PMP_V1", "neutral", "Donna", None),
+            ReplyRecord("linkedin", "Upsta_US_PMP_V1", "untagged", "", None),
         ],
     )
 
@@ -39,25 +40,26 @@ def _data():
 # Task 7: kpis() + scorecard()
 # ---------------------------------------------------------------------------
 
+
 def test_kpis_aggregate_and_leads_equal_positive():
     k = compute.kpis(_data(), RUBRIC)
     # email aggregates
-    assert k["emails_sent"] == 1012          # 414 + 598
-    assert k["bounced"] == 85               # 41 + 44
+    assert k["emails_sent"] == 1012  # 414 + 598
+    assert k["bounced"] == 85  # 41 + 44
     assert round(k["bounce_rate"], 4) == round(85 / 1012, 4)  # event-based
-    assert k["opened"] == 355               # 140 + 215
-    assert k["clicked"] == 42              # 42 + 0
+    assert k["opened"] == 355  # 140 + 215
+    assert k["clicked"] == 42  # 42 + 0
     delivered = 1012 - 85
     assert k["delivered"] == delivered
     assert round(k["open_rate"], 6) == round(355 / delivered, 6)
     # linkedin aggregates
-    assert k["invites"] == 234              # 188 + 46
+    assert k["invites"] == 234  # 188 + 46
     assert k["accepted"] == 9
     # replies from ReplyRecord list
-    assert k["li_replies"] == 2             # both channel=="linkedin"
+    assert k["li_replies"] == 2  # both channel=="linkedin"
     assert k["email_replies"] == 0
     assert k["total_replies"] == 2
-    assert k["positive_replies"] == 0       # no "positive" sentiment in fixture
+    assert k["positive_replies"] == 0  # no "positive" sentiment in fixture
     assert k["neutral_replies"] == 1
     assert k["negative_replies"] == 0
     # leads == positive_replies (invariant)
@@ -142,6 +144,7 @@ def test_scorecard_overall_is_weakest():
 # Task 8: campaign_table()
 # ---------------------------------------------------------------------------
 
+
 def test_campaign_table_email_rows_precede_linkedin_rows():
     """All Email channel rows must appear before any LinkedIn channel row."""
     rows = compute.campaign_table(_data(), RUBRIC)
@@ -151,9 +154,7 @@ def test_campaign_table_email_rows_precede_linkedin_rows():
     em_indices = [i for i, ch in enumerate(channels) if ch == "Email"]
     assert em_indices, "No Email rows returned"
     assert li_indices, "No LinkedIn rows returned"
-    assert max(em_indices) < min(li_indices), (
-        "All Email rows must precede all LinkedIn rows"
-    )
+    assert max(em_indices) < min(li_indices), "All Email rows must precede all LinkedIn rows"
 
 
 def test_campaign_table_email_row_shape():
@@ -185,8 +186,7 @@ def test_campaign_table_email_sfdi_ranked_before_pmp():
     sfdi_idx = next(i for i, n in enumerate(names) if "SFDI" in n)
     pmp_idx = next(i for i, n in enumerate(names) if "PMP" in n)
     assert sfdi_idx < pmp_idx, (
-        f"SFDI (click_rate≈0.113) should rank before PMP (click_rate=0); "
-        f"got order {names}"
+        f"SFDI (click_rate≈0.113) should rank before PMP (click_rate=0); got order {names}"
     )
 
 
@@ -217,15 +217,16 @@ def test_campaign_table_linkedin_pmp_ranked_before_recon():
     pmp_idx = next(i for i, n in enumerate(names) if "PMP" in n)
     recon_idx = next(i for i, n in enumerate(names) if "Recon" in n)
     assert pmp_idx < recon_idx, (
-        f"PMP (reply_rate>0) should rank before Recon (reply_rate=0); "
-        f"got order {names}"
+        f"PMP (reply_rate>0) should rank before Recon (reply_rate=0); got order {names}"
     )
 
 
 def test_campaign_table_zero_guard_no_sent():
     """campaign_table must not raise when sent/invites are 0."""
     data = ClientData(
-        email_campaigns=[EmailCampaign("ZeroEmail", sent=0, opened=0, clicked=0, bounced=0, replied=0)],
+        email_campaigns=[
+            EmailCampaign("ZeroEmail", sent=0, opened=0, clicked=0, bounced=0, replied=0)
+        ],
         linkedin_campaigns=[LinkedInCampaign("ZeroLI", invites=0, accepted=0, replied=0)],
     )
     rows = compute.campaign_table(data, RUBRIC)
@@ -241,11 +242,20 @@ def test_campaign_table_zero_guard_no_sent():
 # Task 9: variants(), content_steps(), sender_wise() (rewrite)
 # ---------------------------------------------------------------------------
 
+
 def test_variants_returns_sorted_and_flags_winner():
     data = ClientData(
         linkedin_campaigns=[
-            LinkedInCampaign("Upsta_US_PMP_V1", invites=188, accepted=9, replied=3, variant_message="Hi founder, noticed you lead GTM at"),
-            LinkedInCampaign("Upsta_Recon_V3",   invites=46,  accepted=0, replied=0, variant_message="Hi recon"),
+            LinkedInCampaign(
+                "Upsta_US_PMP_V1",
+                invites=188,
+                accepted=9,
+                replied=3,
+                variant_message="Hi founder, noticed you lead GTM at",
+            ),
+            LinkedInCampaign(
+                "Upsta_Recon_V3", invites=46, accepted=0, replied=0, variant_message="Hi recon"
+            ),
         ],
     )
     rows = compute.variants(data, RUBRIC)
@@ -265,7 +275,9 @@ def test_variants_returns_sorted_and_flags_winner():
 def test_variants_hook_truncated_to_80_chars():
     long_msg = "A" * 100
     data = ClientData(
-        linkedin_campaigns=[LinkedInCampaign("V1", invites=10, accepted=1, replied=1, variant_message=long_msg)],
+        linkedin_campaigns=[
+            LinkedInCampaign("V1", invites=10, accepted=1, replied=1, variant_message=long_msg)
+        ],
     )
     rows = compute.variants(data, RUBRIC)
     assert rows[0]["hook"] == long_msg[:80]
@@ -273,7 +285,9 @@ def test_variants_hook_truncated_to_80_chars():
 
 def test_variants_empty_variant_message_gives_empty_hook():
     data = ClientData(
-        linkedin_campaigns=[LinkedInCampaign("V1", invites=10, accepted=1, replied=0, variant_message="")],
+        linkedin_campaigns=[
+            LinkedInCampaign("V1", invites=10, accepted=1, replied=0, variant_message="")
+        ],
     )
     rows = compute.variants(data, RUBRIC)
     assert rows[0]["hook"] == ""
@@ -311,7 +325,7 @@ def test_content_steps_basic():
     data = ClientData(
         content_steps=[
             {"step": 1, "sent": 100, "opened": 24, "clicked": 6},
-            {"step": 2, "sent": 50,  "opened": 9,  "clicked": 2},
+            {"step": 2, "sent": 50, "opened": 9, "clicked": 2},
         ],
     )
     rows = compute.content_steps(data)
@@ -341,7 +355,7 @@ def test_sender_wise_reads_data_senders():
     data = ClientData(
         senders=[
             {"from_email": "alice@upsta.co", "sent": 60, "bounced": 2},
-            {"from_email": "bob@upsta.co",   "sent": 40, "bounced": 3},
+            {"from_email": "bob@upsta.co", "sent": 40, "bounced": 3},
         ],
     )
     rows = compute.sender_wise(data, RUBRIC)
@@ -358,12 +372,12 @@ def test_sender_wise_flag_at_threshold():
     data = ClientData(
         senders=[
             {"from_email": "high@upsta.co", "sent": 100, "bounced": 4},  # exactly 0.04 -> flag
-            {"from_email": "low@upsta.co",  "sent": 100, "bounced": 3},  # 0.03 -> no flag
+            {"from_email": "low@upsta.co", "sent": 100, "bounced": 3},  # 0.03 -> no flag
         ],
     )
     rows = compute.sender_wise(data, RUBRIC)
     high = next(r for r in rows if r["from_email"] == "high@upsta.co")
-    low  = next(r for r in rows if r["from_email"] == "low@upsta.co")
+    low = next(r for r in rows if r["from_email"] == "low@upsta.co")
     assert high["flag"] is True
     assert low["flag"] is False
 
@@ -387,7 +401,7 @@ def test_deliverability_still_works_with_new_sender_shape():
     data = ClientData(
         senders=[
             {"from_email": "flagged@upsta.co", "sent": 100, "bounced": 5},  # 0.05 >= 0.04
-            {"from_email": "ok@upsta.co",      "sent": 100, "bounced": 1},  # 0.01 < 0.04
+            {"from_email": "ok@upsta.co", "sent": 100, "bounced": 1},  # 0.01 < 0.04
         ],
     )
     flags = compute.deliverability(data, RUBRIC)

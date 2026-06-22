@@ -1,4 +1,5 @@
 """Hygiene agent — categorizes Page 1 §08 issues by impact (Sonnet)."""
+
 from __future__ import annotations
 
 from dashboard.agents._client import run_agent

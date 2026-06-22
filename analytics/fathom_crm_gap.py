@@ -36,6 +36,7 @@ Usage:
     python -m analytics.fathom_crm_gap --start 2026-05-01
     python -m analytics.fathom_crm_gap --json /tmp/fathom_gap.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -62,12 +63,14 @@ _HS_SEARCH = "https://api.hubapi.com/crm/v3/objects"
 
 # ── config ────────────────────────────────────────────────────────────────────
 
+
 def _load_rules() -> dict:
     with open(_RULES_CFG) as f:
         return yaml.safe_load(f)
 
 
 # ── Fathom fetch ──────────────────────────────────────────────────────────────
+
 
 def _fetch_fathom_meetings(api_key: str, start: date, end: date) -> dict:
     """Return {available, meetings: [...]} or {available: False, reason: ...}."""
@@ -91,8 +94,7 @@ def _fetch_fathom_meetings(api_key: str, start: date, end: date) -> dict:
             if cursor:
                 params["cursor"] = cursor
 
-            r = httpx.get(f"{_FATHOM_BASE}/meetings", headers=headers,
-                          params=params, timeout=30)
+            r = httpx.get(f"{_FATHOM_BASE}/meetings", headers=headers, params=params, timeout=30)
             r.raise_for_status()
             data = r.json()
             meetings.extend(data.get("items", data.get("meetings", [])))
@@ -102,12 +104,16 @@ def _fetch_fathom_meetings(api_key: str, start: date, end: date) -> dict:
 
         return {"available": True, "meetings": meetings}
     except httpx.HTTPStatusError as e:
-        return {"available": False, "reason": f"Fathom HTTP {e.response.status_code}: {e.response.text[:120]}"}
+        return {
+            "available": False,
+            "reason": f"Fathom HTTP {e.response.status_code}: {e.response.text[:120]}",
+        }
     except httpx.HTTPError as e:
         return {"available": False, "reason": f"Fathom REST error: {type(e).__name__}: {e}"}
 
 
 # ── meeting filter ────────────────────────────────────────────────────────────
+
 
 def _should_include(meeting: dict, rules: dict) -> bool:
     """Return True if this meeting should be checked for CRM gaps."""
@@ -155,35 +161,56 @@ def _external_attendees(meeting: dict, rules: dict) -> list[str]:
 
 # ── HubSpot matching ──────────────────────────────────────────────────────────
 
+
 def _hs_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
 def _find_contact_by_email(token: str, email: str) -> dict | None:
-    r = httpx.post(f"{_HS_SEARCH}/contacts/search",
+    r = httpx.post(
+        f"{_HS_SEARCH}/contacts/search",
         headers=_hs_headers(token),
         json={
-            "filterGroups": [{"filters": [
-                {"propertyName": "email", "operator": "EQ", "value": email},
-            ]}],
-            "properties": ["email", "firstname", "lastname", "company",
-                           "lifecyclestage", "hs_object_id"],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {"propertyName": "email", "operator": "EQ", "value": email},
+                    ]
+                }
+            ],
+            "properties": [
+                "email",
+                "firstname",
+                "lastname",
+                "company",
+                "lifecyclestage",
+                "hs_object_id",
+            ],
             "limit": 1,
-        }, timeout=15)
+        },
+        timeout=15,
+    )
     results = r.json().get("results", [])
     return results[0] if results else None
 
 
 def _find_company_by_domain(token: str, domain: str) -> dict | None:
-    r = httpx.post(f"{_HS_SEARCH}/companies/search",
+    r = httpx.post(
+        f"{_HS_SEARCH}/companies/search",
         headers=_hs_headers(token),
         json={
-            "filterGroups": [{"filters": [
-                {"propertyName": "domain", "operator": "EQ", "value": domain},
-            ]}],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {"propertyName": "domain", "operator": "EQ", "value": domain},
+                    ]
+                }
+            ],
             "properties": ["name", "domain", "hs_object_id"],
             "limit": 1,
-        }, timeout=15)
+        },
+        timeout=15,
+    )
     results = r.json().get("results", [])
     return results[0] if results else None
 
@@ -192,7 +219,8 @@ def _contact_has_active_lead(token: str, contact_id: str) -> bool:
     """Check if this contact is associated with an active (non-terminal) lead."""
     r = httpx.get(
         f"https://api.hubapi.com/crm/v3/objects/contacts/{contact_id}/associations/leads",
-        headers=_hs_headers(token), timeout=15,
+        headers=_hs_headers(token),
+        timeout=15,
     )
     assoc = r.json().get("results", [])
     if not assoc:
@@ -200,10 +228,12 @@ def _contact_has_active_lead(token: str, contact_id: str) -> bool:
     lead_ids = [a["id"] for a in assoc[:5]]
     # Check each lead's stage
     for lid in lead_ids:
-        r2 = httpx.get(f"https://api.hubapi.com/crm/v3/objects/leads/{lid}",
+        r2 = httpx.get(
+            f"https://api.hubapi.com/crm/v3/objects/leads/{lid}",
             headers=_hs_headers(token),
             params={"properties": "hs_pipeline_stage"},
-            timeout=15)
+            timeout=15,
+        )
         stage = (r2.json().get("properties") or {}).get("hs_pipeline_stage") or ""
         terminal = {"qualified-stage-id", "unqualified-stage-id"}
         if stage and stage not in terminal:
@@ -215,7 +245,8 @@ def _company_has_active_deal(token: str, company_id: str) -> bool:
     """Check if this company has an open deal in the sales pipeline."""
     r = httpx.get(
         f"https://api.hubapi.com/crm/v3/objects/companies/{company_id}/associations/deals",
-        headers=_hs_headers(token), timeout=15,
+        headers=_hs_headers(token),
+        timeout=15,
     )
     assoc = r.json().get("results", [])
     if not assoc:
@@ -223,10 +254,12 @@ def _company_has_active_deal(token: str, company_id: str) -> bool:
     deal_ids = [a["id"] for a in assoc[:5]]
     terminal = {"3022478048", "3022478049"}  # Won, Lost
     for did in deal_ids:
-        r2 = httpx.get(f"https://api.hubapi.com/crm/v3/objects/deals/{did}",
+        r2 = httpx.get(
+            f"https://api.hubapi.com/crm/v3/objects/deals/{did}",
             headers=_hs_headers(token),
             params={"properties": "dealstage,pipeline"},
-            timeout=15)
+            timeout=15,
+        )
         p = r2.json().get("properties") or {}
         if p.get("pipeline") == "1906293444" and p.get("dealstage") not in terminal:
             return True
@@ -241,7 +274,7 @@ def _classify_gap(token: str, email: str) -> tuple[str, str, str]:
     contact = _find_contact_by_email(token, email)
     if contact:
         p = contact.get("properties") or {}
-        cname = f"{p.get('firstname','') or ''} {p.get('lastname','') or ''}".strip() or email
+        cname = f"{p.get('firstname', '') or ''} {p.get('lastname', '') or ''}".strip() or email
         company = p.get("company") or domain
         # Check for active lead via contact
         if _contact_has_active_lead(token, contact["id"]):
@@ -263,8 +296,15 @@ def _classify_gap(token: str, email: str) -> tuple[str, str, str]:
 
 # ── build report ──────────────────────────────────────────────────────────────
 
-def build_report(fathom_result: dict, hs_token: str, rules: dict,
-                 window_start: date, window_end: date, window_label: str) -> dict:
+
+def build_report(
+    fathom_result: dict,
+    hs_token: str,
+    rules: dict,
+    window_start: date,
+    window_end: date,
+    window_label: str,
+) -> dict:
     meetings = fathom_result.get("meetings", [])
 
     # Filter meetings to relevant types
@@ -303,7 +343,11 @@ def build_report(fathom_result: dict, hs_token: str, rules: dict,
 
     return {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "window": {"start": window_start.isoformat(), "end": window_end.isoformat(), "label": window_label},
+        "window": {
+            "start": window_start.isoformat(),
+            "end": window_end.isoformat(),
+            "label": window_label,
+        },
         "fathom_available": fathom_result.get("available", False),
         "fathom_reason": fathom_result.get("reason"),
         "summary": {
@@ -320,7 +364,7 @@ def build_report(fathom_result: dict, hs_token: str, rules: dict,
 # ── HTML render ───────────────────────────────────────────────────────────────
 
 _GAP_STATE_LABELS = {
-    "no_contact":     ("No CRM record", "#9b2226"),
+    "no_contact": ("No CRM record", "#9b2226"),
     "contact_no_lead": ("Contact, no lead", "#b45309"),
     "contact_no_deal": ("Company, no deal", "#1e40af"),
 }
@@ -347,13 +391,17 @@ def render_html(report: dict) -> str:
         company = _html.escape(r["company"])
         gap_rows += f"""<tr>
           <td style="padding:9px 14px;font-size:13px;font-weight:500">{title}</td>
-          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{r['scheduled_date'] or '—'}</td>
+          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{r["scheduled_date"] or "—"}</td>
           <td style="padding:9px 14px;font-size:12px">{email}</td>
           <td style="padding:9px 14px;font-size:12px;color:#6b7280">{company}</td>
-          <td style="padding:9px 14px">{_gap_badge(r['gap_state'])}</td>
+          <td style="padding:9px 14px">{_gap_badge(r["gap_state"])}</td>
         </tr>"""
     if not gap_rows:
-        msg = "No gaps found — all relevant Fathom meetings have a matching CRM record." if report["fathom_available"] else "Fathom data unavailable."
+        msg = (
+            "No gaps found — all relevant Fathom meetings have a matching CRM record."
+            if report["fathom_available"]
+            else "Fathom data unavailable."
+        )
         gap_rows = f'<tr><td colspan="5" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px">{msg}</td></tr>'
 
     return f"""<!DOCTYPE html>
@@ -385,24 +433,24 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Fathom → CRM Gap</h1>
-  <div class="meta">Leadle RevOps &bull; {_html.escape(window['label'])} &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; {_html.escape(window["label"])} &bull; Generated {report["generated_at"]}</div>
   {status_block}
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{s['meetings_fetched']}</div>
+      <div class="stat-n">{s["meetings_fetched"]}</div>
       <div class="stat-l">Fathom Meetings</div>
     </div>
     <div class="stat">
-      <div class="stat-n">{s['meetings_relevant']}</div>
+      <div class="stat-n">{s["meetings_relevant"]}</div>
       <div class="stat-l">Relevant (filtered)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{s['gaps']}</div>
+      <div class="stat-n" style="color:var(--red)">{s["gaps"]}</div>
       <div class="stat-l">CRM Gaps</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:#2d6a4f">{s['covered']}</div>
+      <div class="stat-n" style="color:#2d6a4f">{s["covered"]}</div>
       <div class="stat-l">Matched to CRM</div>
     </div>
   </div>
@@ -425,6 +473,7 @@ def render_html(report: dict) -> str:
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.fathom_crm_gap")
@@ -468,7 +517,9 @@ def main(argv: list[str] | None = None) -> int:
     if report["gaps"]:
         print("\n  Gaps:")
         for g in report["gaps"]:
-            print(f"    [{g['gap_state']:20}] {g['title'][:40]:40} | {g['contact_email']} | {g['scheduled_date']}")
+            print(
+                f"    [{g['gap_state']:20}] {g['title'][:40]:40} | {g['contact_email']} | {g['scheduled_date']}"
+            )
 
     if args.json:
         Path(args.json).write_text(json.dumps(report, indent=2), encoding="utf-8")

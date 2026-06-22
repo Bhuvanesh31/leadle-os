@@ -12,6 +12,7 @@ Usage:
     python -m analytics.deal_pipeline_rotting --out /tmp/rotting-deals.html
     python -m analytics.deal_pipeline_rotting --threshold 2   # override days
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,6 +45,7 @@ _DEAL_PROPS = [
 
 # ── config ────────────────────────────────────────────────────────────────────
 
+
 def _load_config() -> dict:
     with open(_CONFIG_PATH) as f:
         return yaml.safe_load(f)
@@ -59,6 +61,7 @@ def _rotting_stage_ids(cfg: dict) -> list[str]:
 
 # ── HubSpot fetch ─────────────────────────────────────────────────────────────
 
+
 def fetch_active_deals(token: str, pipeline_id: str, rotting_ids: list[str]) -> list[dict]:
     """Return deal records that are in active (rotting-eligible) stages of the Sales Pipeline."""
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
@@ -68,12 +71,14 @@ def fetch_active_deals(token: str, pipeline_id: str, rotting_ids: list[str]) -> 
     with httpx.Client(headers=headers, timeout=30.0) as client:
         while True:
             body: dict[str, Any] = {
-                "filterGroups": [{
-                    "filters": [
-                        {"propertyName": "pipeline", "operator": "EQ", "value": pipeline_id},
-                        {"propertyName": "dealstage", "operator": "IN", "values": rotting_ids},
-                    ]
-                }],
+                "filterGroups": [
+                    {
+                        "filters": [
+                            {"propertyName": "pipeline", "operator": "EQ", "value": pipeline_id},
+                            {"propertyName": "dealstage", "operator": "IN", "values": rotting_ids},
+                        ]
+                    }
+                ],
                 "properties": _DEAL_PROPS,
                 "sorts": [{"propertyName": "notes_last_contacted", "direction": "ASCENDING"}],
                 "limit": _PAGE_LIMIT,
@@ -92,6 +97,7 @@ def fetch_active_deals(token: str, pipeline_id: str, rotting_ids: list[str]) -> 
 
 
 # ── compute ───────────────────────────────────────────────────────────────────
+
 
 def _parse_date(s: str | None) -> date | None:
     if not s:
@@ -124,9 +130,8 @@ def compute_rotting(raw_deals: list[dict], threshold_days: int, stage_map: dict[
 
         # notes_last_contacted = human-triggered only (calls, meetings logged by Sai).
         # Fallback: hs_lastmodifieddate catches automated touches but is noisier.
-        last_activity = (
-            _parse_date(p.get("notes_last_contacted"))
-            or _parse_date(p.get("hs_lastmodifieddate"))
+        last_activity = _parse_date(p.get("notes_last_contacted")) or _parse_date(
+            p.get("hs_lastmodifieddate")
         )
         next_activity = _parse_date(p.get("hs_next_activity_date"))
         close_date = _parse_date(p.get("closedate"))
@@ -179,6 +184,7 @@ def compute_rotting(raw_deals: list[dict], threshold_days: int, stage_map: dict[
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _days_badge(days: int | None) -> str:
     if days is None:
         return '<span style="color:#9b2226;font-weight:600">Never</span>'
@@ -225,31 +231,33 @@ def render_html(report: dict, generated_at: str) -> str:
         overdue_flag = (
             ' <span style="background:#fef3c7;color:#92400e;border-radius:3px;'
             'padding:1px 5px;font-size:10px;margin-left:4px">CLOSE OVERDUE</span>'
-            if r["close_overdue"] else ""
+            if r["close_overdue"]
+            else ""
         )
         rows_html += f"""
         <tr>
           <td style="padding:10px 14px">
-            <div style="font-weight:500">{r['deal_name']}{overdue_flag}</div>
-            <div style="font-size:12px;color:#6b7280">{r['amount']}</div>
+            <div style="font-weight:500">{r["deal_name"]}{overdue_flag}</div>
+            <div style="font-size:12px;color:#6b7280">{r["amount"]}</div>
           </td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
-          <td style="padding:10px 14px">{_days_badge(r['days_since'])}</td>
-          <td style="padding:10px 14px">{_close_badge(r['close_date'], r['close_overdue'])}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{r["stage_name"]}</td>
+          <td style="padding:10px 14px">{_days_badge(r["days_since"])}</td>
+          <td style="padding:10px 14px">{_close_badge(r["close_date"], r["close_overdue"])}</td>
           <td style="padding:10px 14px">{reason_html}</td>
         </tr>"""
 
     empty = (
-        "" if rotting
+        ""
+        if rotting
         else '<tr><td colspan="5" style="padding:24px;text-align:center;color:#6b7280">'
-             'No rotting deals. Pipeline is healthy.</td></tr>'
+        "No rotting deals. Pipeline is healthy.</td></tr>"
     )
 
     overdue_banner = ""
     if report["overdue_count"] > 0:
         overdue_banner = f"""
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:20px">
-        <span style="color:#92400e;font-weight:600">{report['overdue_count']} deal{'s' if report['overdue_count'] != 1 else ''} past expected close date</span>
+        <span style="color:#92400e;font-weight:600">{report["overdue_count"]} deal{"s" if report["overdue_count"] != 1 else ""} past expected close date</span>
         <span style="color:#78350f;font-size:13px"> — close dates need updating or deal needs a push.</span>
       </div>"""
 
@@ -286,23 +294,23 @@ def render_html(report: dict, generated_at: str) -> str:
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total_active']}</div>
+      <div class="stat-n">{report["total_active"]}</div>
       <div class="stat-l">Active Deals</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'red' if len(rotting) > 0 else 'green'})">{len(rotting)}</div>
+      <div class="stat-n" style="color:var(--{"red" if len(rotting) > 0 else "green"})">{len(rotting)}</div>
       <div class="stat-l">Rotting</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'red' if rot_pct > 50 else 'amber' if rot_pct > 20 else 'green'})">{rot_pct}%</div>
+      <div class="stat-n" style="color:var(--{"red" if rot_pct > 50 else "amber" if rot_pct > 20 else "green"})">{rot_pct}%</div>
       <div class="stat-l">Rotting Rate</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{report['healthy']}</div>
+      <div class="stat-n" style="color:var(--green)">{report["healthy"]}</div>
       <div class="stat-l">Healthy</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'amber' if report['overdue_count'] > 0 else 'muted'})">{report['overdue_count']}</div>
+      <div class="stat-n" style="color:var(--{"amber" if report["overdue_count"] > 0 else "muted"})">{report["overdue_count"]}</div>
       <div class="stat-l">Close Overdue</div>
     </div>
   </div>
@@ -341,13 +349,19 @@ def render_html(report: dict, generated_at: str) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(prog="analytics.deal_pipeline_rotting")
-    parser.add_argument("--threshold", type=int, help="Override days-without-activity threshold from config")
-    parser.add_argument("--out", help="Output HTML path. Defaults to reports/deal-pipeline-rotting-<date>.html")
+    parser.add_argument(
+        "--threshold", type=int, help="Override days-without-activity threshold from config"
+    )
+    parser.add_argument(
+        "--out", help="Output HTML path. Defaults to reports/deal-pipeline-rotting-<date>.html"
+    )
     args = parser.parse_args(argv)
 
     token = os.environ.get("HUBSPOT_PRIVATE_TOKEN")
@@ -356,7 +370,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     cfg = _load_config()
-    threshold = args.threshold if args.threshold is not None else cfg["rotting"]["deal_no_activity_days"]
+    threshold = (
+        args.threshold if args.threshold is not None else cfg["rotting"]["deal_no_activity_days"]
+    )
     pipeline_id = cfg["deals"]["pipeline_id"]
     stage_map = _deal_stage_map(cfg)
     rot_ids = _rotting_stage_ids(cfg)
@@ -382,11 +398,15 @@ def main(argv: list[str] | None = None) -> int:
 
     rotting = report["rotting"]
     print(f"\nDeal Pipeline Rotting ({date.today()})")
-    print(f"  Active: {report['total_active']}  Rotting: {len(rotting)}  Healthy: {report['healthy']}  Close Overdue: {report['overdue_count']}")
+    print(
+        f"  Active: {report['total_active']}  Rotting: {len(rotting)}  Healthy: {report['healthy']}  Close Overdue: {report['overdue_count']}"
+    )
     if rotting:
         print(f"  By stage: {dict(sorted(report['stage_breakdown'].items(), key=lambda x: -x[1]))}")
         worst = rotting[0]
-        print(f"  Worst: {worst['deal_name']} ({worst['days_since'] or 'Never'}d since activity) — {worst['stage_name']}")
+        print(
+            f"  Worst: {worst['deal_name']} ({worst['days_since'] or 'Never'}d since activity) — {worst['stage_name']}"
+        )
     return 0
 
 

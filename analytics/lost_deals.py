@@ -20,6 +20,7 @@ Usage:
     python -m analytics.lost_deals --start 2026-04-01 --end 2026-06-21
     python -m analytics.lost_deals --json /tmp/lost_deals.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,33 +56,90 @@ _ACTIVE_STAGES = [
 
 # Keyword clusters for closed_lost_reason free text (first match wins)
 _REASON_CLUSTERS: list[tuple[str, list[str]]] = [
-    ("Unresponsive / No-show", [
-        "no show", "no response", "unresponsive", "not responding",
-        "ghost", "unreachable", " ur", "^ur$", "no reply",
-    ]),
-    ("Not ICP fit", [
-        "not a good fit", "not good fit", "wrong fit", "not the right fit",
-        "not fit", "bad fit", "no fit", "not our target", "not icp",
-    ]),
-    ("Budget / Pricing", [
-        "budget", "pricing", "price", "cost", "expensive", "afford",
-        "low budget", "small to start", "outcome based",
-    ]),
-    ("Not ready / Too early", [
-        "not ready", "not now", "too early", "later", "next quarter",
-        "timing", "freeze",
-    ]),
-    ("Lost to competition", [
-        "competition", "competitor", "went with", "chose another",
-        "other vendor", "other agency",
-    ]),
-    ("No authority / Wrong stakeholder", [
-        "no authority", "not decision", "not the right person",
-        "wrong contact", "no authority",
-    ]),
-    ("Payment / Terms", [
-        "payment terms", "payment", "terms", "contract",
-    ]),
+    (
+        "Unresponsive / No-show",
+        [
+            "no show",
+            "no response",
+            "unresponsive",
+            "not responding",
+            "ghost",
+            "unreachable",
+            " ur",
+            "^ur$",
+            "no reply",
+        ],
+    ),
+    (
+        "Not ICP fit",
+        [
+            "not a good fit",
+            "not good fit",
+            "wrong fit",
+            "not the right fit",
+            "not fit",
+            "bad fit",
+            "no fit",
+            "not our target",
+            "not icp",
+        ],
+    ),
+    (
+        "Budget / Pricing",
+        [
+            "budget",
+            "pricing",
+            "price",
+            "cost",
+            "expensive",
+            "afford",
+            "low budget",
+            "small to start",
+            "outcome based",
+        ],
+    ),
+    (
+        "Not ready / Too early",
+        [
+            "not ready",
+            "not now",
+            "too early",
+            "later",
+            "next quarter",
+            "timing",
+            "freeze",
+        ],
+    ),
+    (
+        "Lost to competition",
+        [
+            "competition",
+            "competitor",
+            "went with",
+            "chose another",
+            "other vendor",
+            "other agency",
+        ],
+    ),
+    (
+        "No authority / Wrong stakeholder",
+        [
+            "no authority",
+            "not decision",
+            "not the right person",
+            "wrong contact",
+            "no authority",
+        ],
+    ),
+    (
+        "Payment / Terms",
+        [
+            "payment terms",
+            "payment",
+            "terms",
+            "contract",
+        ],
+    ),
     ("Other / Unknown", []),  # catch-all
 ]
 
@@ -140,12 +198,24 @@ def _fetch_lost_in_window(token: str, window_start: date, window_end: date) -> l
     after = None
     while True:
         body: dict = {
-            "filterGroups": [{"filters": [
-                {"propertyName": "dealstage", "operator": "EQ", "value": _LOST_STAGE_ID},
-                {"propertyName": lost_prop, "operator": "GTE", "value": start_ms},
-                {"propertyName": lost_prop, "operator": "LTE", "value": end_ms},
-            ]}],
-            "properties": ["dealname", "amount", "closedate", "closed_lost_reason", "closed_lost_tag", lost_prop, *stage_props],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {"propertyName": "dealstage", "operator": "EQ", "value": _LOST_STAGE_ID},
+                        {"propertyName": lost_prop, "operator": "GTE", "value": start_ms},
+                        {"propertyName": lost_prop, "operator": "LTE", "value": end_ms},
+                    ]
+                }
+            ],
+            "properties": [
+                "dealname",
+                "amount",
+                "closedate",
+                "closed_lost_reason",
+                "closed_lost_tag",
+                lost_prop,
+                *stage_props,
+            ],
             "sorts": [{"propertyName": lost_prop, "direction": "DESCENDING"}],
             "limit": 100,
         }
@@ -153,7 +223,9 @@ def _fetch_lost_in_window(token: str, window_start: date, window_end: date) -> l
             body["after"] = after
         r = httpx.post(
             "https://api.hubapi.com/crm/v3/objects/deals/search",
-            headers=headers, json=body, timeout=30,
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         data = r.json()
         results.extend(data.get("results", []))
@@ -163,14 +235,20 @@ def _fetch_lost_in_window(token: str, window_start: date, window_end: date) -> l
     return results
 
 
-def build_report(deals: list[dict], window_start: date, window_end: date,
-                 window_label: str) -> dict:
+def build_report(
+    deals: list[dict], window_start: date, window_end: date, window_label: str
+) -> dict:
     lost_prop = f"hs_v2_date_entered_{_LOST_STAGE_ID}"
 
     reason_counts: dict[str, int] = defaultdict(int)
     stage_counts: dict[str, int] = defaultdict(int)
-    amt_buckets: dict[str, int] = {"$0 (no amount)": 0, "< $1K": 0, "$1K–$5K": 0,
-                                    "$5K–$20K": 0, "$20K+": 0}
+    amt_buckets: dict[str, int] = {
+        "$0 (no amount)": 0,
+        "< $1K": 0,
+        "$1K–$5K": 0,
+        "$5K–$20K": 0,
+        "$20K+": 0,
+    }
     time_in_pipe: list[int] = []
     total_amount = 0.0
     rows = []
@@ -209,16 +287,18 @@ def build_report(deals: list[dict], window_start: date, window_end: date,
         if days is not None:
             time_in_pipe.append(days)
 
-        rows.append({
-            "name": name,
-            "lost_date": lost_date.isoformat() if lost_date else None,
-            "last_stage": last_stage,
-            "reason_raw": reason_raw,
-            "reason_cluster": cluster,
-            "amount": amt,
-            "amount_fmt": f"${amt:,.0f}" if amt else "—",
-            "days_in_pipe": days,
-        })
+        rows.append(
+            {
+                "name": name,
+                "lost_date": lost_date.isoformat() if lost_date else None,
+                "last_stage": last_stage,
+                "reason_raw": reason_raw,
+                "reason_cluster": cluster,
+                "amount": amt,
+                "amount_fmt": f"${amt:,.0f}" if amt else "—",
+                "days_in_pipe": days,
+            }
+        )
 
     avg_days = round(sum(time_in_pipe) / len(time_in_pipe)) if time_in_pipe else None
 
@@ -243,9 +323,7 @@ def build_report(deals: list[dict], window_start: date, window_end: date,
             [{"stage": k, "count": v} for k, v in stage_counts.items()],
             key=lambda x: -x["count"],
         ),
-        "amount_buckets": [
-            {"bucket": k, "count": v} for k, v in amt_buckets.items() if v > 0
-        ],
+        "amount_buckets": [{"bucket": k, "count": v} for k, v in amt_buckets.items() if v > 0],
         "deals": sorted(rows, key=lambda r: r["lost_date"] or "", reverse=True),
     }
 
@@ -253,15 +331,15 @@ def build_report(deals: list[dict], window_start: date, window_end: date,
 # ── HTML render ───────────────────────────────────────────────────────────────
 
 _CLUSTER_COLORS = {
-    "Unresponsive / No-show":           "#b45309",
-    "Not ICP fit":                      "#9b2226",
-    "Budget / Pricing":                 "#1e40af",
-    "Not ready / Too early":            "#6b7280",
-    "Lost to competition":              "#7c3aed",
+    "Unresponsive / No-show": "#b45309",
+    "Not ICP fit": "#9b2226",
+    "Budget / Pricing": "#1e40af",
+    "Not ready / Too early": "#6b7280",
+    "Lost to competition": "#7c3aed",
     "No authority / Wrong stakeholder": "#0f766e",
-    "Payment / Terms":                  "#374151",
-    "Other / Unknown":                  "#9ca3af",
-    "No reason recorded":               "#d1d5db",
+    "Payment / Terms": "#374151",
+    "Other / Unknown": "#9ca3af",
+    "No reason recorded": "#d1d5db",
 }
 
 
@@ -275,7 +353,9 @@ def render_html(report: dict) -> str:
     s = report["summary"]
     window = report["window"]
     amt_fmt = f"${s['total_amount_lost']:,}" if s["total_amount_lost"] else "—"
-    avg_days = f"{s['avg_days_in_pipe']}d (n={s['days_sample_size']})" if s["avg_days_in_pipe"] else "—"
+    avg_days = (
+        f"{s['avg_days_in_pipe']}d (n={s['days_sample_size']})" if s["avg_days_in_pipe"] else "—"
+    )
 
     # Reason bar chart (simple HTML bars)
     total = s["total_lost"] or 1
@@ -290,7 +370,7 @@ def render_html(report: dict) -> str:
           <div style="background:#f3f4f6;border-radius:4px;flex:1;height:20px;position:relative">
             <div style="background:{color};border-radius:4px;width:{pct}%;height:100%;min-width:2px"></div>
           </div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;width:60px;text-align:right;color:#374151">{row['count']} ({pct}%)</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;width:60px;text-align:right;color:#374151">{row["count"]} ({pct}%)</div>
         </div>"""
 
     # Stage of loss table
@@ -306,10 +386,10 @@ def render_html(report: dict) -> str:
         reason_raw = _html.escape((r["reason_raw"] or "—")[:60])
         deal_rows += f"""<tr>
           <td style="padding:9px 14px;font-size:13px;font-weight:500">{name}</td>
-          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{r['lost_date'] or '—'}</td>
+          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{r["lost_date"] or "—"}</td>
           <td style="padding:9px 14px;font-size:12px;color:#6b7280">{stage}</td>
-          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{r['amount_fmt']}</td>
-          <td style="padding:9px 14px">{_reason_badge(r['reason_cluster'])}</td>
+          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{r["amount_fmt"]}</td>
+          <td style="padding:9px 14px">{_reason_badge(r["reason_cluster"])}</td>
           <td style="padding:9px 14px;font-size:11px;color:#6b7280">{reason_raw}</td>
         </tr>"""
 
@@ -345,11 +425,11 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Lost Deals Analysis</h1>
-  <div class="meta">Leadle RevOps &bull; {_html.escape(window['label'])} &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; {_html.escape(window["label"])} &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{s['total_lost']}</div>
+      <div class="stat-n" style="color:var(--red)">{s["total_lost"]}</div>
       <div class="stat-l">Deals Lost</div>
     </div>
     <div class="stat">
@@ -391,6 +471,7 @@ def render_html(report: dict) -> str:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.lost_deals")
     add_period_args(parser)
@@ -418,7 +499,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nLost Deals — {label}")
     print(f"  Total lost:     {s['total_lost']}")
     print(f"  Pipeline value: ${s['total_amount_lost']:,}")
-    avg_days_display = f"{s['avg_days_in_pipe']}d (n={s['days_sample_size']})" if s["avg_days_in_pipe"] is not None else f"n/a (n={s['days_sample_size']})"
+    avg_days_display = (
+        f"{s['avg_days_in_pipe']}d (n={s['days_sample_size']})"
+        if s["avg_days_in_pipe"] is not None
+        else f"n/a (n={s['days_sample_size']})"
+    )
     print(f"  Avg days:       {avg_days_display}")
 
     print("\n  Loss reasons:")

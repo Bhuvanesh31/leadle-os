@@ -21,6 +21,7 @@ Usage:
     python -m analytics.inbound_lead_scoring --enrich-from /tmp/enriched.json
     python -m analytics.inbound_lead_scoring --out /tmp/scored.html
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,7 +51,7 @@ _LEAD_PROPS = [
     "hs_associated_contact_firstname",
     "hs_associated_contact_lastname",
     "hs_associated_contact_email",
-    "hs_associated_contact_jobtitle",   # may be empty; fallback via Contact batch
+    "hs_associated_contact_jobtitle",  # may be empty; fallback via Contact batch
     "hs_associated_company_name",
     "lead_source_v2",
 ]
@@ -66,6 +67,7 @@ _COMPANY_PROPS = [
 
 
 # ── config ────────────────────────────────────────────────────────────────────
+
 
 def _load_pipeline_cfg() -> dict:
     with open(_CONFIG_PATH) as f:
@@ -87,6 +89,7 @@ def _stage_map(cfg: dict) -> dict[str, str]:
 
 # ── HubSpot fetch ─────────────────────────────────────────────────────────────
 
+
 def fetch_active_leads(token: str, stage_ids: list[str]) -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     out: list[dict] = []
@@ -95,9 +98,17 @@ def fetch_active_leads(token: str, stage_ids: list[str]) -> list[dict]:
     with httpx.Client(headers=headers, timeout=30.0) as client:
         while True:
             body: dict[str, Any] = {
-                "filterGroups": [{"filters": [
-                    {"propertyName": "hs_pipeline_stage", "operator": "IN", "values": stage_ids}
-                ]}],
+                "filterGroups": [
+                    {
+                        "filters": [
+                            {
+                                "propertyName": "hs_pipeline_stage",
+                                "operator": "IN",
+                                "values": stage_ids,
+                            }
+                        ]
+                    }
+                ],
                 "properties": _LEAD_PROPS,
                 "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}],
                 "limit": _PAGE_LIMIT,
@@ -114,12 +125,13 @@ def fetch_active_leads(token: str, stage_ids: list[str]) -> list[dict]:
     return out
 
 
-def _batch_associations(client: httpx.Client, from_type: str, to_type: str,
-                         from_ids: list[str]) -> dict[str, str]:
+def _batch_associations(
+    client: httpx.Client, from_type: str, to_type: str, from_ids: list[str]
+) -> dict[str, str]:
     """Return {from_id: first_to_id} via v4 batch associations API."""
     result: dict[str, str] = {}
     for i in range(0, len(from_ids), 100):
-        chunk = from_ids[i:i + 100]
+        chunk = from_ids[i : i + 100]
         r = client.post(
             f"{_BASE_URL}/crm/v4/associations/{from_type}/{to_type}/batch/read",
             json={"inputs": [{"id": fid} for fid in chunk]},
@@ -135,12 +147,13 @@ def _batch_associations(client: httpx.Client, from_type: str, to_type: str,
     return result
 
 
-def _batch_read(client: httpx.Client, object_type: str,
-                ids: list[str], properties: list[str]) -> dict[str, dict]:
+def _batch_read(
+    client: httpx.Client, object_type: str, ids: list[str], properties: list[str]
+) -> dict[str, dict]:
     """Return {id: properties_dict} via v3 batch read API."""
     result: dict[str, dict] = {}
     for i in range(0, len(ids), 100):
-        chunk = ids[i:i + 100]
+        chunk = ids[i : i + 100]
         r = client.post(
             f"{_BASE_URL}/crm/v3/objects/{object_type}/batch/read",
             json={"inputs": [{"id": oid} for oid in chunk], "properties": properties},
@@ -164,19 +177,19 @@ def enrich_leads(token: str, leads: list[dict]) -> tuple[dict[str, dict], dict[s
         contact_ids = list(set(lead_to_contact.values()))
         company_ids = list(set(lead_to_company.values()))
 
-        contacts_by_id = _batch_read(client, "contacts", contact_ids, _CONTACT_PROPS) if contact_ids else {}
-        companies_by_id = _batch_read(client, "companies", company_ids, _COMPANY_PROPS) if company_ids else {}
+        contacts_by_id = (
+            _batch_read(client, "contacts", contact_ids, _CONTACT_PROPS) if contact_ids else {}
+        )
+        companies_by_id = (
+            _batch_read(client, "companies", company_ids, _COMPANY_PROPS) if company_ids else {}
+        )
 
     # Map back to lead_id
     contacts: dict[str, dict] = {
-        lid: contacts_by_id[cid]
-        for lid, cid in lead_to_contact.items()
-        if cid in contacts_by_id
+        lid: contacts_by_id[cid] for lid, cid in lead_to_contact.items() if cid in contacts_by_id
     }
     companies: dict[str, dict] = {
-        lid: companies_by_id[cid]
-        for lid, cid in lead_to_company.items()
-        if cid in companies_by_id
+        lid: companies_by_id[cid] for lid, cid in lead_to_company.items() if cid in companies_by_id
     }
     return contacts, companies
 
@@ -209,9 +222,7 @@ def _companies_needing_enrichment(
             continue
 
         p = lead.get("properties", {})
-        company_name = (
-            p.get("hs_associated_company_name") or comp.get("name") or ""
-        ).strip()
+        company_name = (p.get("hs_associated_company_name") or comp.get("name") or "").strip()
         if not company_name or company_name in seen_names:
             continue
 
@@ -263,6 +274,7 @@ def apply_enrichment(
 
 # ── scoring ───────────────────────────────────────────────────────────────────
 
+
 def _parse_date(s: str | None) -> date | None:
     if not s:
         return None
@@ -291,7 +303,7 @@ def _classify_title(title: str | None, employees: int | None, cfg: dict) -> tupl
 
     for tier in cfg["decision_maker"]["title_tiers"]:
         if tier["tier"] == "other":
-            continue   # catch-all — no keywords to match, returns at end
+            continue  # catch-all — no keywords to match, returns at end
         keywords = [kw.lower() for kw in tier.get("keywords", [])]
         if any(kw in title_lower for kw in keywords):
             name = tier["tier"]
@@ -336,14 +348,15 @@ def _fmt_usd(value: float | None) -> str:
     if value is None:
         return "—"
     if value >= 1_000_000:
-        return f"${value/1_000_000:.1f}M"
+        return f"${value / 1_000_000:.1f}M"
     if value >= 1_000:
-        return f"${value/1_000:.0f}K"
+        return f"${value / 1_000:.0f}K"
     return f"${value:.0f}"
 
 
-def score_lead(lead: dict, contact_props: dict | None,
-               company_props: dict | None, cfg: dict, stage_map: dict) -> dict:
+def score_lead(
+    lead: dict, contact_props: dict | None, company_props: dict | None, cfg: dict, stage_map: dict
+) -> dict:
     p = lead.get("properties", {})
     cp = contact_props or {}
     comp = company_props or {}
@@ -366,9 +379,8 @@ def score_lead(lead: dict, contact_props: dict | None,
     stage_id = p.get("hs_pipeline_stage") or ""
     source = p.get("lead_source_v2") or ""
     created = _parse_date(p.get("hs_createdate"))
-    last_activity = (
-        _parse_date(p.get("hs_contact_last_activity_date"))
-        or _parse_date(p.get("hs_lastmodifieddate"))
+    last_activity = _parse_date(p.get("hs_contact_last_activity_date")) or _parse_date(
+        p.get("hs_lastmodifieddate")
     )
     days_since = (date.today() - last_activity).days if last_activity else None
 
@@ -413,9 +425,14 @@ def score_lead(lead: dict, contact_props: dict | None,
     }
 
 
-def compute_scores(raw_leads: list[dict], contacts: dict[str, dict],
-                   companies: dict[str, dict], scoring_cfg: dict,
-                   stage_map: dict[str, str], all_sources: bool) -> dict:
+def compute_scores(
+    raw_leads: list[dict],
+    contacts: dict[str, dict],
+    companies: dict[str, dict],
+    scoring_cfg: dict,
+    stage_map: dict[str, str],
+    all_sources: bool,
+) -> dict:
     inbound_set = set(scoring_cfg["inbound_sources"])
     scored = []
     excluded = 0
@@ -426,13 +443,15 @@ def compute_scores(raw_leads: list[dict], contacts: dict[str, dict],
             excluded += 1
             continue
         lid = str(lead["id"])
-        scored.append(score_lead(
-            lead,
-            contacts.get(lid),
-            companies.get(lid),
-            scoring_cfg,
-            stage_map,
-        ))
+        scored.append(
+            score_lead(
+                lead,
+                contacts.get(lid),
+                companies.get(lid),
+                scoring_cfg,
+                stage_map,
+            )
+        )
 
     scored.sort(key=lambda r: -r["score"])
     tc = {"Hot": 0, "Warm": 0, "Cold": 0}
@@ -464,10 +483,10 @@ def _score_bar(score: int) -> str:
         f'<div style="display:flex;align-items:center;gap:8px">'
         f'<div style="background:#e5e7eb;border-radius:4px;height:6px;width:70px">'
         f'<div style="background:{color};height:6px;border-radius:4px;width:{score}%"></div>'
-        f'</div>'
-        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;'
+        f"</div>"
+        f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:12px;"
         f'color:{color};font-weight:600">{score}</span>'
-        f'</div>'
+        f"</div>"
     )
 
 
@@ -520,7 +539,7 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
         # Funding display: show stage if known, amount otherwise
         fund_display = r["funding_fmt"]
         if r["funding_stage"] and r["funding_fmt"] != "—":
-            fund_display = f'{r["funding_fmt"]} ({r["funding_stage"]})'
+            fund_display = f"{r['funding_fmt']} ({r['funding_stage']})"
         elif r["funding_stage"]:
             fund_display = r["funding_stage"]
 
@@ -535,24 +554,25 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
             <div style="font-weight:500">{lead_name}</div>
             <div style="font-size:12px;color:#6b7280">{company}</div>
           </td>
-          <td style="padding:10px 14px">{_tier_badge(r['tier'])}</td>
-          <td style="padding:10px 14px" title="{tip}">{_score_bar(r['score'])}</td>
+          <td style="padding:10px 14px">{_tier_badge(r["tier"])}</td>
+          <td style="padding:10px 14px" title="{tip}">{_score_bar(r["score"])}</td>
           <td style="padding:10px 14px">
             <div style="font-size:12px;font-weight:500">{jobtitle}</div>
-            <div style="font-size:11px;color:#6b7280">{r['dm_tier']}</div>
+            <div style="font-size:11px;color:#6b7280">{r["dm_tier"]}</div>
             {missing_flags}
           </td>
           <td style="padding:10px 14px;font-size:12px">
-            <div>{r['revenue_fmt']}{' <span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:1px 4px;font-size:10px">web</span>' if r['web_enriched'] else ""}</div>
-            <div style="color:#6b7280;font-size:11px">{f"{r['employees']:,} employees" if r['employees'] else "—"}</div>
+            <div>{r["revenue_fmt"]}{' <span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:1px 4px;font-size:10px">web</span>' if r["web_enriched"] else ""}</div>
+            <div style="color:#6b7280;font-size:11px">{f"{r['employees']:,} employees" if r["employees"] else "—"}</div>
           </td>
           <td style="padding:10px 14px;font-size:12px;color:#374151">{fund_display_esc}</td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
-          <td style="padding:10px 14px">{_days_cell(r['days_since'])}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{r["stage_name"]}</td>
+          <td style="padding:10px 14px">{_days_cell(r["days_since"])}</td>
         </tr>"""
 
     empty = (
-        "" if scored
+        ""
+        if scored
         else '<tr><td colspan="9" style="padding:24px;text-align:center;color:#6b7280">No inbound leads found.</td></tr>'
     )
 
@@ -560,12 +580,16 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
     if report["missing_company"] or report["missing_title"]:
         notes = []
         if report["missing_company"]:
-            notes.append(f"{report['missing_company']} lead(s) have no associated company (scored 0 on revenue/funding/spend)")
+            notes.append(
+                f"{report['missing_company']} lead(s) have no associated company (scored 0 on revenue/funding/spend)"
+            )
         if report["missing_title"]:
-            notes.append(f"{report['missing_title']} lead(s) have no job title (scored 0 on decision maker)")
+            notes.append(
+                f"{report['missing_title']} lead(s) have no job title (scored 0 on decision maker)"
+            )
         data_quality_note = f"""
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#78350f">
-        <strong>Data gaps affecting scores:</strong> {' | '.join(notes)}.
+        <strong>Data gaps affecting scores:</strong> {" | ".join(notes)}.
         Enrich via Clay or HubSpot Breeze to improve accuracy.
       </div>"""
 
@@ -573,8 +597,8 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
     if report["excluded_outbound"] and not all_sources:
         outbound_note = (
             f'<div style="font-size:12px;color:#6b7280;margin-bottom:16px">'
-            f'{report["excluded_outbound"]} outbound-sourced lead(s) excluded '
-            f'(run with --all-sources or use /outbound-lead-scoring for those).</div>'
+            f"{report['excluded_outbound']} outbound-sourced lead(s) excluded "
+            f"(run with --all-sources or use /outbound-lead-scoring for those).</div>"
         )
 
     return f"""<!DOCTYPE html>
@@ -610,19 +634,19 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total']}</div>
+      <div class="stat-n">{report["total"]}</div>
       <div class="stat-l">Inbound Leads</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{tc.get('Hot', 0)}</div>
+      <div class="stat-n" style="color:var(--red)">{tc.get("Hot", 0)}</div>
       <div class="stat-l">Hot (≥65)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{tc.get('Warm', 0)}</div>
+      <div class="stat-n" style="color:var(--amber)">{tc.get("Warm", 0)}</div>
       <div class="stat-l">Warm (35–64)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--muted)">{tc.get('Cold', 0)}</div>
+      <div class="stat-n" style="color:var(--muted)">{tc.get("Cold", 0)}</div>
       <div class="stat-l">Cold (&lt;35)</div>
     </div>
   </div>
@@ -662,19 +686,29 @@ def render_html(report: dict, generated_at: str, all_sources: bool) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(prog="analytics.inbound_lead_scoring")
-    parser.add_argument("--all-sources", action="store_true",
-                        help="Score all leads regardless of source")
-    parser.add_argument("--no-enrich", action="store_true",
-                        help="Skip web enrichment step entirely")
-    parser.add_argument("--dump-needs-enrichment", metavar="FILE",
-                        help="Write companies lacking revenue/funding to JSON file and exit")
-    parser.add_argument("--enrich-from", metavar="FILE",
-                        help="Read pre-computed enrichment JSON and apply before scoring")
+    parser.add_argument(
+        "--all-sources", action="store_true", help="Score all leads regardless of source"
+    )
+    parser.add_argument(
+        "--no-enrich", action="store_true", help="Skip web enrichment step entirely"
+    )
+    parser.add_argument(
+        "--dump-needs-enrichment",
+        metavar="FILE",
+        help="Write companies lacking revenue/funding to JSON file and exit",
+    )
+    parser.add_argument(
+        "--enrich-from",
+        metavar="FILE",
+        help="Read pre-computed enrichment JSON and apply before scoring",
+    )
     parser.add_argument("--out", help="Output HTML path")
     args = parser.parse_args(argv)
 
@@ -700,7 +734,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.dump_needs_enrichment:
         needs = _companies_needing_enrichment(raw, companies, inbound_set, args.all_sources)
         Path(args.dump_needs_enrichment).write_text(json.dumps(needs, indent=2), encoding="utf-8")
-        print(f"  {len(needs)} companies need enrichment → {args.dump_needs_enrichment}", file=sys.stderr)
+        print(
+            f"  {len(needs)} companies need enrichment → {args.dump_needs_enrichment}",
+            file=sys.stderr,
+        )
         return 0
 
     if args.enrich_from and not args.no_enrich:
@@ -727,19 +764,29 @@ def main(argv: list[str] | None = None) -> int:
     scored = report["scored"]
     tc = report["tier_counts"]
     print(f"\nInbound Lead Scoring — ICP Fit ({date.today()})")
-    print(f"  Scored: {report['total']}  Hot: {tc.get('Hot',0)}  Warm: {tc.get('Warm',0)}  Cold: {tc.get('Cold',0)}")
+    print(
+        f"  Scored: {report['total']}  Hot: {tc.get('Hot', 0)}  Warm: {tc.get('Warm', 0)}  Cold: {tc.get('Cold', 0)}"
+    )
     if report["excluded_outbound"] and not args.all_sources:
         print(f"  {report['excluded_outbound']} outbound leads excluded (--all-sources to include)")
     if report["missing_company"]:
-        print(f"  ⚠  {report['missing_company']} leads with no company data (scored 0 on 3 dimensions)")
+        print(
+            f"  ⚠  {report['missing_company']} leads with no company data (scored 0 on 3 dimensions)"
+        )
     if report["missing_title"]:
         print(f"  ⚠  {report['missing_title']} leads with no job title (scored 0 on DM fit)")
     if scored:
         top = scored[0]
         bd = top["breakdown"]
-        print(f"  Top: {top['lead_name']} — {top['company']} | score={top['score']} ({top['tier']})")
-        print(f"       DM:{bd['decision_maker']}  Rev:{bd['revenue']}  Fund:{bd['funding']}  Spend:{bd['spend_capacity']}")
-        print(f"       Title: {top['jobtitle']} | Revenue: {top['revenue_fmt']} | Funding: {top['funding_fmt']}")
+        print(
+            f"  Top: {top['lead_name']} — {top['company']} | score={top['score']} ({top['tier']})"
+        )
+        print(
+            f"       DM:{bd['decision_maker']}  Rev:{bd['revenue']}  Fund:{bd['funding']}  Spend:{bd['spend_capacity']}"
+        )
+        print(
+            f"       Title: {top['jobtitle']} | Revenue: {top['revenue_fmt']} | Funding: {top['funding_fmt']}"
+        )
     return 0
 
 

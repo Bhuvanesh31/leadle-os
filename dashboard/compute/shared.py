@@ -2,6 +2,7 @@
 
 Intentionally tiny — these are utilities for per-page compute modules.
 """
+
 from __future__ import annotations
 
 from datetime import date

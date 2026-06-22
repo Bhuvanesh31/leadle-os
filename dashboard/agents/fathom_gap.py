@@ -1,4 +1,5 @@
 """Fathom Gap agent — per-row Action Needed (Haiku, batched)."""
+
 from __future__ import annotations
 
 from dashboard.agents._client import run_agent

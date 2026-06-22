@@ -8,6 +8,7 @@ Reads HUBSPOT_PRIVATE_TOKEN from env (or .env). Prints the fetch() JSON to
 stdout. Exit code 0 even on API errors (the dashboard treats degraded sources
 as a normal case).
 """
+
 from __future__ import annotations
 
 import argparse

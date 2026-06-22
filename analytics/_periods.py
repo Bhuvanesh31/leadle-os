@@ -15,6 +15,7 @@ Usage:
     from analytics._periods import resolve_period
     start, end, label = resolve_period("quarter")
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -68,13 +69,21 @@ def resolve_period(period: str) -> tuple[date, date, str]:
         # Indian FY: Apr 1 – Mar 31
         fy_start_year = today.year if today.month >= 4 else today.year - 1
         start = date(fy_start_year, 4, 1)
-        return start, today, f"FY {fy_start_year}/{str(fy_start_year + 1)[-2:]} ({start.isoformat()} to {today.isoformat()})"
+        return (
+            start,
+            today,
+            f"FY {fy_start_year}/{str(fy_start_year + 1)[-2:]} ({start.isoformat()} to {today.isoformat()})",
+        )
 
     if p == "last-fy":
         fy_start_year = (today.year if today.month >= 4 else today.year - 1) - 1
         start = date(fy_start_year, 4, 1)
         end = date(fy_start_year + 1, 3, 31)
-        return start, end, f"FY {fy_start_year}/{str(fy_start_year + 1)[-2:]} ({start.isoformat()} to {end.isoformat()})"
+        return (
+            start,
+            end,
+            f"FY {fy_start_year}/{str(fy_start_year + 1)[-2:]} ({start.isoformat()} to {end.isoformat()})",
+        )
 
     raise ValueError(
         f"Unknown period '{period}'. Use: week, last-week, month, last-month, "
@@ -90,8 +99,12 @@ def add_period_args(parser) -> None:
         metavar="PERIOD",
         help="Named period: week, last-week, month, last-month, quarter, last-quarter, ytd, fy, last-fy",
     )
-    group.add_argument("--start", metavar="DATE", help="Cohort start date (ISO). Use with optional --end.")
-    parser.add_argument("--end", metavar="DATE", help="Cohort end date (ISO). Defaults to today if --start given.")
+    group.add_argument(
+        "--start", metavar="DATE", help="Cohort start date (ISO). Use with optional --end."
+    )
+    parser.add_argument(
+        "--end", metavar="DATE", help="Cohort end date (ISO). Defaults to today if --start given."
+    )
 
 
 def resolve_args(args) -> tuple[date | None, date | None, str]:

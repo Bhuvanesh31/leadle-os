@@ -3,6 +3,7 @@
 The dashboard uses an Indian fiscal year (Apr–Mar). FY2026 = Apr 2026 – Mar 2027.
 Every window arg resolves to (start, end, prior_start, prior_end) given today.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -21,9 +22,9 @@ class WindowSpec:
     name: str
     label: str
     start: date
-    end: date           # inclusive
+    end: date  # inclusive
     prior_start: date
-    prior_end: date     # inclusive
+    prior_end: date  # inclusive
 
 
 def _load_config() -> dict:
@@ -99,8 +100,18 @@ def _prior_quarter(q: str) -> tuple[str, int]:
 
 
 _MONTH_NAMES = {
-    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
-    "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
 }
 
 
@@ -118,7 +129,7 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
     current_fy = _current_fy(today, fy_start_month)
 
     if arg.startswith("month-"):
-        name = arg[len("month-"):]
+        name = arg[len("month-") :]
         if name not in _MONTH_NAMES:
             raise ValueError(f"Bad named-month arg: {arg!r}")
         target_month = _MONTH_NAMES[name]
@@ -132,8 +143,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=arg,
             label=f"{s:%B %Y}",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     # Specific quarter args (q1, q2, q3, q4) → that quarter of *current* FY
@@ -143,8 +156,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=f"{arg}-fy{current_fy}",
             label=f"{arg.upper()} FY{current_fy} ({s:%b}–{e:%b %Y})",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     if arg == "current-quarter":
@@ -156,8 +171,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=f"{q}-fy{q_fy}",
             label=f"{q.upper()} FY{q_fy} ({s:%b}–{e:%b %Y})",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     if arg == "last-quarter":
@@ -170,8 +187,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=f"{prior_q}-fy{prior_q_fy}",
             label=f"{prior_q.upper()} FY{prior_q_fy} ({s:%b}–{e:%b %Y})",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     if arg == "current-week":
@@ -181,8 +200,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=arg,
             label=f"Week of {s:%b %-d, %Y}",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     if arg == "last-week":
@@ -194,8 +215,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=arg,
             label=f"Week of {s:%b %-d, %Y}",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     if arg == "current-month":
@@ -205,8 +228,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=arg,
             label=f"{s:%B %Y}",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     if arg == "last-month":
@@ -217,8 +242,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=arg,
             label=f"{s:%B %Y}",
-            start=s, end=e,
-            prior_start=ps, prior_end=pe,
+            start=s,
+            end=e,
+            prior_start=ps,
+            prior_end=pe,
         )
 
     # Rolling N-day windows: last-7d, last-30d, last-60d, last-90d
@@ -234,8 +261,10 @@ def resolve_window(arg: str, today: date) -> WindowSpec:
         return WindowSpec(
             name=arg,
             label=f"Last {days} days ({start:%b %-d} – {end:%b %-d, %Y})",
-            start=start, end=end,
-            prior_start=prior_start, prior_end=prior_end,
+            start=start,
+            end=end,
+            prior_start=prior_start,
+            prior_end=prior_end,
         )
 
     raise NotImplementedError(f"Window {arg} not yet implemented")

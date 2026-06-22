@@ -1,4 +1,5 @@
 """Forward Motion agent — synthesizes Page 1 §09 commitments (Sonnet)."""
+
 from __future__ import annotations
 
 from dashboard.agents._client import run_agent
@@ -42,13 +43,11 @@ async def synthesize(analytics: dict) -> dict:
     p4 = analytics.get("page4", {})
     payload = {
         "rotting_deals": p1.get("forward_motion_input", {}).get("rotting_deals", [])[:10],
-        "pipeline_at_risk": p1.get("forward_motion_input", {})
-        .get("rotting_pipeline_at_risk", 0),
+        "pipeline_at_risk": p1.get("forward_motion_input", {}).get("rotting_pipeline_at_risk", 0),
         "stalled_leads_count": p2.get("kpi", {}).get("stalled_count", 0),
         "monthly_target": p1.get("monthly_control", {}).get("monthly_target", 0),
         "monthly_gap": p1.get("monthly_control", {}).get("monthly_gap", 0),
-        "pipeline_coverage_ratio": p1.get("monthly_control", {})
-        .get("pipeline_coverage_ratio", 0),
+        "pipeline_coverage_ratio": p1.get("monthly_control", {}).get("pipeline_coverage_ratio", 0),
         "hygiene_issues_count": p1.get("hygiene", {}).get("total_issues", 0),
         "followup_gap_count": len(p4.get("followup_gap", [])),
     }

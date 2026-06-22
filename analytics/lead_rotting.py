@@ -25,6 +25,7 @@ Usage:
     python -m analytics.lead_rotting
     python -m analytics.lead_rotting --json /tmp/lead_rotting.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,13 +85,19 @@ def _days_since(ts_str: str | None) -> int | None:
         return None
 
 
-def _fetch_active_leads(token: str, active_ids: set[str], stage_props: dict[str, str]) -> list[dict]:
+def _fetch_active_leads(
+    token: str, active_ids: set[str], stage_props: dict[str, str]
+) -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     base_props = [
-        "hs_lead_name", "lead_source_v2", "hs_pipeline_stage",
-        "hs_contact_last_activity_date", "hs_createdate",
+        "hs_lead_name",
+        "lead_source_v2",
+        "hs_pipeline_stage",
+        "hs_contact_last_activity_date",
+        "hs_createdate",
         "hs_associated_company_name",
-        "hs_associated_contact_firstname", "hs_associated_contact_lastname",
+        "hs_associated_contact_firstname",
+        "hs_associated_contact_lastname",
     ]
     # Include all stage-entered date properties to compute days_in_stage
     stage_date_props = [p for p in stage_props.values() if p]
@@ -100,9 +107,17 @@ def _fetch_active_leads(token: str, active_ids: set[str], stage_props: dict[str,
     after = None
     while True:
         body: dict = {
-            "filterGroups": [{"filters": [
-                {"propertyName": "hs_pipeline_stage", "operator": "IN", "values": list(active_ids)},
-            ]}],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {
+                            "propertyName": "hs_pipeline_stage",
+                            "operator": "IN",
+                            "values": list(active_ids),
+                        },
+                    ]
+                }
+            ],
             "properties": all_props,
             "limit": 100,
         }
@@ -110,7 +125,9 @@ def _fetch_active_leads(token: str, active_ids: set[str], stage_props: dict[str,
             body["after"] = after
         r = httpx.post(
             "https://api.hubapi.com/crm/v3/objects/leads/search",
-            headers=headers, json=body, timeout=30,
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         data = r.json()
         results.extend(data.get("results", []))
@@ -173,19 +190,21 @@ def build_report(
         ln = p.get("hs_associated_contact_lastname") or ""
         contact_name = (fn + " " + ln).strip() or "—"
 
-        rows.append({
-            "lead_name": p.get("hs_lead_name") or "(unnamed)",
-            "contact_name": contact_name,
-            "company": p.get("hs_associated_company_name") or "—",
-            "source": src,
-            "channel": _classify_source(src, inbound_set, outbound_set),
-            "stage_name": stage_name,
-            "days_since_activity": days_activity,
-            "days_in_stage": days_in_stage,
-            "is_stalled": stalled,
-            "is_stuck": stuck,
-            "severity": sev,
-        })
+        rows.append(
+            {
+                "lead_name": p.get("hs_lead_name") or "(unnamed)",
+                "contact_name": contact_name,
+                "company": p.get("hs_associated_company_name") or "—",
+                "source": src,
+                "channel": _classify_source(src, inbound_set, outbound_set),
+                "stage_name": stage_name,
+                "days_since_activity": days_activity,
+                "days_in_stage": days_in_stage,
+                "is_stalled": stalled,
+                "is_stuck": stuck,
+                "severity": sev,
+            }
+        )
 
     rows.sort(key=lambda r: (_SEV_ORDER[r["severity"]], -(r["days_in_stage"] or 0)))
 
@@ -203,12 +222,13 @@ def build_report(
 
 # ── HTML render ───────────────────────────────────────────────────────────────
 
+
 def _sev_badge(sev: str) -> str:
     colors = {
         "CRITICAL": ("background:#fef2f2;color:#9b2226", "CRITICAL"),
-        "STALLED":  ("background:#fffbeb;color:#b45309", "STALLED"),
-        "STUCK":    ("background:#eff6ff;color:#1e40af", "STUCK"),
-        "OK":       ("background:#f0fdf4;color:#2d6a4f", "OK"),
+        "STALLED": ("background:#fffbeb;color:#b45309", "STALLED"),
+        "STUCK": ("background:#eff6ff;color:#1e40af", "STUCK"),
+        "OK": ("background:#f0fdf4;color:#2d6a4f", "OK"),
     }
     style, label = colors.get(sev, ("", sev))
     return f'<span style="{style};border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600">{label}</span>'
@@ -218,7 +238,7 @@ def _days_cell(days: int | None, threshold: int, bad_color: str) -> str:
     if days is None:
         return '<span style="color:#9ca3af">—</span>'
     color = bad_color if days >= threshold else "#374151"
-    return f'<span style="color:{color};font-family:\'JetBrains Mono\',monospace;font-size:12px">{days}d</span>'
+    return f"<span style=\"color:{color};font-family:'JetBrains Mono',monospace;font-size:12px\">{days}d</span>"
 
 
 def render_html(report: dict) -> str:
@@ -238,21 +258,22 @@ def render_html(report: dict) -> str:
             <div style="font-weight:500;font-size:13px">{lead_name}</div>
             <div style="font-size:12px;color:#6b7280">{company}</div>
           </td>
-          <td style="padding:10px 14px">{_sev_badge(r['severity'])}</td>
+          <td style="padding:10px 14px">{_sev_badge(r["severity"])}</td>
           <td style="padding:10px 14px">
-            <span style="font-size:12px;color:{'#1e40af' if r['channel']=='Outbound' else '#2d6a4f'};font-weight:500">{r['channel']}</span>
+            <span style="font-size:12px;color:{"#1e40af" if r["channel"] == "Outbound" else "#2d6a4f"};font-weight:500">{r["channel"]}</span>
             <div style="font-size:11px;color:#9ca3af">{source}</div>
           </td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{r['stage_name']}</td>
-          <td style="padding:10px 14px">{_days_cell(r['days_since_activity'], thresh['stalled_lead_days'], '#9b2226')}</td>
-          <td style="padding:10px 14px">{_days_cell(r['days_in_stage'], thresh['lead_stage_stuck_days'], '#1e40af')}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{r["stage_name"]}</td>
+          <td style="padding:10px 14px">{_days_cell(r["days_since_activity"], thresh["stalled_lead_days"], "#9b2226")}</td>
+          <td style="padding:10px 14px">{_days_cell(r["days_in_stage"], thresh["lead_stage_stuck_days"], "#1e40af")}</td>
         </tr>"""
 
     ok_count = sc.get("OK", 0)
     no_rot = (
         f'<tr><td colspan="6" style="padding:20px;text-align:center;color:#6b7280;font-size:12px">'
-        f'All {ok_count} active leads are fresh. No rot detected.</td></tr>'
-        if not rows_html else ""
+        f"All {ok_count} active leads are fresh. No rot detected.</td></tr>"
+        if not rows_html
+        else ""
     )
 
     return f"""<!DOCTYPE html>
@@ -285,27 +306,27 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Lead Rotting</h1>
-  <div class="meta">Leadle RevOps &bull; All active leads (inbound + outbound) &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; All active leads (inbound + outbound) &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total_active']}</div>
+      <div class="stat-n">{report["total_active"]}</div>
       <div class="stat-l">Active Leads</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{sc.get('CRITICAL', 0)}</div>
+      <div class="stat-n" style="color:var(--red)">{sc.get("CRITICAL", 0)}</div>
       <div class="stat-l">Critical (both signals)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{sc.get('STALLED', 0)}</div>
-      <div class="stat-l">Stalled (no activity ≥{thresh['stalled_lead_days']}d)</div>
+      <div class="stat-n" style="color:var(--amber)">{sc.get("STALLED", 0)}</div>
+      <div class="stat-l">Stalled (no activity ≥{thresh["stalled_lead_days"]}d)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--blue)">{sc.get('STUCK', 0)}</div>
-      <div class="stat-l">Stuck (same stage ≥{thresh['lead_stage_stuck_days']}d)</div>
+      <div class="stat-n" style="color:var(--blue)">{sc.get("STUCK", 0)}</div>
+      <div class="stat-l">Stuck (same stage ≥{thresh["lead_stage_stuck_days"]}d)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{sc.get('OK', 0)}</div>
+      <div class="stat-n" style="color:var(--green)">{sc.get("OK", 0)}</div>
       <div class="stat-l">OK (fresh)</div>
     </div>
   </div>
@@ -313,7 +334,7 @@ def render_html(report: dict) -> str:
   <div class="card">
     <div class="card-title">Rotting Leads — Ranked by Severity</div>
     <div class="legend">
-      <strong>CRITICAL</strong> = stalled (no activity ≥{thresh['stalled_lead_days']}d) AND stage-stuck (≥{thresh['lead_stage_stuck_days']}d in same stage) &bull;
+      <strong>CRITICAL</strong> = stalled (no activity ≥{thresh["stalled_lead_days"]}d) AND stage-stuck (≥{thresh["lead_stage_stuck_days"]}d in same stage) &bull;
       <strong>STALLED</strong> = only no-activity signal &bull;
       <strong>STUCK</strong> = only stage-progression signal &bull;
       OK leads hidden.
@@ -339,6 +360,7 @@ def render_html(report: dict) -> str:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.lead_rotting")
     parser.add_argument("--json", metavar="FILE", help="Dump report JSON to this path")
@@ -362,21 +384,27 @@ def main(argv: list[str] | None = None) -> int:
     thresh = report["thresholds"]
 
     print(f"\nLead Rotting — {report['generated_at']}")
-    print(f"  Active: {report['total_active']}  |  "
-          f"Critical: {sc['CRITICAL']}  Stalled: {sc['STALLED']}  "
-          f"Stuck: {sc['STUCK']}  OK: {sc['OK']}")
-    print(f"  Thresholds: stalled>={thresh['stalled_lead_days']}d activity  "
-          f"stuck>={thresh['lead_stage_stuck_days']}d in stage")
+    print(
+        f"  Active: {report['total_active']}  |  "
+        f"Critical: {sc['CRITICAL']}  Stalled: {sc['STALLED']}  "
+        f"Stuck: {sc['STUCK']}  OK: {sc['OK']}"
+    )
+    print(
+        f"  Thresholds: stalled>={thresh['stalled_lead_days']}d activity  "
+        f"stuck>={thresh['lead_stage_stuck_days']}d in stage"
+    )
 
     critical = [r for r in report["leads"] if r["severity"] == "CRITICAL"]
     if critical:
         print(f"  Critical leads ({len(critical)}):")
         for r in critical:
-            print(f"    → {r['lead_name']} / {r['company']}  "
-                  f"[{r['stage_name']}]  "
-                  f"activity={r['days_since_activity']}d  "
-                  f"in_stage={r['days_in_stage']}d  "
-                  f"({r['channel']})")
+            print(
+                f"    → {r['lead_name']} / {r['company']}  "
+                f"[{r['stage_name']}]  "
+                f"activity={r['days_since_activity']}d  "
+                f"in_stage={r['days_in_stage']}d  "
+                f"({r['channel']})"
+            )
 
     stalled = [r for r in report["leads"] if r["severity"] == "STALLED"]
     if stalled:

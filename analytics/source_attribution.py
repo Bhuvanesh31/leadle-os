@@ -21,6 +21,7 @@ Usage:
     python -m analytics.source_attribution
     python -m analytics.source_attribution --json /tmp/source_gaps.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,8 +51,11 @@ _STAGE_NAMES = {
 }
 
 _ACTIVE_STAGES = {
-    "new-stage-id", "attempting-stage-id", "connected-stage-id",
-    "3200435922", "3200435923",
+    "new-stage-id",
+    "attempting-stage-id",
+    "connected-stage-id",
+    "3200435922",
+    "3200435923",
 }
 
 
@@ -68,8 +72,11 @@ def _load_known_sources() -> tuple[set[str], set[str]]:
 def _fetch_all_leads(token: str) -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     props = [
-        "hs_lead_name", "lead_source_v2", "hs_pipeline_stage",
-        "hs_createdate", "hs_associated_company_name",
+        "hs_lead_name",
+        "lead_source_v2",
+        "hs_pipeline_stage",
+        "hs_createdate",
+        "hs_associated_company_name",
     ]
     results = []
     after = None
@@ -79,7 +86,9 @@ def _fetch_all_leads(token: str) -> list[dict]:
             body["after"] = after
         r = httpx.post(
             "https://api.hubapi.com/crm/v3/objects/leads/search",
-            headers=headers, json=body, timeout=30,
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         data = r.json()
         results.extend(data.get("results", []))
@@ -114,16 +123,18 @@ def build_report(leads: list[dict], inbound: set[str], outbound: set[str]) -> di
         by_class[cls] += 1
 
         if cls in ("unattributed", "unrecognized"):
-            gap_leads.append({
-                "lead_name": p.get("hs_lead_name") or "(unnamed)",
-                "company": p.get("hs_associated_company_name") or "—",
-                "source": src,
-                "classification": cls,
-                "stage_id": stage_id,
-                "stage_name": _STAGE_NAMES.get(stage_id, stage_id),
-                "is_active": stage_id in _ACTIVE_STAGES,
-                "created": (p.get("hs_createdate") or "")[:10],
-            })
+            gap_leads.append(
+                {
+                    "lead_name": p.get("hs_lead_name") or "(unnamed)",
+                    "company": p.get("hs_associated_company_name") or "—",
+                    "source": src,
+                    "classification": cls,
+                    "stage_id": stage_id,
+                    "stage_name": _STAGE_NAMES.get(stage_id, stage_id),
+                    "is_active": stage_id in _ACTIVE_STAGES,
+                    "created": (p.get("hs_createdate") or "")[:10],
+                }
+            )
             if cls == "unrecognized":
                 unrecognized_sources[src] += 1
 
@@ -134,7 +145,11 @@ def build_report(leads: list[dict], inbound: set[str], outbound: set[str]) -> di
         "total_leads": len(leads),
         "by_classification": dict(by_class),
         "source_distribution": [
-            {"source": s or "(empty)", "count": c, "classification": _classify(s, inbound, outbound)}
+            {
+                "source": s or "(empty)",
+                "count": c,
+                "classification": _classify(s, inbound, outbound),
+            }
             for s, c in source_counts.most_common()
         ],
         "unrecognized_sources": [
@@ -143,12 +158,10 @@ def build_report(leads: list[dict], inbound: set[str], outbound: set[str]) -> di
         "gap_leads": gap_leads,
         "config_recommendation": {
             "add_to_inbound_sources": sorted(
-                s for s in unrecognized_sources
-                if s not in outbound and _looks_inbound(s)
+                s for s in unrecognized_sources if s not in outbound and _looks_inbound(s)
             ),
             "add_to_outbound_sources": sorted(
-                s for s in unrecognized_sources
-                if s not in inbound and not _looks_inbound(s)
+                s for s in unrecognized_sources if s not in inbound and not _looks_inbound(s)
             ),
         },
     }
@@ -160,6 +173,7 @@ def _looks_inbound(source: str) -> bool:
 
 
 # ── HTML render ───────────────────────────────────────────────────────────────
+
 
 def render_html(report: dict) -> str:
     bc = report["by_classification"]
@@ -183,7 +197,7 @@ def render_html(report: dict) -> str:
         source_rows += f"""
         <tr>
           <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:12px">{source_esc}</td>
-          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right">{item['count']}</td>
+          <td style="padding:9px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right">{item["count"]}</td>
           <td style="padding:9px 14px">
             <span style="color:{cls_color};font-size:12px;font-weight:500">{cls_label}</span>
           </td>
@@ -193,8 +207,8 @@ def render_html(report: dict) -> str:
     for g in gap_leads:
         active_badge = (
             '<span style="background:#fef2f2;color:#9b2226;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600">ACTIVE</span>'
-            if g["is_active"] else
-            '<span style="background:#f3f4f6;color:#9ca3af;border-radius:4px;padding:1px 6px;font-size:10px">archived/converted</span>'
+            if g["is_active"]
+            else '<span style="background:#f3f4f6;color:#9ca3af;border-radius:4px;padding:1px 6px;font-size:10px">archived/converted</span>'
         )
         src_display = _html.escape(g["source"]) if g["source"] else "(empty)"
         lead_name_esc = _html.escape(g["lead_name"])
@@ -207,9 +221,9 @@ def render_html(report: dict) -> str:
             <div style="font-size:12px;color:#6b7280">{company_esc}</div>
           </td>
           <td style="padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:{cls_color}">{src_display}</td>
-          <td style="padding:10px 14px;font-size:12px;color:#374151">{g['stage_name']}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#374151">{g["stage_name"]}</td>
           <td style="padding:10px 14px">{active_badge}</td>
-          <td style="padding:10px 14px;font-size:12px;color:#6b7280">{g['created']}</td>
+          <td style="padding:10px 14px;font-size:12px;color:#6b7280">{g["created"]}</td>
         </tr>"""
 
     reco = report["config_recommendation"]
@@ -249,27 +263,27 @@ def render_html(report: dict) -> str:
 <body>
 <div class="wrap">
   <h1>Source Attribution Gaps</h1>
-  <div class="meta">Leadle RevOps &bull; All leads (active + archived) &bull; Generated {report['generated_at']}</div>
+  <div class="meta">Leadle RevOps &bull; All leads (active + archived) &bull; Generated {report["generated_at"]}</div>
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total_leads']}</div>
+      <div class="stat-n">{report["total_leads"]}</div>
       <div class="stat-l">Total Leads</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{bc.get('known_inbound', 0)}</div>
+      <div class="stat-n" style="color:var(--green)">{bc.get("known_inbound", 0)}</div>
       <div class="stat-l">Known Inbound</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:#1e40af">{bc.get('known_outbound', 0)}</div>
+      <div class="stat-n" style="color:#1e40af">{bc.get("known_outbound", 0)}</div>
       <div class="stat-l">Known Outbound</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--red)">{bc.get('unattributed', 0)}</div>
+      <div class="stat-n" style="color:var(--red)">{bc.get("unattributed", 0)}</div>
       <div class="stat-l">Unattributed</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--amber)">{bc.get('unrecognized', 0)}</div>
+      <div class="stat-n" style="color:var(--amber)">{bc.get("unrecognized", 0)}</div>
       <div class="stat-l">Unrecognized Source</div>
     </div>
   </div>
@@ -332,6 +346,7 @@ def render_html(report: dict) -> str:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="analytics.source_attribution")
     parser.add_argument("--json", metavar="FILE", help="Dump report JSON to this path")
@@ -353,11 +368,13 @@ def main(argv: list[str] | None = None) -> int:
     bc = report["by_classification"]
 
     print(f"\nSource Attribution — {report['generated_at']}")
-    print(f"  Total: {report['total_leads']}  |  "
-          f"Known inbound: {bc.get('known_inbound', 0)}  "
-          f"Known outbound: {bc.get('known_outbound', 0)}  "
-          f"Unattributed: {bc.get('unattributed', 0)}  "
-          f"Unrecognized: {bc.get('unrecognized', 0)}")
+    print(
+        f"  Total: {report['total_leads']}  |  "
+        f"Known inbound: {bc.get('known_inbound', 0)}  "
+        f"Known outbound: {bc.get('known_outbound', 0)}  "
+        f"Unattributed: {bc.get('unattributed', 0)}  "
+        f"Unrecognized: {bc.get('unrecognized', 0)}"
+    )
 
     if report["unrecognized_sources"]:
         print("  Unrecognized source values:")
@@ -368,7 +385,9 @@ def main(argv: list[str] | None = None) -> int:
     if active_gaps:
         print(f"  ⚠  {len(active_gaps)} ACTIVE leads with source gaps (affect current scoring):")
         for g in active_gaps:
-            print(f"    → {g['lead_name']} / {g['company']} [{g['stage_name']}] source='{g['source']}'")
+            print(
+                f"    → {g['lead_name']} / {g['company']} [{g['stage_name']}] source='{g['source']}'"
+            )
 
     reco = report["config_recommendation"]
     if reco["add_to_inbound_sources"]:

@@ -13,6 +13,7 @@ Usage:
     python -m analytics.deal_pipeline_leakage --start 2026-01-01 --end 2026-06-30
     python -m analytics.deal_pipeline_leakage --out /tmp/deal-leak.html
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,6 +44,7 @@ _BASE_PROPS = [
 
 # ── config ────────────────────────────────────────────────────────────────────
 
+
 def _load_deal_stages() -> tuple[str, list[dict]]:
     """Return (pipeline_id, sorted stages list) from config."""
     with open(_CONFIG_PATH) as f:
@@ -53,6 +55,7 @@ def _load_deal_stages() -> tuple[str, list[dict]]:
 
 # ── HubSpot fetch ─────────────────────────────────────────────────────────────
 
+
 def _epoch_ms(d: date, *, end_of_day: bool = False) -> str:
     if end_of_day:
         dt = datetime.combine(d, datetime.max.time(), tzinfo=UTC)
@@ -61,18 +64,23 @@ def _epoch_ms(d: date, *, end_of_day: bool = False) -> str:
     return str(int(dt.timestamp() * 1000))
 
 
-def fetch_deals(token: str, pipeline_id: str, stages: list[dict],
-                start: date | None, end: date | None) -> list[dict]:
+def fetch_deals(
+    token: str, pipeline_id: str, stages: list[dict], start: date | None, end: date | None
+) -> list[dict]:
     stage_props = [s["prop"] for s in stages]
     properties = _BASE_PROPS + stage_props
 
-    filters: list[dict] = [
-        {"propertyName": "pipeline", "operator": "EQ", "value": pipeline_id}
-    ]
+    filters: list[dict] = [{"propertyName": "pipeline", "operator": "EQ", "value": pipeline_id}]
     if start:
         filters.append({"propertyName": "createdate", "operator": "GTE", "value": _epoch_ms(start)})
     if end:
-        filters.append({"propertyName": "createdate", "operator": "LTE", "value": _epoch_ms(end, end_of_day=True)})
+        filters.append(
+            {
+                "propertyName": "createdate",
+                "operator": "LTE",
+                "value": _epoch_ms(end, end_of_day=True),
+            }
+        )
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     out: list[dict] = []
@@ -100,6 +108,7 @@ def fetch_deals(token: str, pipeline_id: str, stages: list[dict],
 
 
 # ── compute ───────────────────────────────────────────────────────────────────
+
 
 def compute_leakage(raw_deals: list[dict], stages: list[dict]) -> dict:
     funnel_stages = [s for s in stages if not s["terminal"]]
@@ -136,15 +145,17 @@ def compute_leakage(raw_deals: list[dict], stages: list[dict]) -> dict:
             raw_drop = prev - entered
             dropped = max(raw_drop, 0)
             skipped_in = raw_drop < 0
-        funnel_rows.append({
-            "stage_id": s["stage_id"],
-            "name": s["name"],
-            "entered": entered,
-            "current": current,
-            "reach_pct": reach_pct,
-            "dropped": dropped,
-            "skipped_in": skipped_in,
-        })
+        funnel_rows.append(
+            {
+                "stage_id": s["stage_id"],
+                "name": s["name"],
+                "entered": entered,
+                "current": current,
+                "reach_pct": reach_pct,
+                "dropped": dropped,
+                "skipped_in": skipped_in,
+            }
+        )
 
     # Terminal outcome counts.
     won = stage_entered.get("3022478048", current_stage_counts.get("3022478048", 0))
@@ -165,6 +176,7 @@ def compute_leakage(raw_deals: list[dict], stages: list[dict]) -> dict:
 
 
 # ── HTML render ───────────────────────────────────────────────────────────────
+
 
 def render_html(report: dict, generated_at: str, window_label: str) -> str:
     top = report["funnel"][0]["entered"] if report["funnel"] else 1
@@ -202,13 +214,13 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
               <div style="flex:1;background:#e5e7eb;border-radius:4px;height:8px;max-width:180px">
                 <div style="background:#1e40af;height:8px;border-radius:4px;width:{bar}%"></div>
               </div>
-              <span style="font-weight:500">{row['name']}</span>{leak_marker}
+              <span style="font-weight:500">{row["name"]}</span>{leak_marker}
             </div>
           </td>
-          <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums">{row['entered']}</td>
+          <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums">{row["entered"]}</td>
           <td style="padding:10px 14px;text-align:right">{reach_badge}</td>
           <td style="padding:10px 14px;text-align:right">{drop_cell}</td>
-          <td style="padding:10px 14px;text-align:right;color:#6b7280">{row['current']}</td>
+          <td style="padding:10px 14px;text-align:right;color:#6b7280">{row["current"]}</td>
         </tr>"""
 
     leak_box = ""
@@ -217,11 +229,11 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
         leak_box = f"""
       <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:16px 20px;margin-bottom:24px">
         <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:#9b2226;margin-bottom:4px">
-          Biggest leak: {w['name']}
+          Biggest leak: {w["name"]}
         </div>
         <div style="font-size:13px;color:#7f1d1d">
-          {w['dropped']} deals entered the prior stage but never reached {w['name']}
-          ({w['reach_pct']}% of all deals ever touched this stage).
+          {w["dropped"]} deals entered the prior stage but never reached {w["name"]}
+          ({w["reach_pct"]}% of all deals ever touched this stage).
         </div>
       </div>"""
 
@@ -262,23 +274,23 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
 
   <div class="stat-row">
     <div class="stat">
-      <div class="stat-n">{report['total']}</div>
+      <div class="stat-n">{report["total"]}</div>
       <div class="stat-l">Total Deals</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--blue)">{report['active']}</div>
+      <div class="stat-n" style="color:var(--blue)">{report["active"]}</div>
       <div class="stat-l">Active (In Progress)</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--green)">{report['won']}</div>
+      <div class="stat-n" style="color:var(--green)">{report["won"]}</div>
       <div class="stat-l">Won</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--{'green' if win_rate >= 20 else 'amber' if win_rate >= 10 else 'red'})">{win_rate}%</div>
+      <div class="stat-n" style="color:var(--{"green" if win_rate >= 20 else "amber" if win_rate >= 10 else "red"})">{win_rate}%</div>
       <div class="stat-l">Win Rate</div>
     </div>
     <div class="stat">
-      <div class="stat-n" style="color:var(--muted)">{report['lost']}</div>
+      <div class="stat-n" style="color:var(--muted)">{report["lost"]}</div>
       <div class="stat-l">Lost</div>
     </div>
   </div>
@@ -312,11 +324,14 @@ def render_html(report: dict, generated_at: str, window_label: str) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
+
     load_dotenv()
 
     from analytics._periods import add_period_args, resolve_args
+
     parser = argparse.ArgumentParser(prog="analytics.deal_pipeline_leakage")
     add_period_args(parser)
     parser.add_argument("--out", help="Output HTML path.")
@@ -350,11 +365,19 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Report written to {out_path}", file=sys.stderr)
 
     print(f"\nDeal Pipeline Leakage ({window_label})")
-    print(f"  Total: {report['total']}  Won: {report['won']}  Lost: {report['lost']}  Active: {report['active']}")
+    print(
+        f"  Total: {report['total']}  Won: {report['won']}  Lost: {report['lost']}  Active: {report['active']}"
+    )
     for row in report["funnel"]:
         skip = "  (jumps in)" if row["skipped_in"] else ""
-        leak = " ← LEAK" if (report["worst_leak"] and row["stage_id"] == report["worst_leak"]["stage_id"]) else ""
-        print(f"  {row['name']:22s}  entered={row['entered']:4d}  reach={row['reach_pct']:5.1f}%  drop={row['dropped']:4d}{skip}{leak}")
+        leak = (
+            " ← LEAK"
+            if (report["worst_leak"] and row["stage_id"] == report["worst_leak"]["stage_id"])
+            else ""
+        )
+        print(
+            f"  {row['name']:22s}  entered={row['entered']:4d}  reach={row['reach_pct']:5.1f}%  drop={row['dropped']:4d}{skip}{leak}"
+        )
     return 0
 
 

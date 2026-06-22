@@ -10,6 +10,7 @@ contacts. The two are semantically different: 'lifecyclestage = lead' on
 contacts is a marketing attribute applied broadly; the Leads object is the
 sales team's actual work queue.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -98,7 +99,9 @@ def fetch(
             client.close()
 
 
-def _fetch_lead_deal_associations(client: httpx.Client, lead_ids: list[str]) -> dict[str, list[str]]:
+def _fetch_lead_deal_associations(
+    client: httpx.Client, lead_ids: list[str]
+) -> dict[str, list[str]]:
     """Return {lead_id: [deal_id, ...]} from HubSpot's association API.
 
     Uses /crm/v3/associations/leads/deals/batch/read. Returns 207 (partial)
@@ -132,20 +135,22 @@ def _paginated_search(client: httpx.Client, window_start: date, window_end: date
     after: str | None = None
     while True:
         body = {
-            "filterGroups": [{
-                "filters": [
-                    {
-                        "propertyName": "hs_createdate",
-                        "operator": "GTE",
-                        "value": _to_epoch_ms(window_start, start_of_day=True),
-                    },
-                    {
-                        "propertyName": "hs_createdate",
-                        "operator": "LTE",
-                        "value": _to_epoch_ms(window_end, start_of_day=False),
-                    },
-                ],
-            }],
+            "filterGroups": [
+                {
+                    "filters": [
+                        {
+                            "propertyName": "hs_createdate",
+                            "operator": "GTE",
+                            "value": _to_epoch_ms(window_start, start_of_day=True),
+                        },
+                        {
+                            "propertyName": "hs_createdate",
+                            "operator": "LTE",
+                            "value": _to_epoch_ms(window_end, start_of_day=False),
+                        },
+                    ],
+                }
+            ],
             "properties": LEAD_PROPERTIES,
             "sorts": [{"propertyName": "hs_createdate", "direction": "ASCENDING"}],
             "limit": _PAGE_LIMIT,
@@ -176,7 +181,9 @@ def _shape_lead(lead: dict) -> dict[str, Any]:
         "pipeline_stage_id": p.get("hs_pipeline_stage"),
         "hubspot_owner_id": p.get("hubspot_owner_id"),
         "createdate": _iso_date(p.get("hs_createdate")),
-        "last_activity_date": _iso_date(p.get("hs_contact_last_activity_date") or p.get("hs_lastmodifieddate")),
+        "last_activity_date": _iso_date(
+            p.get("hs_contact_last_activity_date") or p.get("hs_lastmodifieddate")
+        ),
         "contact_email": p.get("hs_associated_contact_email"),
         "contact_name": contact_name,
         "company_name": p.get("hs_associated_company_name"),

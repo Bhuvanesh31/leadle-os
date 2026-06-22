@@ -3,6 +3,7 @@
 All API calls are mocked via httpx.MockTransport.
 The mini XLSX fixture (upsta_mini.xlsx) is used for sheet data.
 """
+
 from pathlib import Path
 
 import httpx
@@ -19,6 +20,7 @@ NAME_CONTAINS = "upsta"
 
 
 # ── Mock helpers ──────────────────────────────────────────────────────────────
+
 
 def _mock(transport_map: dict):
     """Return httpx.MockTransport that matches by longest-fragment-first."""
@@ -80,6 +82,7 @@ _INSTANTLY_MAP = {
 
 
 # ── Happy path ────────────────────────────────────────────────────────────────
+
 
 def test_load_merges_all_three_sources():
     aimfox_client = httpx.Client(transport=_mock(_AIMFOX_MAP))
@@ -156,6 +159,7 @@ def test_load_populates_senders_and_steps_from_instantly():
 
 
 # ── Degrade tests ─────────────────────────────────────────────────────────────
+
 
 def test_load_degrades_when_aimfox_raises():
     """Aimfox HTTP error → linkedin_campaigns=[], sheet data intact."""
@@ -243,10 +247,9 @@ def test_load_default_reads_sheets(monkeypatch):
         "dashboard.client.sources.client_registry.spreadsheet_id_for",
         lambda c: "resolved-id-for-" + c,
     )
-    monkeypatch.setattr(
-        "dashboard.client.sources.sheet_source.read_sheets", fake_read_sheets
-    )
+    monkeypatch.setattr("dashboard.client.sources.sheet_source.read_sheets", fake_read_sheets)
     # Aimfox/Instantly will degrade to [] with no clients passed.
-    loader.load(WINDOW, client="UPSTA", aimfox_key="", instantly_key="",
-                name_contains=NAME_CONTAINS)
+    loader.load(
+        WINDOW, client="UPSTA", aimfox_key="", instantly_key="", name_contains=NAME_CONTAINS
+    )
     assert calls["id"] == "resolved-id-for-UPSTA"

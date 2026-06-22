@@ -3,6 +3,7 @@
 No live API calls. Loader callees are monkeypatched to return canned data.
 The real XLSX fixture is used (via sheet_source.read_xlsx).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -72,15 +73,22 @@ def test_main_all_periods_both_audiences_writes_four(tmp_path, monkeypatch):
     monkeypatch.setenv(AIMFOX_ENV, "x")
     monkeypatch.setenv(INSTANTLY_ENV, "x")
 
-    rc = render.main([
-        "--xlsx", str(FIX_XLSX),
-        "--all-periods",
-        "--audience", "both",
-        "--skip-agents",
-        "--period-end", "2026-06-30",
-        "--output-dir", str(tmp_path),
-        "--snapshot-store", str(tmp_path / "snaps.json"),
-    ])
+    rc = render.main(
+        [
+            "--xlsx",
+            str(FIX_XLSX),
+            "--all-periods",
+            "--audience",
+            "both",
+            "--skip-agents",
+            "--period-end",
+            "2026-06-30",
+            "--output-dir",
+            str(tmp_path),
+            "--snapshot-store",
+            str(tmp_path / "snaps.json"),
+        ]
+    )
 
     assert rc == 0
     names = {p.name for p in tmp_path.glob("*.html")}

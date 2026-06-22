@@ -9,6 +9,7 @@ Scenario:
              Fri/Afternoon level = ceil(4*1/3) = ceil(1.33) = 2
              Mon/<any> level = 0 (untouched)
 """
+
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo

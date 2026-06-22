@@ -1,4 +1,5 @@
 """Funnel Leak agent — interprets Page 1 §06 conversions (Sonnet)."""
+
 from __future__ import annotations
 
 from dashboard.agents._client import run_agent

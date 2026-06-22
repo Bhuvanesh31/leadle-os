@@ -1,6 +1,7 @@
 """Shared agent infrastructure: Anthropic SDK wrapper with retries,
 structured output parsing, and hallucination validation.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,9 +50,7 @@ def validate_no_hallucinated_numbers(
         n = _normalize_number(m)
         if n is None:
             continue
-        if not any(
-            abs(n - i) <= tolerance * max(abs(n), abs(i), 1) for i in input_nums
-        ):
+        if not any(abs(n - i) <= tolerance * max(abs(n), abs(i), 1) for i in input_nums):
             return False
     return True
 
@@ -101,9 +100,7 @@ async def run_agent(
     user = f"Input:\n```json\n{json.dumps(input_payload, indent=2)}\n```\n\nReturn JSON only."
 
     try:
-        text = await _call_claude(
-            client, model=model, system=system, user=user
-        )
+        text = await _call_claude(client, model=model, system=system, user=user)
         parsed = _extract_json(text)
         if parsed is None:
             # Retry once with stricter instruction
@@ -111,16 +108,13 @@ async def run_agent(
                 client,
                 model=model,
                 system=system,
-                user=user
-                + "\n\nIMPORTANT: respond with JSON ONLY, no prose.",
+                user=user + "\n\nIMPORTANT: respond with JSON ONLY, no prose.",
             )
             parsed = _extract_json(text)
         if parsed is None:
             raise ValueError("Agent returned no parseable JSON")
 
-        if not validate_no_hallucinated_numbers(
-            json.dumps(input_payload), json.dumps(parsed)
-        ):
+        if not validate_no_hallucinated_numbers(json.dumps(input_payload), json.dumps(parsed)):
             raise ValueError("Hallucinated number detected in agent output")
 
         return {"degraded": False, **parsed}

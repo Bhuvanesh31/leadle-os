@@ -2,6 +2,7 @@
 
 httpx.MockTransport for hermetic tests — same pattern as test_aimfox.py.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date
@@ -43,10 +44,13 @@ def test_fetch_returns_shaped_leads():
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/crm/v3/objects/leads/search"):
-            return httpx.Response(200, json={
-                "total": 2,
-                "results": [_sample_lead(1), _sample_lead(2)],
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "total": 2,
+                    "results": [_sample_lead(1), _sample_lead(2)],
+                },
+            )
         if request.url.path.endswith("/crm/v3/associations/leads/deals/batch/read"):
             return httpx.Response(200, json={"results": []})
         return httpx.Response(404)
@@ -74,18 +78,25 @@ def test_fetch_paginates_via_after_cursor():
             return httpx.Response(200, json={"results": []})
         body = request.read().decode()
         import json as _json
+
         after = _json.loads(body).get("after")
         pages_seen.append(after)
         if after is None:
-            return httpx.Response(200, json={
+            return httpx.Response(
+                200,
+                json={
+                    "total": 3,
+                    "results": [_sample_lead(i) for i in range(1, 3)],
+                    "paging": {"next": {"after": "cursor-page-2"}},
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
                 "total": 3,
-                "results": [_sample_lead(i) for i in range(1, 3)],
-                "paging": {"next": {"after": "cursor-page-2"}},
-            })
-        return httpx.Response(200, json={
-            "total": 3,
-            "results": [_sample_lead(3)],
-        })
+                "results": [_sample_lead(3)],
+            },
+        )
 
     with _make_client(handler) as client:
         result = fetch("test", date(2026, 4, 1), date(2026, 6, 30), client=client)
@@ -100,18 +111,23 @@ def test_fetch_filters_by_owner_allowlist():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/crm/v3/associations/leads/deals/batch/read"):
             return httpx.Response(200, json={"results": []})
-        return httpx.Response(200, json={
-            "total": 3,
-            "results": [
-                _sample_lead(1, owner="80765353"),  # Sai — keep
-                _sample_lead(2, owner="999999999"),  # unknown — drop
-                _sample_lead(3, owner="77758216"),  # Akil — keep
-            ],
-        })
+        return httpx.Response(
+            200,
+            json={
+                "total": 3,
+                "results": [
+                    _sample_lead(1, owner="80765353"),  # Sai — keep
+                    _sample_lead(2, owner="999999999"),  # unknown — drop
+                    _sample_lead(3, owner="77758216"),  # Akil — keep
+                ],
+            },
+        )
 
     with _make_client(handler) as client:
         result = fetch(
-            "test", date(2026, 4, 1), date(2026, 6, 30),
+            "test",
+            date(2026, 4, 1),
+            date(2026, 6, 30),
             owner_allowlist=["80765353", "77758216"],
             client=client,
         )
@@ -153,6 +169,7 @@ def test_shape_lead_handles_missing_optional_fields():
 def test_to_epoch_ms_uses_utc():
     """Boundary helper must produce UTC bounds — same caveat as Aimfox."""
     from datetime import datetime
+
     start = _to_epoch_ms(date(2026, 4, 1), start_of_day=True)
     end = _to_epoch_ms(date(2026, 4, 1), start_of_day=False)
     expected_start = int(datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC).timestamp() * 1000)

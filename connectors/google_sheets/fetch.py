@@ -5,6 +5,7 @@ client is injectable so tests never hit the network or auth. The Google
 libraries are imported lazily inside _authorized_client so the injected-client
 path needs neither installed.
 """
+
 from __future__ import annotations
 
 import os

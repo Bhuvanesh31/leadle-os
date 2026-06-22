@@ -11,25 +11,32 @@ from dashboard.compute.windows import resolve_window
 
 @pytest.fixture
 def raw():
-    return json.loads(
-        (Path(__file__).parent / "fixtures" / "sample_raw.json").read_text()
-    )
+    return json.loads((Path(__file__).parent / "fixtures" / "sample_raw.json").read_text())
 
 
 @pytest.fixture
 def rules():
-    return {"rotting_deal_days": 14, "stalled_lead_days": 5, "followup_gap_days": 5,
-            "outreach_min_sends": 10, "anomaly_pct_threshold": 30,
-            "hygiene": {"require_owner": True, "require_source": True, "require_lifecycle": True}}
+    return {
+        "rotting_deal_days": 14,
+        "stalled_lead_days": 5,
+        "followup_gap_days": 5,
+        "outreach_min_sends": 10,
+        "anomaly_pct_threshold": 30,
+        "hygiene": {"require_owner": True, "require_source": True, "require_lifecycle": True},
+    }
 
 
 @pytest.fixture
 def targets():
-    return {"annual": {"goal_amount": 319000, "goal_currency": "USD",
-                       "target_date": "2026-10-31"},
-            "monthly": {"target_amount": 61800, "target_currency": "USD"},
-            "pipeline_coverage": {"ratio_target": 3.0, "ratio_warning_below": 2.0,
-                                  "ratio_critical_below": 1.0}}
+    return {
+        "annual": {"goal_amount": 319000, "goal_currency": "USD", "target_date": "2026-10-31"},
+        "monthly": {"target_amount": 61800, "target_currency": "USD"},
+        "pipeline_coverage": {
+            "ratio_target": 3.0,
+            "ratio_warning_below": 2.0,
+            "ratio_critical_below": 1.0,
+        },
+    }
 
 
 @pytest.fixture
@@ -50,7 +57,9 @@ def test_monthly_control_pipeline_coverage(raw, rules, targets, window):
     # Open pipeline = $5K (Scalenut) + $8K (QuoDeck) = $13K
     # Monthly target = $61,800 → coverage = 13000 / 61800 ≈ 0.21
     assert out["monthly_control"]["open_pipeline"] == 13000
-    assert out["monthly_control"]["pipeline_coverage_ratio"] == pytest.approx(13000 / 61800, rel=1e-3)
+    assert out["monthly_control"]["pipeline_coverage_ratio"] == pytest.approx(
+        13000 / 61800, rel=1e-3
+    )
 
 
 def test_funnel_stage_counts(raw, rules, targets, window):

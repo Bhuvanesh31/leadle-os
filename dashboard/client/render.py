@@ -4,6 +4,7 @@ The session loads the Drive-dumped workbook with --xlsx; the loader assembles
 sheet + Aimfox + Instantly into a ClientData. Snapshots use a local JSON store
 by default. One run emits up to 4 files (period × audience).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,21 +43,38 @@ def _window(period: str, period_end_iso: str) -> tuple[str, str]:
 
 
 def visible_blocks(layout: dict, audience: str) -> list[dict]:
-    return [b for b in layout["blocks"]
-            if b["visibility"] == "both" or b["visibility"] == audience]
+    return [b for b in layout["blocks"] if b["visibility"] == "both" or b["visibility"] == audience]
 
 
-def render(data, metrics, deltas_bag, narrative, actions, *, audience, period_label,
-           client, layout, rubric, sample=False, rendered_at: str | None = None) -> str:
-    env = Environment(loader=FileSystemLoader(str(_TEMPLATES)),
-                      autoescape=True)
+def render(
+    data,
+    metrics,
+    deltas_bag,
+    narrative,
+    actions,
+    *,
+    audience,
+    period_label,
+    client,
+    layout,
+    rubric,
+    sample=False,
+    rendered_at: str | None = None,
+) -> str:
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATES)), autoescape=True)
     template = env.get_template("report.html.j2")
     if rendered_at is None:
         rendered_at = datetime.now().isoformat(timespec="seconds")
     return template.render(
-        client=client, period_label=period_label, audience=audience, sample=sample,
-        blocks=visible_blocks(layout, audience), metrics=metrics,
-        deltas=deltas_bag, narrative=narrative, actions=actions,
+        client=client,
+        period_label=period_label,
+        audience=audience,
+        sample=sample,
+        blocks=visible_blocks(layout, audience),
+        metrics=metrics,
+        deltas=deltas_bag,
+        narrative=narrative,
+        actions=actions,
         rendered_at=rendered_at,
         rubric=rubric,
     )
@@ -65,9 +83,12 @@ def render(data, metrics, deltas_bag, narrative, actions, *, audience, period_la
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--client", default="UPSTA")
-    ap.add_argument("--xlsx", default=None,
-                    help="Optional offline workbook (.xlsx). Omit to read live from the "
-                         "configured Google Sheet for --client.")
+    ap.add_argument(
+        "--xlsx",
+        default=None,
+        help="Optional offline workbook (.xlsx). Omit to read live from the "
+        "configured Google Sheet for --client.",
+    )
     # Period selection: --period XOR --all-periods; default is all-periods
     period_group = ap.add_mutually_exclusive_group()
     period_group.add_argument("--period", choices=["weekly", "monthly"])
@@ -75,8 +96,9 @@ def main(argv=None) -> int:
     ap.add_argument("--audience", choices=["internal", "client", "both"], default="both")
     ap.add_argument("--period-end", default=date.today().isoformat())
     ap.add_argument("--skip-agents", action="store_true")
-    ap.add_argument("--snapshot-store",
-                    default=str(_ROOT / "reports" / "client" / "_snapshots.json"))
+    ap.add_argument(
+        "--snapshot-store", default=str(_ROOT / "reports" / "client" / "_snapshots.json")
+    )
     ap.add_argument("--output-dir", default=str(_ROOT / "reports" / "client"))
     ap.add_argument("--sample", action="store_true")
     args = ap.parse_args(argv)
@@ -112,8 +134,12 @@ def main(argv=None) -> int:
         )
 
         # Guard: no campaign/spine signal at all
-        if (not data.email_campaigns and not data.linkedin_campaigns
-                and not data.warm_leads and not data.targets):
+        if (
+            not data.email_campaigns
+            and not data.linkedin_campaigns
+            and not data.warm_leads
+            and not data.targets
+        ):
             print(
                 f"No data matched client '{client_name}' for {period} window "
                 f"{window[0]}..{window[1]}. Check the workbook or campaign prefix.",
@@ -131,16 +157,26 @@ def main(argv=None) -> int:
                 narrative = {"degraded": True, "narrative": ""}
                 actions = {"degraded": True, "actions": []}
             else:
-                narrative = asyncio.run(narrative_agent.synthesize(
-                    metrics, audience=audience, client=client_name))
-                actions = asyncio.run(actions_agent.synthesize(
-                    metrics, client=client_name, rubric=rubric))
+                narrative = asyncio.run(
+                    narrative_agent.synthesize(metrics, audience=audience, client=client_name)
+                )
+                actions = asyncio.run(
+                    actions_agent.synthesize(metrics, client=client_name, rubric=rubric)
+                )
 
             label = f"{period} ending {args.period_end}"
             html = render(
-                data, metrics, deltas_bag, narrative, actions,
-                audience=audience, period_label=label, client=client_name,
-                layout=layout, rubric=rubric, sample=args.sample,
+                data,
+                metrics,
+                deltas_bag,
+                narrative,
+                actions,
+                audience=audience,
+                period_label=label,
+                client=client_name,
+                layout=layout,
+                rubric=rubric,
+                sample=args.sample,
             )
 
             out = out_dir / f"{client_name}-{args.period_end}-{period}-{audience}.html"

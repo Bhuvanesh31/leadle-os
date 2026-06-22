@@ -1,4 +1,5 @@
 """Tests for connectors.instantly.fetch — mocked via httpx.MockTransport."""
+
 import httpx
 
 from connectors.instantly.fetch import fetch
@@ -14,17 +15,22 @@ def _mock(transport_map):
             if frag in str(request.url):
                 return httpx.Response(200, json=payload)
         return httpx.Response(404, json={})
+
     return httpx.MockTransport(handler)
 
 
 def test_fetch_shapes_campaigns_and_filters_by_name():
     tmap = {
-        "/campaigns": {"items": [
-            {"id": "c1", "name": "Upsta_SFDI_V1"},
-            {"id": "c2", "name": "OtherClient_V1"}]},
-        "/campaigns/analytics": {"emails_sent_count": 414, "open_count": 140,
-                                 "link_click_count": 42, "bounced_count": 41,
-                                 "reply_count": 0},
+        "/campaigns": {
+            "items": [{"id": "c1", "name": "Upsta_SFDI_V1"}, {"id": "c2", "name": "OtherClient_V1"}]
+        },
+        "/campaigns/analytics": {
+            "emails_sent_count": 414,
+            "open_count": 140,
+            "link_click_count": 42,
+            "bounced_count": 41,
+            "reply_count": 0,
+        },
     }
     client = httpx.Client(transport=_mock(tmap))
     out = fetch("KEY", "2026-06-01", "2026-06-30", name_contains="upsta", client=client)
@@ -35,7 +41,9 @@ def test_fetch_shapes_campaigns_and_filters_by_name():
 
 
 def test_fetch_degrades_on_http_error():
-    def boom(request): raise httpx.ConnectError("down")
+    def boom(request):
+        raise httpx.ConnectError("down")
+
     client = httpx.Client(transport=httpx.MockTransport(boom))
     out = fetch("KEY", "2026-06-01", "2026-06-30", name_contains="upsta", client=client)
     assert out["available"] is False and "reason" in out
@@ -45,15 +53,20 @@ def test_fetch_degrades_on_http_error():
 # Task 9: senders (GET /accounts/analytics) + steps (GET /campaigns/analytics/steps)
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_populates_senders_from_accounts_analytics():
     tmap = {
         "/campaigns": {"items": [{"id": "c1", "name": "Upsta_SFDI_V1"}]},
-        "/campaigns/analytics": {"emails_sent_count": 100, "open_count": 20,
-                                  "link_click_count": 5, "bounced_count": 3,
-                                  "reply_count": 0},
+        "/campaigns/analytics": {
+            "emails_sent_count": 100,
+            "open_count": 20,
+            "link_click_count": 5,
+            "bounced_count": 3,
+            "reply_count": 0,
+        },
         "/accounts/analytics": [
             {"from_email": "alice@upsta.co", "sent": 60, "bounced": 2},
-            {"from_email": "bob@upsta.co",   "sent": 40, "bounced": 1},
+            {"from_email": "bob@upsta.co", "sent": 40, "bounced": 1},
         ],
         "/campaigns/analytics/steps": [],
     }
@@ -100,13 +113,17 @@ def test_fetch_populates_steps_from_campaigns_analytics_steps():
     Each captured step row must include sent, opened, and clicked."""
     tmap = {
         "/campaigns": {"items": [{"id": "c1", "name": "Upsta_V1"}]},
-        "/campaigns/analytics": {"emails_sent_count": 100, "open_count": 20,
-                                  "link_click_count": 5, "bounced_count": 2,
-                                  "reply_count": 0},
+        "/campaigns/analytics": {
+            "emails_sent_count": 100,
+            "open_count": 20,
+            "link_click_count": 5,
+            "bounced_count": 2,
+            "reply_count": 0,
+        },
         "/accounts/analytics": [],
         "/campaigns/analytics/steps": [
             {"step": 1, "sent": 100, "opened": 24, "clicked": 6},
-            {"step": 2, "sent": 80,  "opened": 15, "clicked": 3},
+            {"step": 2, "sent": 80, "opened": 15, "clicked": 3},
         ],
     }
     client = httpx.Client(transport=_mock(tmap))
@@ -138,13 +155,19 @@ def test_fetch_steps_missing_keys_default_to_zero():
 def test_fetch_steps_aggregated_across_campaigns():
     """When multiple campaigns match, steps from all campaigns are accumulated."""
     tmap = {
-        "/campaigns": {"items": [
-            {"id": "c1", "name": "Upsta_V1"},
-            {"id": "c2", "name": "Upsta_V2"},
-        ]},
-        "/campaigns/analytics": {"emails_sent_count": 50, "open_count": 10,
-                                  "link_click_count": 2, "bounced_count": 1,
-                                  "reply_count": 0},
+        "/campaigns": {
+            "items": [
+                {"id": "c1", "name": "Upsta_V1"},
+                {"id": "c2", "name": "Upsta_V2"},
+            ]
+        },
+        "/campaigns/analytics": {
+            "emails_sent_count": 50,
+            "open_count": 10,
+            "link_click_count": 2,
+            "bounced_count": 1,
+            "reply_count": 0,
+        },
         "/accounts/analytics": [],
         "/campaigns/analytics/steps": [
             {"step": 1, "sent": 50, "opened": 10, "clicked": 2},

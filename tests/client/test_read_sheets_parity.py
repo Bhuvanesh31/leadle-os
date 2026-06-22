@@ -1,4 +1,5 @@
 """read_sheets must produce the same ClientData as read_xlsx for the same rows."""
+
 from pathlib import Path
 
 import openpyxl
