@@ -371,3 +371,15 @@ def read_xlsx(path: str) -> ClientData:
             tabs[tab_name] = list(wb[tab_name].iter_rows(values_only=True))
     wb.close()
     return _parse_tabs(tabs)
+
+
+def read_sheets(spreadsheet_id: str, *, client=None) -> ClientData:
+    """Read the workbook live from Google Sheets and return a ClientData.
+
+    Fetches the known tabs via the google_sheets connector, then delegates to
+    the same _parse_tabs core read_xlsx uses. Inject `client` in tests.
+    """
+    from connectors.google_sheets import fetch as sheets_fetch
+
+    tabs = sheets_fetch.fetch(spreadsheet_id, list(_ALL_SHEET_TABS), client=client)
+    return _parse_tabs(tabs)
