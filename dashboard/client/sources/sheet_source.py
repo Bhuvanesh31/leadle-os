@@ -160,6 +160,15 @@ _WH_LINKEDIN = "Webhook - LinkedIn"
 _WH_EMAIL = "Webhook - Email"
 _RESP_TAB = "Response Tracker"
 
+# Canonical tab set the parser understands (header row first in each).
+_ALL_SHEET_TABS = (*_SPINE_TABS, _WH_LINKEDIN, _WH_EMAIL, _RESP_TAB)
+
+
+def _row_is_empty(row) -> bool:
+    """True when every cell is None or blank (covers openpyxl None and gspread '')."""
+    return all(v is None or str(v).strip() == "" for v in row)
+
+
 # LinkedIn reply Event Types that indicate a human reply
 _LI_REPLY_TYPES = {"reply", "campaign_reply"}
 
@@ -218,40 +227,39 @@ def _is_header_repeat(row: tuple, header_tuple: tuple) -> bool:
     return row_strs == hdr_strs
 
 
-def read_xlsx(path: str) -> ClientData:
-    """Parse the client prospect XLSX workbook and return a ClientData.
+def _parse_tabs(tabs: dict[str, list]) -> ClientData:
+    """Build ClientData from a {tab_name: rows} map (row 0 = header).
 
-    Uses openpyxl(read_only=True, data_only=True). Resolves columns by header
-    NAME (not position). Skips repeated header rows (pagination artifact) and
-    all-None rows. Int-coerces numeric Aimfox IDs to avoid float artifacts.
+    Provider-agnostic: rows may come from openpyxl (Python types) or gspread
+    (strings). Resolves columns by header NAME, skips repeated-header and empty
+    rows, int-coerces numeric Aimfox IDs. Missing tabs are simply absent from
+    the map and contribute nothing.
     """
-    import openpyxl  # local import — not always in the text-parse path
-
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    from dashboard.client.model import OpenEvent, ReplyRecord
 
     targets: list[TargetCo] = []
     replies: list = []
     opens: list = []
     warm_leads: list[WarmLead] = []
 
-    # ── Spine tabs ────────────────────────────────────────────────────────────
-    for tab_name in _SPINE_TABS:
-        if tab_name not in wb.sheetnames:
-            continue
-        ws = wb[tab_name]
-        rows = ws.iter_rows(values_only=True)
-        header_row = next(rows, None)
-        if header_row is None:
-            continue
-        col_map = {
+    def _colmap(header_row) -> dict[str, int]:
+        return {
             str(v).strip(): idx
             for idx, v in enumerate(header_row)
-            if v is not None
+            if v is not None and str(v).strip() != ""
         }
-        for row in rows:
-            if all(v is None for v in row):
+
+    # ── Spine tabs ────────────────────────────────────────────────────────────
+    for tab_name in _SPINE_TABS:
+        rows = tabs.get(tab_name)
+        if not rows:
+            continue
+        header_row = rows[0]
+        col_map = _colmap(header_row)
+        for row in rows[1:]:
+            if _row_is_empty(row):
                 continue
-            if _is_header_repeat(row, header_row):
+            if _is_header_repeat(tuple(row), tuple(header_row)):
                 continue
             rv = list(row)
             name = _get(rv, col_map, "Company Name")
@@ -273,97 +281,93 @@ def read_xlsx(path: str) -> ClientData:
             ))
 
     # ── Webhook - LinkedIn ────────────────────────────────────────────────────
-    if _WH_LINKEDIN in wb.sheetnames:
-        ws = wb[_WH_LINKEDIN]
-        rows_iter = ws.iter_rows(values_only=True)
-        header_row = next(rows_iter, None)
-        if header_row is not None:
-            col_map = {
-                str(v).strip(): idx
-                for idx, v in enumerate(header_row)
-                if v is not None
-            }
-            from dashboard.client.model import ReplyRecord
-            for row in rows_iter:
-                if all(v is None for v in row):
-                    continue
-                if _is_header_repeat(row, header_row):
-                    continue
-                rv = list(row)
-                evt = _get(rv, col_map, "Event Type").lower()
-                if evt not in _LI_REPLY_TYPES:
-                    continue
-                sentiment = _get(rv, col_map, "Reply Sentiment") or "untagged"
-                campaign = _get(rv, col_map, "Campaign Name")
-                name = _get(rv, col_map, "Prospect Name")
-                raw_ts = _get(rv, col_map, "Timestamp") if "Timestamp" in col_map else None
-                ts = _parse_ts(raw_ts)
-                replies.append(ReplyRecord(
-                    channel="linkedin",
-                    campaign=campaign,
-                    sentiment=sentiment,
-                    name=name,
-                    ts=ts,
-                ))
+    rows = tabs.get(_WH_LINKEDIN)
+    if rows:
+        header_row = rows[0]
+        col_map = _colmap(header_row)
+        for row in rows[1:]:
+            if _row_is_empty(row):
+                continue
+            if _is_header_repeat(tuple(row), tuple(header_row)):
+                continue
+            rv = list(row)
+            evt = _get(rv, col_map, "Event Type").lower()
+            if evt not in _LI_REPLY_TYPES:
+                continue
+            sentiment = _get(rv, col_map, "Reply Sentiment") or "untagged"
+            campaign = _get(rv, col_map, "Campaign Name")
+            name = _get(rv, col_map, "Prospect Name")
+            raw_ts = _get(rv, col_map, "Timestamp") if "Timestamp" in col_map else None
+            ts = _parse_ts(raw_ts)
+            replies.append(ReplyRecord(
+                channel="linkedin",
+                campaign=campaign,
+                sentiment=sentiment,
+                name=name,
+                ts=ts,
+            ))
 
     # ── Webhook - Email ───────────────────────────────────────────────────────
-    if _WH_EMAIL in wb.sheetnames:
-        ws = wb[_WH_EMAIL]
-        rows_iter = ws.iter_rows(values_only=True)
-        header_row = next(rows_iter, None)
-        if header_row is not None:
-            col_map = {
-                str(v).strip(): idx
-                for idx, v in enumerate(header_row)
-                if v is not None
-            }
-            from dashboard.client.model import OpenEvent
-            for row in rows_iter:
-                if all(v is None for v in row):
-                    continue
-                if _is_header_repeat(row, header_row):
-                    continue
-                rv = list(row)
-                evt = _get(rv, col_map, "Event Type").lower()
-                if evt == "email_opened":
-                    raw_ts = _get(rv, col_map, "Event Timestamp") if "Event Timestamp" in col_map else None
-                    ts = _parse_ts(raw_ts)
-                    if ts is not None:
-                        opens.append(OpenEvent(channel="email", ts=ts))
+    rows = tabs.get(_WH_EMAIL)
+    if rows:
+        header_row = rows[0]
+        col_map = _colmap(header_row)
+        for row in rows[1:]:
+            if _row_is_empty(row):
+                continue
+            if _is_header_repeat(tuple(row), tuple(header_row)):
+                continue
+            rv = list(row)
+            evt = _get(rv, col_map, "Event Type").lower()
+            if evt == "email_opened":
+                raw_ts = _get(rv, col_map, "Event Timestamp") if "Event Timestamp" in col_map else None
+                ts = _parse_ts(raw_ts)
+                if ts is not None:
+                    opens.append(OpenEvent(channel="email", ts=ts))
 
     # ── Response Tracker ─────────────────────────────────────────────────────
-    if _RESP_TAB in wb.sheetnames:
-        ws = wb[_RESP_TAB]
-        rows_iter = ws.iter_rows(values_only=True)
-        header_row = next(rows_iter, None)
-        if header_row is not None:
-            col_map = {
-                str(v).strip(): idx
-                for idx, v in enumerate(header_row)
-                if v is not None
-            }
-            for row in rows_iter:
-                if all(v is None for v in row):
-                    continue
-                if _is_header_repeat(row, header_row):
-                    continue
-                rv = list(row)
-                channel = _get(rv, col_map, "Channel")
-                if not channel:
-                    continue
-                warm_leads.append(WarmLead(
-                    channel=channel,
-                    account=_get(rv, col_map, "Account"),
-                    response_date=_get(rv, col_map, "Response Date"),
-                    status=_get(rv, col_map, "Status"),
-                    response_text=_get(rv, col_map, "Response"),
-                    linkedin_url=_get(rv, col_map, "LinkedIn"),
-                    name=_get(rv, col_map, "Name"),
-                    title=_get(rv, col_map, "Job Title"),
-                    company=_get(rv, col_map, "Company"),
-                    company_url=_get(rv, col_map, "Company Url"),
-                    location=_get(rv, col_map, "Loc"),
-                ))
+    rows = tabs.get(_RESP_TAB)
+    if rows:
+        header_row = rows[0]
+        col_map = _colmap(header_row)
+        for row in rows[1:]:
+            if _row_is_empty(row):
+                continue
+            if _is_header_repeat(tuple(row), tuple(header_row)):
+                continue
+            rv = list(row)
+            channel = _get(rv, col_map, "Channel")
+            if not channel:
+                continue
+            warm_leads.append(WarmLead(
+                channel=channel,
+                account=_get(rv, col_map, "Account"),
+                response_date=_get(rv, col_map, "Response Date"),
+                status=_get(rv, col_map, "Status"),
+                response_text=_get(rv, col_map, "Response"),
+                linkedin_url=_get(rv, col_map, "LinkedIn"),
+                name=_get(rv, col_map, "Name"),
+                title=_get(rv, col_map, "Job Title"),
+                company=_get(rv, col_map, "Company"),
+                company_url=_get(rv, col_map, "Company Url"),
+                location=_get(rv, col_map, "Loc"),
+            ))
 
-    wb.close()
     return ClientData(targets=targets, replies=replies, opens=opens, warm_leads=warm_leads)
+
+
+def read_xlsx(path: str) -> ClientData:
+    """Parse the client prospect XLSX workbook and return a ClientData.
+
+    Reads the known tabs into {tab: rows} with openpyxl(read_only, data_only),
+    then delegates to the provider-agnostic _parse_tabs core.
+    """
+    import openpyxl  # local import — not always in the text-parse path
+
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    tabs: dict[str, list] = {}
+    for tab_name in _ALL_SHEET_TABS:
+        if tab_name in wb.sheetnames:
+            tabs[tab_name] = list(wb[tab_name].iter_rows(values_only=True))
+    wb.close()
+    return _parse_tabs(tabs)
