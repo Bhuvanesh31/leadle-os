@@ -65,7 +65,9 @@ def render(data, metrics, deltas_bag, narrative, actions, *, audience, period_la
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--client", default="UPSTA")
-    ap.add_argument("--xlsx", required=True, help="Path to Drive-dumped workbook (.xlsx)")
+    ap.add_argument("--xlsx", default=None,
+                    help="Optional offline workbook (.xlsx). Omit to read live from the "
+                         "configured Google Sheet for --client.")
     # Period selection: --period XOR --all-periods; default is all-periods
     period_group = ap.add_mutually_exclusive_group()
     period_group.add_argument("--period", choices=["weekly", "monthly"])
@@ -101,8 +103,9 @@ def main(argv=None) -> int:
         window = _window(period, args.period_end)
 
         data = loader.load(
-            args.xlsx,
             window,
+            client=client_name,
+            xlsx_path=args.xlsx,
             aimfox_key=os.environ.get(constants.AIMFOX_ENV, ""),
             instantly_key=os.environ.get(constants.INSTANTLY_ENV, ""),
             name_contains=constants.CAMPAIGN_FILTER,

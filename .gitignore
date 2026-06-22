@@ -13,6 +13,12 @@
 *.key
 credentials.json
 service_account*.json
+google_sheets_token.json
+google_sheets_client_secret*.json
+# Broad catch-alls: the token/secret paths are env-driven (GOOGLE_SHEETS_TOKEN /
+# GOOGLE_SHEETS_CLIENT_SECRET) and may be named freely — never commit either.
+*token*.json
+*client_secret*.json
 
 # Python
 __pycache__/

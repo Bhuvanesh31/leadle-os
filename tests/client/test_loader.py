@@ -86,8 +86,8 @@ def test_load_merges_all_three_sources():
     instantly_client = httpx.Client(transport=_mock(_INSTANTLY_MAP))
 
     data = loader.load(
-        MINI_XLSX,
         WINDOW,
+        xlsx_path=MINI_XLSX,
         aimfox_key=AIMFOX_KEY,
         instantly_key=INSTANTLY_KEY,
         name_contains=NAME_CONTAINS,
@@ -142,8 +142,8 @@ def test_load_populates_senders_and_steps_from_instantly():
     instantly_client = httpx.Client(transport=_mock(instantly_map_with_extras))
 
     data = loader.load(
-        MINI_XLSX,
         WINDOW,
+        xlsx_path=MINI_XLSX,
         aimfox_key=AIMFOX_KEY,
         instantly_key=INSTANTLY_KEY,
         name_contains=NAME_CONTAINS,
@@ -167,8 +167,8 @@ def test_load_degrades_when_aimfox_raises():
     instantly_client = httpx.Client(transport=_mock(_INSTANTLY_MAP))
 
     data = loader.load(
-        MINI_XLSX,
         WINDOW,
+        xlsx_path=MINI_XLSX,
         aimfox_key=AIMFOX_KEY,
         instantly_key=INSTANTLY_KEY,
         name_contains=NAME_CONTAINS,
@@ -191,8 +191,8 @@ def test_load_degrades_when_instantly_unavailable():
     instantly_client = httpx.Client(transport=httpx.MockTransport(boom))
 
     data = loader.load(
-        MINI_XLSX,
         WINDOW,
+        xlsx_path=MINI_XLSX,
         aimfox_key=AIMFOX_KEY,
         instantly_key=INSTANTLY_KEY,
         name_contains=NAME_CONTAINS,
@@ -217,8 +217,8 @@ def test_load_degrades_when_both_apis_fail():
     instantly_client = httpx.Client(transport=httpx.MockTransport(boom))
 
     data = loader.load(
-        MINI_XLSX,
         WINDOW,
+        xlsx_path=MINI_XLSX,
         aimfox_key=AIMFOX_KEY,
         instantly_key=INSTANTLY_KEY,
         name_contains=NAME_CONTAINS,
@@ -229,3 +229,24 @@ def test_load_degrades_when_both_apis_fail():
     assert data.linkedin_campaigns == []
     assert data.email_campaigns == []
     assert len(data.targets) > 0
+
+
+def test_load_default_reads_sheets(monkeypatch):
+    """xlsx_path=None resolves the registry and calls read_sheets (no xlsx)."""
+    calls = {}
+
+    def fake_read_sheets(spreadsheet_id, *, client=None):
+        calls["id"] = spreadsheet_id
+        return ClientData(targets=[], replies=[], opens=[], warm_leads=[])
+
+    monkeypatch.setattr(
+        "dashboard.client.sources.client_registry.spreadsheet_id_for",
+        lambda c: "resolved-id-for-" + c,
+    )
+    monkeypatch.setattr(
+        "dashboard.client.sources.sheet_source.read_sheets", fake_read_sheets
+    )
+    # Aimfox/Instantly will degrade to [] with no clients passed.
+    loader.load(WINDOW, client="UPSTA", aimfox_key="", instantly_key="",
+                name_contains=NAME_CONTAINS)
+    assert calls["id"] == "resolved-id-for-UPSTA"
