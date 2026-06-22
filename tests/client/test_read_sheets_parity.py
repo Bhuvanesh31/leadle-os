@@ -50,6 +50,10 @@ def test_read_sheets_matches_read_xlsx():
     from_sheets = sheet_source.read_sheets("any-id", client=fake)
     from_xlsx = sheet_source.read_xlsx(str(FIX))
 
+    # Precondition: the fixture must carry real data, else the parity asserts
+    # below pass vacuously (0 == 0, {} == {}) and prove nothing.
+    assert from_xlsx.targets and from_xlsx.replies and from_xlsx.opens and from_xlsx.warm_leads
+
     assert len(from_sheets.targets) == len(from_xlsx.targets)
     assert len(from_sheets.replies) == len(from_xlsx.replies)
     assert len(from_sheets.opens) == len(from_xlsx.opens)
