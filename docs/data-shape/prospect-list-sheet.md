@@ -184,43 +184,34 @@ total replies 12/mo, bounce <4%. Extractor: `/tmp/reply_metrics.py` → `/tmp/re
 
 ## Render runbook
 
-End-to-end steps to produce the 4 client dashboard HTML files from the Drive workbook and live APIs.
-The slash command `/render-client-report` automates all of this.
+The client report reads the workbook **live from Google Sheets by default** — no
+download. The connector authorizes as `revops@leadle.in` (OAuth, scope
+`spreadsheets.readonly`) and resolves the sheet id from `config/clients.yaml`.
 
-### Required env keys
+**One-time setup (per machine/environment):**
+1. In the leadle.in GCP project, enable the Google Sheets API.
+2. OAuth consent screen → user type **Internal**; add scope `.../auth/spreadsheets.readonly`.
+3. Create an OAuth client of type **Desktop app**; download the client-secret JSON.
+4. `export GOOGLE_SHEETS_CLIENT_SECRET=/path/to/client_secret.json`
+   `export GOOGLE_SHEETS_TOKEN=/path/to/google_sheets_token.json`
+5. `python -m connectors.google_sheets.authorize` — sign in as `revops@leadle.in`.
+   Writes the token to `$GOOGLE_SHEETS_TOKEN`. Both files are gitignored.
 
-| Key | Purpose |
-|---|---|
-| `AIMFOX_API_KEY` | LinkedIn campaign numbers (Aimfox REST API). Absent: LinkedIn blocks degrade to empty, render continues. |
-| `INSTANTLY_API_KEY` | Email campaign numbers (Instantly REST API). Absent: email blocks degrade to empty, render continues. |
-
-### Step 1 — Download the XLSX workbook
-
-Use Drive `download_file_content` (NOT `read_file_content` — the text flatten silently truncates rows):
-
-- File id: `1GgFeDdXpy1ZlDjH8bTWNL_c7m0ihSSO_-iYNyzadCQg` (value of `constants.SHEET_DRIVE_ID`)
-- `exportMimeType`: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-- Save to e.g. `/tmp/upsta_workbook.xlsx`
-
-### Step 2 — Run the render CLI
-
+**Render (live, default):**
 ```bash
-source .venv/bin/activate && python -m dashboard.client.render \
-  --xlsx /tmp/upsta_workbook.xlsx --all-periods --audience both --period-end <YYYY-MM-DD>
+python -m dashboard.client.render --client UPSTA --all-periods --audience both --period-end <YYYY-MM-DD>
 ```
 
-Replace `<YYYY-MM-DD>` with the last day of the reporting period (typically today's date).
+**Render (offline override):** pass `--xlsx <path>` to read a downloaded workbook
+instead of the live sheet (debugging / reproducing a past report).
 
-### Outputs
+**Required env for campaign numbers:** `AIMFOX_API_KEY`, `INSTANTLY_API_KEY`
+(absence degrades those blocks to empty, not a crash).
 
-4 HTML files written to `reports/client/`:
+**Outputs:** `reports/client/<client>-<period_end>-<period>-<audience>.html` (4 files:
+monthly/weekly × internal/client).
 
-```
-reports/client/UPSTA-<period_end>-monthly-internal.html
-reports/client/UPSTA-<period_end>-monthly-client.html
-reports/client/UPSTA-<period_end>-weekly-internal.html
-reports/client/UPSTA-<period_end>-weekly-client.html
-```
+**Adding a client:** add an entry to `config/clients.yaml` (`client -> spreadsheet_id`)
+and ensure the workbook is shared with `revops@leadle.in`. No code change.
 
-The CLI prints each absolute path as it writes it. The `internal` files include sender health,
-deliverability flags, and action items; the `client` files show only the audience-safe blocks.
+The slash command `/render-client-report` automates the live render.
