@@ -1,0 +1,6 @@
+# Client -> Google Sheets workbook registry.
+# Adding a client is a config edit, not a code change. The connector reads
+# each sheet live as revops@leadle.in (the account every workbook is shared with).
+clients:
+  UPSTA:
+    spreadsheet_id: "1GgFeDdXpy1ZlDjH8bTWNL_c7m0ihSSO_-iYNyzadCQg"

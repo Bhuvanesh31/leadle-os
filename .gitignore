@@ -13,6 +13,8 @@
 *.key
 credentials.json
 service_account*.json
+google_sheets_token.json
+google_sheets_client_secret*.json
 
 # Python
 __pycache__/
