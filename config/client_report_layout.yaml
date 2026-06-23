@@ -5,7 +5,6 @@ blocks:
   - {key: kpis,          title: "Headline",                  visibility: both}
   - {key: scorecard,     title: "Benchmark scorecard",       visibility: both}
   - {key: campaigns,     title: "Which campaign performed",  visibility: both}
-  - {key: variants,      title: "Which LinkedIn message worked", visibility: both}
   - {key: senders,       title: "Sender health",             visibility: internal}
   - {key: timing,        title: "Engagement timing",         visibility: both}
   - {key: deliverability, title: "Deliverability flags",     visibility: internal}

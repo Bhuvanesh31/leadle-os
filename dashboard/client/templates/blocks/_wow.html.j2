@@ -18,7 +18,7 @@
 {% macro tip(key) -%}
   {%- set d = deltas.get(key) -%}
   {%- if d and d.delta is not none -%}
-    title="prev {{ (d.value - d.delta) | round(4) }} ({{ '+' if d.delta >= 0 else '' }}{{ d.delta }})"
+    title="prev {{ (d.value - d.delta) | round(2) }} ({{ '+' if d.delta >= 0 else '' }}{{ d.delta }})"
   {%- else -%}
     title="no prior week"
   {%- endif -%}

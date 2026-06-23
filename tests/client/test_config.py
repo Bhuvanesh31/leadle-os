@@ -39,11 +39,6 @@ def test_rubric_has_benchmarks_and_f_floor():
     assert any(b[1] == "F" for b in r["grades"]["open_rate"])
 
 
-def test_layout_has_variants_block():
-    lay = yaml.safe_load((_CFG / "client_report_layout.yaml").read_text())
-    assert any(b["key"] == "variants" for b in lay["blocks"])
-
-
 def test_constants_present():
     from dashboard.client import constants
 

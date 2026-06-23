@@ -73,3 +73,12 @@ def test_top_5_truncation():
     box = compute.campaign_boxes(d, RUBRIC)
     assert len(box["email_campaigns"]) == 5
     assert [r["name"] for r in box["email_campaigns"]] == ["c7", "c6", "c5", "c4", "c3"]
+
+
+def test_step_none_never_in_label():
+    d = ClientData(content_steps=[
+        {"campaign": "c", "step": None, "opened": 10, "sent": 100, "clicked": 0, "subject": "s", "body_preview": "b"},
+    ])
+    steps = compute.campaign_boxes(d, RUBRIC)["email_steps"]
+    assert steps and "Step None" not in steps[0]["label"]
+    assert steps[0]["label"] == "c — Step ?"

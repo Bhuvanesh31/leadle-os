@@ -383,7 +383,7 @@ def campaign_boxes(data: ClientData, rubric: dict) -> dict:
             continue
         steps.append({
             "campaign": s.get("campaign", ""), "step": s.get("step"),
-            "label": f'{s.get("campaign", "")} — Step {s.get("step")}',
+            "label": f'{s.get("campaign", "")} — Step {s.get("step") or "?"}',
             "open_rate": open_rate,
             "click_rate": _rate(int(s.get("clicked", 0) or 0), int(s.get("sent", 0) or 0)),
             "subject": s.get("subject", ""), "body_preview": s.get("body_preview", ""),
