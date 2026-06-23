@@ -96,3 +96,7 @@ Thumbs.db
 .firecrawl/
 .playwright-mcp/
 .local/
+
+# Stray credential files (never commit hand-pasted tokens)
+api_token_cloud.md
+*api_token*
