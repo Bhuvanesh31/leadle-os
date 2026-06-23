@@ -39,6 +39,7 @@ dependencies = [
 
     # ─── YAML config ─────────────────────────────────────────────────
     "ruamel.yaml>=0.18",
+    "pyyaml>=6.0",             # code uses `import yaml` (PyYAML), distinct from ruamel.yaml
 
     # ─── Scheduling helpers (used by /schedule routines, not for hosting) ─
     "croniter>=2.0",
