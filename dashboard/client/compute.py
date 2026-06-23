@@ -348,7 +348,13 @@ def channel_reach(data: ClientData) -> dict:
 
 
 def campaign_boxes(data: ClientData, rubric: dict) -> dict:
-    """Four ranked, top-5, performer-only boxes + the excluded non-performers."""
+    """Four ranked, top-5, performer-only boxes + the excluded non-performers.
+
+    Contract: ``excluded`` is always a dict with both "email" and "linkedin" keys
+    (initialised to empty lists below). Template code may safely test
+    ``metrics.boxes.excluded.email`` and ``metrics.boxes.excluded.linkedin``
+    without an ``is defined`` guard.
+    """
     excluded = {"email": [], "linkedin": []}
 
     # Email campaigns: reply -> click -> open; drop 0-open
