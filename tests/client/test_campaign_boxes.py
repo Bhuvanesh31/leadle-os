@@ -56,6 +56,15 @@ def test_email_steps_filtered_and_labelled():
     assert steps[0]["subject"] == "S1"
 
 
+def test_email_steps_sorted_by_open_rate():
+    d = ClientData(content_steps=[
+        {"campaign": "c", "step": 1, "opened": 30, "sent": 100, "clicked": 1, "subject": "s1", "body_preview": "b1"},
+        {"campaign": "c", "step": 2, "opened": 60, "sent": 100, "clicked": 2, "subject": "s2", "body_preview": "b2"},
+    ])
+    steps = compute.campaign_boxes(d, RUBRIC)["email_steps"]
+    assert [s["step"] for s in steps] == [2, 1]   # 60% before 30%
+
+
 def test_top_5_truncation():
     d = ClientData(email_campaigns=[
         EmailCampaign(name=f"c{i}", sent=100, opened=10 + i, clicked=i, bounced=0, replied=i)
@@ -63,3 +72,4 @@ def test_top_5_truncation():
     ])
     box = compute.campaign_boxes(d, RUBRIC)
     assert len(box["email_campaigns"]) == 5
+    assert [r["name"] for r in box["email_campaigns"]] == ["c7", "c6", "c5", "c4", "c3"]
