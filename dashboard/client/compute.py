@@ -347,6 +347,69 @@ def channel_reach(data: ClientData) -> dict:
     }
 
 
+def campaign_boxes(data: ClientData, rubric: dict) -> dict:
+    """Four ranked, top-5, performer-only boxes + the excluded non-performers."""
+    excluded = {"email": [], "linkedin": []}
+
+    # Email campaigns: reply -> click -> open; drop 0-open
+    email = []
+    for c in data.email_campaigns:
+        delivered = c.sent - c.bounced
+        open_rate = _rate(c.opened, delivered)
+        if open_rate == 0:
+            excluded["email"].append(c.name)
+            continue
+        email.append({
+            "name": c.name, "sent": c.sent,
+            "reply_rate": _rate(c.replied, c.sent),
+            "click_rate": _rate(c.clicked, delivered),
+            "open_rate": open_rate,
+            "bounce_rate": _rate(c.bounced, c.sent),
+            "grade": grade("open_rate", open_rate, rubric),
+        })
+    email.sort(key=lambda r: (-r["reply_rate"], -r["click_rate"], -r["open_rate"]))
+
+    # Email steps: drop 0-open; rank by open_rate; label "campaign — Step N"
+    steps = []
+    for s in data.content_steps:
+        open_rate = _rate(int(s.get("opened", 0) or 0), int(s.get("sent", 0) or 0))
+        if open_rate == 0:
+            continue
+        steps.append({
+            "campaign": s.get("campaign", ""), "step": s.get("step"),
+            "label": f'{s.get("campaign", "")} — Step {s.get("step")}',
+            "open_rate": open_rate,
+            "click_rate": _rate(int(s.get("clicked", 0) or 0), int(s.get("sent", 0) or 0)),
+            "subject": s.get("subject", ""), "body_preview": s.get("body_preview", ""),
+        })
+    steps.sort(key=lambda r: -r["open_rate"])
+
+    # LinkedIn campaigns: reply -> accept; drop 0 connections
+    li = []
+    for c in data.linkedin_campaigns:
+        accept_rate = _rate(c.accepted, c.invites)
+        if c.accepted == 0:
+            excluded["linkedin"].append(c.name)
+            continue
+        li.append({
+            "name": c.name, "invites": c.invites, "connections": c.accepted,
+            "reply_rate": _rate(c.replied, c.invites), "accept_rate": accept_rate,
+        })
+    li.sort(key=lambda r: (-r["reply_rate"], -r["accept_rate"]))
+
+    # LinkedIn variants: reuse variants(); drop 0 accepts
+    var = [v for v in variants(data, rubric) if v["accept_rate"] > 0]
+    var.sort(key=lambda r: (-r["reply_rate"], -r["accept_rate"]))
+
+    return {
+        "email_campaigns": email[:5],
+        "email_steps": steps[:5],
+        "linkedin_campaigns": li[:5],
+        "linkedin_variants": var[:5],
+        "excluded": excluded,
+    }
+
+
 def compute_all(data: ClientData, rubric: dict) -> dict:
     k = kpis(data, rubric)
     return {
