@@ -11,9 +11,10 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 import yaml
 
-from dashboard.client import compute, render
+from dashboard.client import compute, render, snapshots
 from dashboard.client.model import EmailCampaign, LinkedInCampaign, OpenEvent, ReplyRecord
 from dashboard.client.sources import sheet_source
 
@@ -56,9 +57,15 @@ def _build():
 
     data = sheet_source.read_xlsx(str(FIX_XLSX))
 
-    # Attach campaign data (XLSX has no API-sourced campaign numbers)
+    # ≥6 email campaigns; one with 0 opens (should be excluded from email_campaigns box)
+    # so both top-5 truncation and 0-open exclusion are exercised.
     data.email_campaigns = [
-        EmailCampaign(name="SFDI·US", sent=1012, opened=293, clicked=40, bounced=64, replied=0)
+        EmailCampaign(name="SFDI·US", sent=1012, opened=293, clicked=40, bounced=64, replied=0),
+        EmailCampaign(name="SG·EU",   sent=800,  opened=200, clicked=30, bounced=20, replied=2),
+        EmailCampaign(name="SG·APAC", sent=600,  opened=150, clicked=20, bounced=15, replied=1),
+        EmailCampaign(name="PMP·SG",  sent=500,  opened=100, clicked=10, bounced=10, replied=0),
+        EmailCampaign(name="PMP·EU",  sent=400,  opened=80,  clicked=8,  bounced=8,  replied=0),
+        EmailCampaign(name="ZERO·US", sent=300,  opened=0,   clicked=0,  bounced=5,  replied=0),
     ]
     data.linkedin_campaigns = [
         LinkedInCampaign(
@@ -74,17 +81,46 @@ def _build():
     ]
     data.senders = [{"from_email": "augustine.m@upstahq.com", "sent": 239, "bounced": 18}]
     data.content_steps = [
-        {"step": 1, "sent": 1012, "opened": 293},
-        {"step": 2, "sent": 500, "opened": 90},
+        {"step": 1, "campaign": "SFDI·US", "sent": 1012, "opened": 293,
+         "subject": "Quick question", "body_preview": "Hi {{first_name}}"},
+        {"step": 2, "campaign": "SFDI·US", "sent": 500, "opened": 90,
+         "subject": "Following up", "body_preview": ""},
     ]
     # Add a real OpenEvent so the timing heatmap palette cell gets coloured
     data.opens = [OpenEvent(channel="email", ts=datetime(2026, 6, 10, 14, 30))]
 
     metrics = compute.compute_all(data, rubric)
-    dbag = {
-        "emails_sent": {"value": 1012, "delta": None, "baseline": True},
-        "invites": {"value": 400, "delta": None, "baseline": True},
+
+    # Synthetic prior snapshot — gives WoW arrows a prior to diff against
+    prior_metrics = {
+        "kpis": {
+            "emails_sent": 900, "fresh_prospects": 900, "opened": 200,
+            "clicked": 30, "bounced": 60, "delivered": 840,
+            "open_rate": 0.238, "click_rate": 0.036, "bounce_rate": 0.067,
+            "invites": 350, "accepted": 100, "accept_rate": 0.286,
+            "li_replies": 5, "email_replies": 0, "total_replies": 5,
+            "positive_replies": 0, "neutral_replies": 5, "negative_replies": 0,
+            "leads": 0, "meetings": 0,
+        },
+        "boxes": {
+            "email_campaigns": [
+                {"name": "SFDI·US", "sent": 900, "reply_rate": 0.0,
+                 "click_rate": 0.035, "open_rate": 0.24, "bounce_rate": 0.06, "grade": "B"},
+                {"name": "SG·EU", "sent": 700, "reply_rate": 0.0,
+                 "click_rate": 0.02, "open_rate": 0.22, "bounce_rate": 0.03, "grade": "B"},
+            ],
+            "email_steps": [],
+            "linkedin_campaigns": [
+                {"name": "PMP·US", "invites": 350, "connections": 100,
+                 "reply_rate": 0.01, "accept_rate": 0.286},
+            ],
+            "linkedin_variants": [
+                {"name": "PMP·US", "accept_rate": 0.286, "replies": 4,
+                 "reply_rate": 0.01, "hook": "personal founder intro", "winner": True},
+            ],
+        },
     }
+    dbag = snapshots.box_deltas(metrics, prior_metrics)
     return data, metrics, dbag, rubric, layout
 
 
@@ -159,11 +195,11 @@ def test_blue_heatmap_palette_in_client_output():
 
 
 def test_headline_emails_sent_renders_in_client_output():
-    """The emails-sent headline KPI (1,012) must appear in client output."""
+    """The emails-sent headline KPI (3,612) must appear in client output."""
     client_html, _ = _render_both()
-    # Template uses '{:,}'.format(k.emails_sent) → "1,012"
-    assert "1,012" in client_html, (
-        "Expected headline emails-sent figure '1,012' not found in client output."
+    # Template uses '{:,}'.format(k.emails_sent) → "3,612" (6 campaigns: 1012+800+600+500+400+300)
+    assert "3,612" in client_html, (
+        "Expected headline emails-sent figure '3,612' not found in client output."
     )
 
 
@@ -172,4 +208,33 @@ def test_internal_sender_email_does_not_leak_to_client():
     client_html, _ = _render_both()
     assert "augustine" not in client_html, (
         "Internal sender email 'augustine.m@upstahq.com' leaked into client HTML output."
+    )
+
+
+def test_boxes_render_top5_and_wow(rendered_internal_html):
+    """4-box campaigns layout: steps render, WoW arrow present, Step None absent."""
+    html = rendered_internal_html
+    assert "— Step" in html, "Email step label '— Step N' not found in rendered output"
+    assert 'class="wow up"' in html or 'class="wow down"' in html, (
+        "No WoW arrow (class=wow up/down) found — prior snapshot should produce arrows"
+    )
+    assert "Step None" not in html, "Literal 'Step None' found — step number is None"
+
+
+@pytest.fixture
+def rendered_internal_html():
+    """Internal render using the extended _build() fixture (6 campaigns + prior snapshot)."""
+    data, metrics, dbag, rubric, layout = _build()
+    return render.render(
+        data,
+        metrics,
+        dbag,
+        {"narrative": "Strong LinkedIn accept rate.", "degraded": False},
+        {"actions": ["Pause & warm inbox."], "degraded": False},
+        audience="internal",
+        period_label="June 2026",
+        client="UPSTA",
+        layout=layout,
+        rubric=rubric,
+        rendered_at=_FIXED_TS,
     )

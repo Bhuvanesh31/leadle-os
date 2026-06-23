@@ -1,9 +1,10 @@
 # Block order + per-audience visibility. render.py --audience filters on this.
+# Note: the 'content' block (flat per-step table) was removed in the 4-box
+# campaigns layout. Email steps now render as Box 2 inside campaigns.html.j2.
 blocks:
   - {key: kpis,          title: "Headline",                  visibility: both}
   - {key: scorecard,     title: "Benchmark scorecard",       visibility: both}
   - {key: campaigns,     title: "Which campaign performed",  visibility: both}
-  - {key: content,       title: "Which content performed",   visibility: both}
   - {key: variants,      title: "Which LinkedIn message worked", visibility: both}
   - {key: senders,       title: "Sender health",             visibility: internal}
   - {key: timing,        title: "Engagement timing",         visibility: both}
