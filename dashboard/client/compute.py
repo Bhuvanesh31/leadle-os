@@ -423,4 +423,5 @@ def compute_all(data: ClientData, rubric: dict) -> dict:
         "timing": timing_heatmap(data, rubric),
         "reach": channel_reach(data),
         "leads": lead_ladder(data, rubric),
+        "boxes": campaign_boxes(data, rubric),
     }

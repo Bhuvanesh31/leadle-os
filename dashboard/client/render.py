@@ -150,7 +150,7 @@ def main(argv=None) -> int:
         metrics = compute.compute_all(data, rubric)
 
         prior = store.prior(client_name, period, before=args.period_end)
-        deltas_bag = snapshots.deltas(metrics["kpis"], prior.get("kpis") if prior else None)
+        deltas_bag = snapshots.box_deltas(metrics, prior)
 
         for audience in audiences:
             if args.skip_agents:
