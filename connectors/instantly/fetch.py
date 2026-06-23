@@ -95,28 +95,51 @@ def _account_senders(client: httpx.Client) -> list[dict]:
     return result
 
 
+def _step_copy(client: httpx.Client, campaign_id: str) -> dict[int, dict]:
+    """Map step-index -> {subject, body_preview} from the campaign sequence. {} on error."""
+    try:
+        r = client.get(f"{_BASE_URL}/campaigns/{campaign_id}")
+        r.raise_for_status()
+        seq = (r.json().get("sequences") or [{}])[0].get("steps") or []
+    except httpx.HTTPError:
+        return {}
+    out: dict[int, dict] = {}
+    for i, s in enumerate(seq):
+        variants = s.get("variants") or [{}]
+        v = variants[0]
+        out[i] = {
+            "subject": (v.get("subject") or "").strip(),
+            "body_preview": (v.get("body") or "").strip()[:120],
+        }
+    return out
+
+
 def _campaign_steps(client: httpx.Client, camps: list[dict]) -> list[dict]:
-    """Fetch per-step analytics for each campaign. Returns [] on error."""
+    """Per-step analytics for each campaign, with campaign name + step copy. [] on error."""
     all_steps = []
     for c in camps:
         try:
-            r = client.get(
-                f"{_BASE_URL}/campaigns/analytics/steps",
-                params={"id": c["id"]},
-            )
+            r = client.get(f"{_BASE_URL}/campaigns/analytics/steps", params={"id": c["id"]})
             r.raise_for_status()
             rows = r.json()
         except httpx.HTTPError:
             continue
         if not isinstance(rows, list):
             continue
+        copy = _step_copy(client, c["id"])
         for row in rows:
+            step = row.get("step")
+            idx = (step - 1) if isinstance(step, int) and step > 0 else None
+            cp = copy.get(idx, {}) if idx is not None else {}
             all_steps.append(
                 {
-                    "step": row.get("step"),
+                    "campaign": c.get("name", ""),
+                    "step": step,
                     "sent": int(row.get("sent", 0) or 0),
                     "opened": int(row.get("opened", 0) or 0),
                     "clicked": int(row.get("clicked", 0) or 0),
+                    "subject": cp.get("subject", ""),
+                    "body_preview": cp.get("body_preview", ""),
                 }
             )
     return all_steps
