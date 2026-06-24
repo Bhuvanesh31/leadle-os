@@ -1,0 +1,25 @@
+{# dashboard/client/templates/blocks/_wow.html.j2 — WoW arrow + tooltip macros.
+   Import with: {% from "blocks/_wow.html.j2" import arrow, tip %}
+
+   arrow(key): renders <span class="wow up">▲</span> or <span class="wow down">▼</span>
+               only when deltas[key].dir is 'up' or 'down'; silent otherwise.
+
+   tip(key):   renders a title= attribute string showing prev value and delta.
+               Use inside an HTML tag, e.g. <td class="num" {{ tip('kpis.leads') }}>
+#}
+
+{% macro arrow(key) -%}
+  {%- set d = deltas.get(key) -%}
+  {%- if d and d.dir in ('up', 'down') -%}
+    <span class="wow {{ d.dir }}">{{ '▲' if d.dir == 'up' else '▼' }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro tip(key) -%}
+  {%- set d = deltas.get(key) -%}
+  {%- if d and d.delta is not none -%}
+    title="prev {{ (d.value - d.delta) | round(2) }} ({{ '+' if d.delta >= 0 else '' }}{{ d.delta }})"
+  {%- else -%}
+    title="no prior week"
+  {%- endif -%}
+{%- endmacro %}

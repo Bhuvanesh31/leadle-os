@@ -96,9 +96,12 @@ def make_data() -> ClientData:
             {"from_email": "rajesh@upsta.co", "sent": 180, "bounced": 4},  # 2.2% → ok
         ],
         content_steps=[
-            {"step": 1, "sent": 100, "opened": 24},
-            {"step": 2, "sent": 90, "opened": 16},
-            {"step": 3, "sent": 80, "opened": 26},  # best (highest open rate)
+            {"campaign": "A<b", "step": 1, "sent": 100, "opened": 24,
+             "subject": "Quick intro", "body_preview": "Hi there"},
+            {"campaign": "A<b", "step": 2, "sent": 90, "opened": 16,
+             "subject": "Following up", "body_preview": "Just checking in"},
+            {"campaign": "Clean SG", "step": 3, "sent": 80, "opened": 26,
+             "subject": "One more thing", "body_preview": "Wanted to share"},  # best (highest open rate)
         ],
         opens=opens,
         targets=[
