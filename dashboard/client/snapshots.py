@@ -73,8 +73,8 @@ def box_deltas(current: dict, prior: dict | None) -> dict:
     cboxes = current.get("boxes") or {}
     # Boxes with a stable identity (name) get per-row WoW. Email steps are intentionally
     # excluded: their week-to-week identity is unstable and 'step' is an id, not a metric.
-    for box, prefix in (("email_campaigns", "campaign"),
-                        ("linkedin_campaigns", "campaign"),
+    for box, prefix in (("email_campaigns", "email"),
+                        ("linkedin_campaigns", "linkedin"),
                         ("linkedin_variants", "variant")):
         prior_by_name = {r["name"]: r for r in (pboxes.get(box) or [])}
         for row in cboxes.get(box, []):

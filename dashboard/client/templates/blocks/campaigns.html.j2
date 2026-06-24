@@ -17,11 +17,11 @@
       {% for c in metrics.boxes.email_campaigns %}
       <tr>
         <td class="camp">{{ c.name }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.sent') }}>{{ c.sent }}{{ arrow('campaign.' ~ c.name ~ '.sent') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.reply_rate') }}>{{ '%.1f%%' % (c.reply_rate*100) }}{{ arrow('campaign.' ~ c.name ~ '.reply_rate') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.click_rate') }}>{{ '%.1f%%' % (c.click_rate*100) }}{{ arrow('campaign.' ~ c.name ~ '.click_rate') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.open_rate') }}>{{ '%.0f%%' % (c.open_rate*100) }}{{ arrow('campaign.' ~ c.name ~ '.open_rate') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.bounce_rate') }}>{% if c.bounce_rate is not none %}{{ '%.1f%%' % (c.bounce_rate*100) }}{{ arrow('campaign.' ~ c.name ~ '.bounce_rate') }}{% else %}&mdash;{% endif %}</td>
+        <td class="num" {{ tip('email.' ~ c.name ~ '.sent') }}>{{ c.sent }}{{ arrow('email.' ~ c.name ~ '.sent') }}</td>
+        <td class="num" {{ tip('email.' ~ c.name ~ '.reply_rate') }}>{{ '%.1f%%' % (c.reply_rate*100) }}{{ arrow('email.' ~ c.name ~ '.reply_rate') }}</td>
+        <td class="num" {{ tip('email.' ~ c.name ~ '.click_rate') }}>{{ '%.1f%%' % (c.click_rate*100) }}{{ arrow('email.' ~ c.name ~ '.click_rate') }}</td>
+        <td class="num" {{ tip('email.' ~ c.name ~ '.open_rate') }}>{{ '%.0f%%' % (c.open_rate*100) }}{{ arrow('email.' ~ c.name ~ '.open_rate') }}</td>
+        <td class="num" {{ tip('email.' ~ c.name ~ '.bounce_rate') }}>{% if c.bounce_rate is not none %}{{ '%.1f%%' % (c.bounce_rate*100) }}{{ arrow('email.' ~ c.name ~ '.bounce_rate') }}{% else %}&mdash;{% endif %}</td>
         <td class="num"><span class="grade g-{{ c.grade }}">{{ c.grade }}</span></td>
       </tr>
       {% endfor %}
@@ -74,10 +74,10 @@
       {% for c in metrics.boxes.linkedin_campaigns %}
       <tr>
         <td class="camp">{{ c.name }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.invites') }}>{{ c.invites }}{{ arrow('campaign.' ~ c.name ~ '.invites') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.connections') }}>{{ c.connections }}{{ arrow('campaign.' ~ c.name ~ '.connections') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.accept_rate') }}>{{ '%.1f%%' % (c.accept_rate*100) }}{{ arrow('campaign.' ~ c.name ~ '.accept_rate') }}</td>
-        <td class="num" {{ tip('campaign.' ~ c.name ~ '.reply_rate') }}>{{ '%.1f%%' % (c.reply_rate*100) }}{{ arrow('campaign.' ~ c.name ~ '.reply_rate') }}</td>
+        <td class="num" {{ tip('linkedin.' ~ c.name ~ '.invites') }}>{{ c.invites }}{{ arrow('linkedin.' ~ c.name ~ '.invites') }}</td>
+        <td class="num" {{ tip('linkedin.' ~ c.name ~ '.connections') }}>{{ c.connections }}{{ arrow('linkedin.' ~ c.name ~ '.connections') }}</td>
+        <td class="num" {{ tip('linkedin.' ~ c.name ~ '.accept_rate') }}>{{ '%.1f%%' % (c.accept_rate*100) }}{{ arrow('linkedin.' ~ c.name ~ '.accept_rate') }}</td>
+        <td class="num" {{ tip('linkedin.' ~ c.name ~ '.reply_rate') }}>{{ '%.1f%%' % (c.reply_rate*100) }}{{ arrow('linkedin.' ~ c.name ~ '.reply_rate') }}</td>
       </tr>
       {% endfor %}
     </tbody>

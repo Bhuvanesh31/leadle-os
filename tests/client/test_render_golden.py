@@ -221,6 +221,14 @@ def test_boxes_render_top5_and_wow(rendered_internal_html):
     assert "Step None" not in html, "Literal 'Step None' found — step number is None"
 
 
+def test_wow_color_rule_in_base_template():
+    """The .wow.up color rule must be present in rendered HTML (Fix 2 guard)."""
+    client_html, _ = _render_both()
+    assert ".wow.up" in client_html, (
+        ".wow.up CSS rule not found in rendered output — WoW arrows will display black"
+    )
+
+
 @pytest.fixture
 def rendered_internal_html():
     """Internal render using the extended _build() fixture (6 campaigns + prior snapshot)."""
